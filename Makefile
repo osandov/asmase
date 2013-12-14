@@ -1,18 +1,32 @@
-##===- projects/sample/Makefile ----------------------------*- Makefile -*-===##
-#
-# This is a sample Makefile for a project that uses LLVM.
-#
-##===----------------------------------------------------------------------===##
+ARCH := $(shell ./getarch.sh)
 
-#
-# Indicates our relative path to the top of the project's root directory.
-#
-LEVEL = .
-DIRS = lib tools
-EXTRA_DIST = include
+SRCS := $(wildcard src/*.c) \
+	$(wildcard src/arch/$(ARCH)/*.c) \
+	$(wildcard src/llvm_assembler/*.cpp)
 
-#
-# Include the Master Makefile that knows how to build all.
-#
-include $(LEVEL)/Makefile.common
+BUILD ?= build
 
+OBJS1 := $(patsubst src/%.c, $(BUILD)/%.o, $(SRCS))
+OBJS := $(patsubst src/%.cpp, $(BUILD)/c++/%.o, $(OBJS1))
+
+ALL_CFLAGS := -Wall -g -std=c99 -Iinclude `llvm-config --cflags` $(CFLAGS)
+ALL_CXXFLAGS := -Wall -g -Iinclude `llvm-config --cxxflags` $(CXXFLAGS)
+LIBS := `llvm-config --ldflags --libs all-targets support` -lreadline
+
+$(BUILD)/asmase: $(OBJS)
+	$(CXX) $(ALL_CFLAGS) -o $@ $^ $(LIBS)
+
+$(BUILD)/%.o: src/%.c | $(BUILD)
+	$(CC) $(ALL_CFLAGS) -o $@ -c $<
+
+$(BUILD)/c++/%.o: src/%.cpp | $(BUILD)
+	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
+
+$(BUILD):
+	mkdir -p $(BUILD)
+	mkdir -p $(BUILD)/arch/$(ARCH)
+	mkdir -p $(BUILD)/c++/llvm_assembler
+
+.PHONY: clean
+clean:
+	rm -rf $(BUILD)

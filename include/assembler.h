@@ -18,6 +18,8 @@
 #ifndef ASIP_ASSEMBLER_H
 #define ASIP_ASSEMBLER_H
 
+#include <sys/types.h>
+
 /** An opaque handle for an assembler. */
 struct assembler;
 
