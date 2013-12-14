@@ -227,6 +227,7 @@ static void print_user_regs(struct user_regs_struct *regs)
 /* See above. */
 static void print_user_fpregs(struct user_fpxregs_struct *fpxregs)
 {
+    unsigned char *st_space = (unsigned char *) fpxregs->st_space;
     printf("%%fpcr = 0x%04hx = [", fpxregs->cwd);
     for (size_t i = 0; i < sizeof(fpcr_flags) / sizeof(*fpcr_flags); ++i) {
         struct processor_flag *flag = &fpcr_flags[i];
@@ -252,7 +253,7 @@ static void print_user_fpregs(struct user_fpxregs_struct *fpxregs)
             if (i % 2 == 0)
                 printf("\n");
         }
-        st = *((long double *) &fpxregs->st_space[4 * i]);
+        st = *((long double *) &st_space[16 * i]);
         printf("%%st(%d) = %-16LF", i, st);
     }
     printf("\n");
@@ -261,6 +262,9 @@ static void print_user_fpregs(struct user_fpxregs_struct *fpxregs)
 /* See above. */
 static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs)
 {
+    unsigned char *st_space = (unsigned char *) fpxregs->st_space;
+    unsigned char *xmm_space = (unsigned char *) fpxregs->xmm_space;
+
     for (int i = 0; i < 8; ++i) {
         unsigned long long mm;
         if (i > 0) {
@@ -269,7 +273,7 @@ static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs)
             else
                 printf("     ");
         }
-        mm = *((unsigned long long *) &fpxregs->st_space[4 * i]);
+        mm = *((unsigned long long *) &st_space[16 * i]);
         printf("%%mm%d = 0x%016llx", i, mm);
     }
     printf("\n");
@@ -277,8 +281,8 @@ static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs)
     printf("\n");
     for (int i = 0; i < NUM_SSE_REGS; ++i) {
         unsigned long long xmmh, xmml;
-        xmmh = *((unsigned long long *) &fpxregs->xmm_space[4 * i + 2]);
-        xmml = *((unsigned long long *) &fpxregs->xmm_space[4 * i]);
+        xmmh = *((unsigned long long *) &xmm_space[16 * i + 8]);
+        xmml = *((unsigned long long *) &xmm_space[16 * i]);
         printf("%%xmm%-2d = 0x%016llx%016llx\n", i, xmmh, xmml);
     }
 }
