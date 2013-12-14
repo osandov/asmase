@@ -9,7 +9,7 @@
 #include "tracing.h"
 
 #define INITIAL_MC_SIZE 32
-#define PS1 "asip> "
+#define PS1 "asmase> "
 
 static void print_instruction(const char *asm_buffer, unsigned char *mc_buffer,
                               size_t mc_length)

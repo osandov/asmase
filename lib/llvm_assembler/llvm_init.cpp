@@ -9,7 +9,7 @@ using namespace llvm;
 #include "assembler.h"
 #include "llvm_assembler.h"
 
-static const char *ProgName = "asip";
+static const char *ProgName = "asmase";
 
 static cl::opt<std::string>
 ArchName("arch", cl::desc("Target arch to assemble for, "

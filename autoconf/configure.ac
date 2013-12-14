@@ -1,7 +1,7 @@
 dnl **************************************************************************
 dnl * Initialize
 dnl **************************************************************************
-AC_INIT([[[asip]]],[[[1.0]]],[bugs@osandov.com])
+AC_INIT([[[asmase]]],[[[1.0]]],[osandov@cs.washington.edu])
 
 dnl Identify where LLVM source tree is
 LLVM_SRC_ROOT="../.."
@@ -1540,8 +1540,10 @@ dnl Configure project makefiles
 dnl List every Makefile that exists within your source tree
 AC_CONFIG_MAKEFILE(Makefile)
 AC_CONFIG_MAKEFILE(tools/Makefile)
-AC_CONFIG_MAKEFILE(tools/asip/Makefile)
+AC_CONFIG_MAKEFILE(tools/asmase/Makefile)
 AC_CONFIG_MAKEFILE(lib/Makefile)
+AC_CONFIG_MAKEFILE(lib/llvm_assembler/Makefile)
+AC_CONFIG_MAKEFILE(lib/x86_tracing/Makefile)
 
 dnl This must be last
 AC_OUTPUT

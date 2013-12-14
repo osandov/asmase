@@ -1,4 +1,4 @@
 LEVEL = ..
-DIRS = asip
+DIRS = asmase
 
 include $(LEVEL)/Makefile.common
