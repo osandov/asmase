@@ -73,10 +73,8 @@ int init_assemblers(int argc, char **argv)
     PrettyStackTraceProgram X(argc, argv);
 
     // Initialize targets and assembly printers/parsers.
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllDisassemblers();
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmParser();
 
     // Register the target printer for --version.
     cl::AddExtraVersionPrinter(TargetRegistry::printRegisteredTargetsForVersion);

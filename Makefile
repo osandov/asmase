@@ -11,7 +11,7 @@ OBJS := $(patsubst src/%.cpp, $(BUILD)/c++/%.o, $(OBJS1))
 
 ALL_CFLAGS := -Wall -g -std=c99 -Iinclude `llvm-config --cflags` $(CFLAGS)
 ALL_CXXFLAGS := -Wall -g -Iinclude `llvm-config --cxxflags` $(CXXFLAGS)
-LIBS := `llvm-config --ldflags --libs all-targets support` -lreadline
+LIBS := `llvm-config --ldflags --libs $(ARCH) support` -lreadline
 
 $(BUILD)/asmase: $(OBJS)
 	$(CXX) $(ALL_CFLAGS) -o $@ $^ $(LIBS)
