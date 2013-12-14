@@ -48,6 +48,7 @@ Parameters GetParameters()
 
 extern "C" {
 
+/* See assembler.h. */
 int init_assemblers(int argc, char **argv)
 {
     // Print a stack trace if we signal out.
@@ -69,6 +70,7 @@ int init_assemblers(int argc, char **argv)
     return 0;
 }
 
+/* See assembler.h. */
 void shutdown_assemblers()
 {
     llvm_shutdown();

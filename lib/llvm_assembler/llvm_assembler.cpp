@@ -19,8 +19,10 @@ using namespace llvm;
 #include "assembler.h"
 #include "llvm_assembler.h"
 
+/** The size of the output SmallString. */
 static const int OUTPUT_BUFFER_SIZE = 2048;
 
+/** Return the text section (i.e., machine code) for an object file. */
 static error_code GetTextSection(object::ObjectFile &ObjFile,
                                  StringRef &Result) {
     error_code Err;
@@ -39,6 +41,7 @@ static error_code GetTextSection(object::ObjectFile &ObjFile,
     return error_code();
 }
 
+/** LLVM implementation of an assembler. */
 struct assembler {
     const char *ProgName;
     std::string ArchName;
@@ -117,6 +120,7 @@ int assembler::AssembleInput(SourceMgr &SrcMgr, MCContext &Ctx, MCStreamer &Str)
 
 extern "C" {
 
+/* See assembler.h. */
 struct assembler *create_assembler()
 {
     Parameters Params = GetParameters();
@@ -124,11 +128,13 @@ struct assembler *create_assembler()
                          Params.MAttrs, Params.MCPU);
 }
 
+/* See assembler.h. */
 void destroy_assembler(struct assembler *ctx)
 {
     delete ctx;
 }
 
+/* See assembler.h. */
 ssize_t assemble_instruction(struct assembler *ctx, const char *in,
                              unsigned char **out, size_t *out_size)
 {

@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+/** Handle for a tracee. */
 struct tracee_info {
     pid_t pid;
     void *shared_page;
