@@ -39,7 +39,7 @@ BUILTIN_FUNC(registers)
     static const char *floating_point[] =
         {"floating-point", "floating", "fp", "f", NULL};
     static const char *extra[] = {"extra", "xr", "x", NULL};
-    static const char *segment[] = {"segment", "ss", NULL};
+    static const char *segment[] = {"segment", "seg", NULL};
 
     if (argc > 2) {
         fprintf(stderr, "Usage: %s [CATEGORY]\n", argv[0]);

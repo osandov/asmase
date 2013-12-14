@@ -8,20 +8,29 @@
 
 #include "tracing.h"
 
-/** See x86_64_tracing.c. */
+#if defined(__x86_64__)
+#define user_fpxregs_struct user_fpregs_struct
+#define NUM_SSE_REGS 16
+#elif defined(__i386__)
+#define NUM_SSE_REGS 8
+#else
+#error "Unknown x86 variant"
+#endif
+
+/** See x86_tracing.c. */
 int get_user_regs(pid_t pid, struct user_regs_struct *regs);
 
-/** See x86_64_tracing.c. */
-int get_user_fpregs(pid_t pid, struct user_fpregs_struct *fpregs);
+/** See x86_tracing.c. */
+int get_user_fpxregs(pid_t pid, struct user_fpxregs_struct *fpxregs);
 
 /** Print the general purpose registers. */
 static void print_user_regs(struct user_regs_struct *regs);
 
 /** Print the floating point context. */
-static void print_user_fpregs(struct user_fpregs_struct *fpregs);
+static void print_user_fpregs(struct user_fpxregs_struct *fpxregs);
 
 /** Print the extra registers from the floating point structure. */
-static void print_user_fpxregs(struct user_fpregs_struct *fpregs);
+static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs);
 
 /** Print the eflags register. */
 static void print_eflags(unsigned long long eflags);
@@ -81,7 +90,11 @@ int print_registers(pid_t pid)
     print_user_regs(&regs);
 
     printf("\n");
+#if defined(__i386__)
+    printf("%%eip = 0x%08lx\n", regs.eip);
+#elif defined(__x86_64__)
     printf("%%rip = 0x%016llx\n", regs.rip);
+#endif
 
     printf("\n");
     print_eflags(regs.eflags);
@@ -118,12 +131,12 @@ int print_condition_code_registers(pid_t pid)
 /* See tracing.h. */
 int print_floating_point_registers(pid_t pid)
 {
-    struct user_fpregs_struct fpregs;
+    struct user_fpxregs_struct fpxregs;
 
-    if (get_user_fpregs(pid, &fpregs))
+    if (get_user_fpxregs(pid, &fpxregs))
         return 1;
 
-    print_user_fpregs(&fpregs);
+    print_user_fpregs(&fpxregs);
 
     return 1;
 }
@@ -131,12 +144,12 @@ int print_floating_point_registers(pid_t pid)
 /* See tracing.h. */
 int print_extra_registers(pid_t pid)
 {
-    struct user_fpregs_struct fpregs;
+    struct user_fpxregs_struct fpxregs;
 
-    if (get_user_fpregs(pid, &fpregs))
+    if (get_user_fpxregs(pid, &fpxregs))
         return 1;
 
-    print_user_fpxregs(&fpregs);
+    print_user_fpxregs(&fpxregs);
 
     return 1;
 }
@@ -149,7 +162,21 @@ int print_segment_registers(pid_t pid)
     if (get_user_regs(pid, &regs))
         return 1;
 
-    printf("%%ss = 0x%04llx    %%cs = 0x%04llx\n", regs.ss, regs.cs);
+#if defined(__i386__)
+    printf("%%ss = 0x%04lx    %%cs = 0x%04lx\n"
+           "%%ds = 0x%04lx    %%es = 0x%04lx\n"
+           "%%fs = 0x%04lx    %%gs = 0x%04lx\n",
+           regs.xss, regs.xcs, regs.xds, regs.xes,
+           regs.xfs, regs.xgs);
+#elif defined(__x86_64__)
+    printf("%%ss = 0x%04llx    %%cs = 0x%04llx\n"
+           "%%ds = 0x%04llx    %%es = 0x%04llx\n"
+           "%%fs = 0x%04llx    %%gs = 0x%04llx\n"
+           "fs.base = 0x%016llx\n"
+           "gs.base = 0x%016llx\n",
+           regs.ss, regs.cs, regs.ds, regs.es,
+           regs.fs, regs.gs, regs.fs_base, regs.gs_base);
+#endif
 
     return 1;
 }
@@ -157,6 +184,14 @@ int print_segment_registers(pid_t pid)
 /* See above. */
 static void print_user_regs(struct user_regs_struct *regs)
 {
+#if defined(__i386__)
+    printf("%%eax = 0x%08lx    %%ecx = 0x%08lx\n"
+           "%%edx = 0x%08lx    %%ebx = 0x%08lx\n"
+           "%%esp = 0x%08lx    %%ebp = 0x%08lx\n"
+           "%%esi = 0x%08lx    %%edi = 0x%08lx\n",
+           regs->eax, regs->ecx, regs->edx, regs->ebx,
+           regs->esp, regs->ebp, regs->esi, regs->edi);
+#elif defined(__x86_64__)
     printf("%%rax = 0x%016llx    %%rcx = 0x%016llx\n"
            "%%rdx = 0x%016llx    %%rbx = 0x%016llx\n"
            "%%rsp = 0x%016llx    %%rbp = 0x%016llx\n"
@@ -167,27 +202,28 @@ static void print_user_regs(struct user_regs_struct *regs)
            "%%r14 = 0x%016llx    %%r15 = 0x%016llx\n",
            regs->rax, regs->rcx, regs->rdx, regs->rbx,
            regs->rsp, regs->rbp, regs->rsi, regs->rdi,
-           regs->r8, regs->r9, regs->r10, regs->r11,
+           regs->r8,  regs->r9,  regs->r10, regs->r11,
            regs->r12, regs->r13, regs->r14, regs->r15);
+#endif
 }
 
 /* See above. */
-static void print_user_fpregs(struct user_fpregs_struct *fpregs)
+static void print_user_fpregs(struct user_fpxregs_struct *fpxregs)
 {
-    printf("%%fpcr = 0x%04hx = [", fpregs->cwd);
+    printf("%%fpcr = 0x%04hx = [", fpxregs->cwd);
     for (size_t i = 0; i < sizeof(fpcr_flags) / sizeof(*fpcr_flags); ++i) {
         struct processor_flag *flag = &fpcr_flags[i];
-        if (fpregs->cwd & flag->mask)
+        if (fpxregs->cwd & flag->mask)
                 printf(" %s", flag->name);
     }
     printf(" ]\n");
 
-    printf("%%fpsr = 0x%04hx = [", fpregs->swd);
+    printf("%%fpsr = 0x%04hx = [", fpxregs->swd);
     for (size_t i = 0; i < sizeof(fpsr_flags) / sizeof(*fpsr_flags); ++i) {
         struct processor_flag *flag = &fpsr_flags[i];
         if (strcmp(flag->name, "TOP") == 0) /* Ugly special case. */
-            printf(" TOP=%llu", ((fpregs->swd & flag->mask) >> 11));
-        else if (fpregs->swd & flag->mask)
+            printf(" TOP=%llu", ((fpxregs->swd & flag->mask) >> 11));
+        else if (fpxregs->swd & flag->mask)
                     printf(" %s", flag->name);
     }
     printf(" ]\n");
@@ -199,14 +235,14 @@ static void print_user_fpregs(struct user_fpregs_struct *fpregs)
             if (i % 2 == 0)
                 printf("\n");
         }
-        st = *((long double *) &fpregs->st_space[4 * i]);
+        st = *((long double *) &fpxregs->st_space[4 * i]);
         printf("%%st(%d) = %-16LF", i, st);
     }
     printf("\n");
 }
 
 /* See above. */
-static void print_user_fpxregs(struct user_fpregs_struct *fpregs)
+static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs)
 {
     for (int i = 0; i < 8; ++i) {
         unsigned long long mm;
@@ -216,16 +252,16 @@ static void print_user_fpxregs(struct user_fpregs_struct *fpregs)
             else
                 printf("     ");
         }
-        mm = *((unsigned long long *) &fpregs->st_space[4 * i]);
+        mm = *((unsigned long long *) &fpxregs->st_space[4 * i]);
         printf("%%mm%d = 0x%016llx", i, mm);
     }
     printf("\n");
 
     printf("\n");
-    for (int i = 0; i < 16; ++i) {
+    for (int i = 0; i < NUM_SSE_REGS; ++i) {
         unsigned long long xmmh, xmml;
-        xmmh = *((unsigned long long *) &fpregs->xmm_space[4 * i + 2]);
-        xmml = *((unsigned long long *) &fpregs->xmm_space[4 * i]);
+        xmmh = *((unsigned long long *) &fpxregs->xmm_space[4 * i + 2]);
+        xmml = *((unsigned long long *) &fpxregs->xmm_space[4 * i]);
         printf("%%xmm%-2d = 0x%016llx%016llx\n", i, xmmh, xmml);
     }
 }
