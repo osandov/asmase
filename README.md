@@ -5,18 +5,12 @@ asmase
 
 Compilation
 ----------
-Compilation relies on LLVM and clang. You can find instructions on compiling
-LLVM [here](http://llvm.org/docs/GettingStarted.html). After you've followed
-the instructions there and added `clang` to your path, `asmase` can be compiled
-as follows:
-
-```sh
-git clone https://github.com/osandov/asmase.git
-cd asmase
-mkdir build
-cd build
-../configure --with-llvmsrc=<llvm source directory> --with-llvmobj=<llvm build directory>
-```
+`asmase` depends on LLVM and GNU readline. You can either compile LLVM from
+source (instructions [here](http://llvm.org/docs/GettingStarted.html)) or use
+your distribution's packages. Versions 3.3 and newer are supported; I haven't
+tried anything older, but it might work. Compilation works under both GCC and
+Clang (make sure you have a C++ compiler). If you meet these requirements, all
+it takes is a `make` in the top-level.
 
 Supported Platforms
 -------------------
@@ -40,4 +34,4 @@ be executed by the child.
 
 ### Print ###
 `asmase` provides built-in commands for printing the architectural state of the
-child process, which is implemented in a platform-specific way with `ptrace`.
+child process, which is implemented in a platform-dependent way with `ptrace`.

@@ -36,6 +36,10 @@ using namespace llvm;
 #include "assembler.h"
 #include "llvm_assembler.h"
 
+#if LLVM_VERSION_MAJOR < 3
+#error "Please use at least LLVM 3"
+#endif
+
 /** The size of the output SmallString. */
 static const int OUTPUT_BUFFER_SIZE = 2048;
 
@@ -101,7 +105,11 @@ assembler::assembler(const char *_PN, const std::string &_AN,
     MRI.reset(TheTarget->createMCRegInfo(TripleName));
     assert(MRI && "Unable to create target register info!");
 
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     MAI.reset(TheTarget->createMCAsmInfo(*MRI, TripleName));
+#else
+    MAI.reset(TheTarget->createMCAsmInfo(TripleName));
+#endif
     assert(MAI && "Unable to create target asm info!");
 
     MCII.reset(TheTarget->createMCInstrInfo());
@@ -121,8 +129,13 @@ assembler::assembler(const char *_PN, const std::string &_AN,
 int assembler::AssembleInput(SourceMgr &SrcMgr, MCContext &Ctx, MCStreamer &Str)
 {
     OwningPtr<MCAsmParser> Parser(createMCAsmParser(SrcMgr, Ctx, Str, *MAI));
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     OwningPtr<MCTargetAsmParser>
         TAP(TheTarget->createMCAsmParser(*STI, *Parser, *MCII));
+#else
+    OwningPtr<MCTargetAsmParser>
+        TAP(TheTarget->createMCAsmParser(*STI, *Parser));
+#endif
 
     if (!TAP) {
         errs() << ProgName
@@ -162,7 +175,11 @@ ssize_t assemble_instruction(struct assembler *ctx, const char *in,
     SrcMgr.AddNewSourceBuffer(InputBuffer, SMLoc());
 
     OwningPtr<MCObjectFileInfo> MOFI(new MCObjectFileInfo());
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     MCContext Ctx(ctx->MAI.get(), ctx->MRI.get(), MOFI.get(), &SrcMgr);
+#else
+    MCContext Ctx(*ctx->MAI, *ctx->MRI, MOFI.get(), &SrcMgr);
+#endif
     MOFI->InitMCObjectFileInfo(ctx->TripleName, Reloc::Default, CodeModel::Default, Ctx);
 
     SmallString<OUTPUT_BUFFER_SIZE> OutputString;
@@ -171,9 +188,14 @@ ssize_t assemble_instruction(struct assembler *ctx, const char *in,
     MCCodeEmitter *CE =
         ctx->TheTarget->createMCCodeEmitter(*ctx->MCII, *ctx->MRI,
                                             *ctx->STI, Ctx);
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     MCAsmBackend *MAB =
         ctx->TheTarget->createMCAsmBackend(*ctx->MRI, ctx->TripleName,
                                            ctx->MCPU);
+#else
+    MCAsmBackend *MAB =
+        ctx->TheTarget->createMCAsmBackend(ctx->TripleName, ctx->MCPU);
+#endif
     OwningPtr<MCStreamer> Streamer(createPureStreamer(Ctx, *MAB, OutputStream, CE));
 
     if (ctx->AssembleInput(SrcMgr, Ctx, *Streamer) == 0) {
