@@ -1,8 +1,10 @@
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <sys/ptrace.h>
 
@@ -15,6 +17,7 @@ static void dump_hexadecimal(unsigned char *buf, size_t size);
 static void dump_float(unsigned char *buf, size_t size);
 static void dump_character(unsigned char *buf, size_t size);
 static void dump_address(unsigned char *buf, size_t size);
+static void escape_character(unsigned char c, char output[5]);
 
 int dump_memory(pid_t pid, void *addr, size_t repeat,
                 enum mem_format format, size_t size)
@@ -24,20 +27,21 @@ int dump_memory(pid_t pid, void *addr, size_t repeat,
     for (size_t offset = 0; offset < (repeat * size); offset += size) {
         unsigned char *p;
 
-        size_t row = (size == SZ_BYTE) ? 0x8 : 0x10;
+        /* Split up rows */
+        size_t row;
+        if (format == FMT_OCTAL)
+            row = (size <= SZ_HALFWORD) ? 0x8 : 0x10;
+        else if (format == FMT_FLOAT)
+            row = (size == SZ_WORD) ? 0x10 : 0x20;
+        else if (format == FMT_CHARACTER)
+            row = 0x8;
+        else
+            row = (size == SZ_BYTE) ? 0x8 : 0x10;
 
-        /* Split up rows/columns */
         if ((offset % row) == 0) {
             if (offset > 0)
                 printf("\n");
             printf("%p: ", addr + offset);
-        } else {
-            if (size == SZ_BYTE)
-                printf("    ");
-            else if (size == SZ_HALFWORD)
-                printf("  ");
-            else if (size == SZ_WORD || size == SZ_GIANT)
-                printf("      ");
         }
 
         if (offset % sizeof(long) == 0) {
@@ -93,68 +97,86 @@ int dump_strings(pid_t pid, void *addr, size_t repeat)
 
 static void dump_decimal(unsigned char *buf, size_t size)
 {
-    signed long long decimal = 0;
+    signed long long decimal;
 
+    /*
+     * Field widths represent the maximum length of the string plus spacing (2
+     * spaces for half-words, 4 for everything else)
+     */
     switch (size) {
         case SZ_BYTE:
             decimal = *((int8_t *) buf);
+            printf("%-8lld", decimal);
             break;
         case SZ_HALFWORD:
             decimal = *((int16_t *) buf);
+            printf("%-8lld", decimal);
             break;
         case SZ_WORD:
             decimal = *((int32_t *) buf);
+            printf("%-15lld", decimal);
             break;
         case SZ_GIANT:
             decimal = *((int64_t *) buf);
+            printf("%-24lld", decimal);
             break;
     }
-
-    printf("%lld", decimal);
 }
 
 static void dump_unsigned_decimal(unsigned char *buf, size_t size)
 {
-    unsigned long long unsigned_decimal = 0;
+    unsigned long long unsigned_decimal;
 
+    /*
+     * Same field widths as signed even though we don't have to worry about the
+     * negative sign
+     */
     switch (size) {
         case SZ_BYTE:
             unsigned_decimal = *((uint8_t *) buf);
+            printf("%-8lld", unsigned_decimal);
             break;
         case SZ_HALFWORD:
             unsigned_decimal = *((uint16_t *) buf);
+            printf("%-8llu", unsigned_decimal);
             break;
         case SZ_WORD:
             unsigned_decimal = *((uint32_t *) buf);
+            printf("%-15llu", unsigned_decimal);
             break;
         case SZ_GIANT:
             unsigned_decimal = *((uint64_t *) buf);
+            printf("%-24llu", unsigned_decimal);
             break;
     }
-
-    printf("%llu", unsigned_decimal);
 }
 
 static void dump_octal(unsigned char *buf, size_t size)
 {
-    unsigned long long octal = 0;
+    unsigned long long octal;
 
     switch (size) {
         case SZ_BYTE:
             octal = *((uint8_t *) buf);
+            printf("0%03llo", octal);
+            printf("    ");
             break;
         case SZ_HALFWORD:
             octal = *((uint16_t *) buf);
+            printf("0%06llo", octal);
+            printf("    ");
             break;
         case SZ_WORD:
             octal = *((uint32_t *) buf);
+            printf("0%011llo", octal);
+            printf("    ");
             break;
         case SZ_GIANT:
             octal = *((uint64_t *) buf);
+            printf("0%022llo", octal);
+            printf("      ");
             break;
     }
-
-    printf("0%llo", octal);
 }
 
 static void dump_hexadecimal(unsigned char *buf, size_t size)
@@ -165,25 +187,29 @@ static void dump_hexadecimal(unsigned char *buf, size_t size)
         case SZ_BYTE:
             hexadecimal = *((uint8_t *) buf);
             printf("0x%02llx", hexadecimal);
+            printf("    ");
             break;
         case SZ_HALFWORD:
             hexadecimal = *((uint16_t *) buf);
             printf("0x%04llx", hexadecimal);
+            printf("  ");
             break;
         case SZ_WORD:
             hexadecimal = *((uint32_t *) buf);
             printf("0x%08llx", hexadecimal);
+            printf("    ");
             break;
         case SZ_GIANT:
             hexadecimal = *((uint64_t *) buf);
             printf("0x%016llx", hexadecimal);
+            printf("      ");
             break;
     }
 }
 
 static void dump_float(unsigned char *buf, size_t size)
 {
-    double floating = 0.0;
+    double floating;
 
     assert(size == sizeof(float) || size == sizeof(double));
 
@@ -196,13 +222,23 @@ static void dump_float(unsigned char *buf, size_t size)
             break;
     }
 
-    printf("%f", floating);
+    printf("%-16g", floating);
 }
 
 static void dump_character(unsigned char *buf, size_t size)
 {
+    char escaped[7];
+    size_t n;
+
     assert(size == 1);
-    printf("%c", *buf);
+
+    /* Escape the character and put it in quotes */
+    escape_character(*buf, escaped + 1);
+    n = strlen(escaped + 1) + 1;
+    escaped[0] = escaped[n] = '\'';
+    escaped[n + 1] = '\0';
+
+    printf("%-8s", escaped);
 }
 
 static void dump_address(unsigned char *buf, size_t size)
@@ -210,5 +246,29 @@ static void dump_address(unsigned char *buf, size_t size)
     void *addr;
     assert(size == sizeof(void*));
     addr = *((void **) buf);
-    printf("%p", addr);
+    printf("%-24p", addr);
+}
+
+static void escape_character(unsigned char c, char output[5])
+{
+    if (c == '\0') /* Null */
+        sprintf(output, "\\0");
+    else if (c == '\a') /* Bell */
+        sprintf(output, "\\a");
+    else if (c == '\b') /* Backspace */
+        sprintf(output, "\\b");
+    else if (c == '\t') /* Horizontal tab */
+        sprintf(output, "\\t");
+    else if (c == '\n') /* New line */
+        sprintf(output, "\\n");
+    else if (c == '\v') /* Vertical tab */
+        sprintf(output, "\\v");
+    else if (c == '\f') /* Form feed */
+        sprintf(output, "\\f");
+    else if (c == '\r') /* Carriage return */
+        sprintf(output, "\\r");
+    else if (isprint(c)) /* Other printable characters */
+        sprintf(output, "%c", c);
+    else /* Anything else should be an escaped hex sequence */
+        sprintf(output, "\\x%02hhx", c);
 }
