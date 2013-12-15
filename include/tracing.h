@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ASIP_EXECUTION_H
-#define ASIP_EXECUTION_H
+#ifndef ASMASE_TRACING_H
+#define ASMASE_TRACING_H
 
 #include <sys/types.h>
 
@@ -93,4 +93,4 @@ int print_extra_registers(pid_t pid);
  */
 int print_segment_registers(pid_t pid);
 
-#endif /* ASIP_EXECUTION_H */
+#endif /* ASMASE_TRACING_H */

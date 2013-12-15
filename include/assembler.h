@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ASIP_ASSEMBLER_H
-#define ASIP_ASSEMBLER_H
+#ifndef ASMASE_ASSEMBLER_H
+#define ASMASE_ASSEMBLER_H
 
 #include <sys/types.h>
 
@@ -56,4 +56,4 @@ ssize_t assemble_instruction(struct assembler *ctx, const char *in,
 #ifdef __cplusplus
 }
 #endif
-#endif /* ASIP_ASSEMBLER_H */
+#endif /* ASMASE_ASSEMBLER_H */

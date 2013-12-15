@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ASIP_BUILTINS_H
-#define ASIP_BUILTINS_H
+#ifndef ASMASE_BUILTINS_H
+#define ASMASE_BUILTINS_H
 
 #include "assembler.h"
 #include "tracing.h"
@@ -30,4 +30,4 @@ int is_builtin(const char *str);
  */
 int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str);
 
-#endif /* ASIP_BUILTINS_H */
+#endif /* ASMASE_BUILTINS_H */

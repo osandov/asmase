@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ASIP_LLVM_ASSEMBLER_H
-#define ASIP_LLVM_ASSEMBLER_H
+#ifndef ASMASE_LLVM_ASSEMBLER_H
+#define ASMASE_LLVM_ASSEMBLER_H
 
 /** A container for parsed command line parameters. */
 struct Parameters {
@@ -39,4 +39,4 @@ struct Parameters {
  */
 Parameters GetParameters();
 
-#endif /* ASIP_LLVM_ASSEMBLER_H */
+#endif /* ASMASE_LLVM_ASSEMBLER_H */
