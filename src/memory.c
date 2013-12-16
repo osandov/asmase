@@ -44,7 +44,7 @@ int dump_memory(pid_t pid, void *addr, size_t repeat,
             printf("%p: ", addr + offset);
         }
 
-        if (offset % sizeof(long) == 0) {
+        if ((offset % sizeof(long)) == 0) {
             errno = 0;
             buffer = ptrace(PTRACE_PEEKDATA, pid, addr + offset, NULL);
             if (errno) {
@@ -91,8 +91,44 @@ int dump_memory(pid_t pid, void *addr, size_t repeat,
 
 int dump_strings(pid_t pid, void *addr, size_t repeat)
 {
-    fprintf(stderr, "Not implemented\n");
-    return 1;
+    char escaped[5];
+    size_t strings_printed = 0;
+    size_t offset = 0;
+    long buffer;
+
+    while (strings_printed < repeat) {
+        unsigned char *p;
+
+        /* Print address when printing a new string */
+        if (offset == 0)
+            printf("%p: \"", addr);
+
+        if ((offset % sizeof(long)) == 0) {
+            errno = 0;
+            buffer = ptrace(PTRACE_PEEKDATA, pid, addr + offset, NULL);
+            if (errno) {
+                printf("\n");
+                fprintf(stderr, "Cannot access memory at address %p\n",
+                        addr + offset);
+                return 1;
+            }
+        }
+
+        p = ((unsigned char *) &buffer) + (offset % sizeof(long));
+
+        if (*p) {
+            escape_character(*p, escaped);
+            printf("%s", escaped);
+            ++offset;
+        } else {
+            printf("\"\n");
+            ++strings_printed;
+            addr += offset + 1;
+            offset = 0;
+        }
+    }
+
+    return 0;
 }
 
 static void dump_decimal(unsigned char *buf, size_t size)
