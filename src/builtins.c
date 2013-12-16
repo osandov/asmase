@@ -299,6 +299,54 @@ int is_builtin(const char *str)
     return str[0] == ':';
 }
 
+/** Like strtok_r, but lexes quoted strings as tokens. */
+static char *shlex(char *str, char **saveptr)
+{
+    char *front, *cursor, *p;
+    char quote = '\0';
+
+    if (str)
+        front = str;
+    else
+        front = *saveptr;
+
+    /* Find the front of the next token */
+    while (*front && isspace(*front))
+        ++front;
+
+    if (!*front)
+        return NULL;
+
+    cursor = p = front;
+
+    while (*p && (!isspace(*p) || quote)) {
+        if (quote) {
+            if (*p == quote)
+                quote = '\0';
+            else
+                *cursor++ = *p;
+        } else {
+            if (*p == '\'' || *p == '"')
+                quote = *p;
+            else
+                *cursor++ = *p;
+        }
+        ++p;
+    }
+
+    if (quote) {
+        fprintf(stderr, "Unmatched %s-quote\n",
+                (quote == '"') ? "double" : "single");
+        return (char *) -1;
+    }
+
+    if (*p)
+        ++p;
+    *saveptr = p;
+    *cursor = '\0';
+    return front;
+}
+
 int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
 {
     static char **argv = NULL;
@@ -309,7 +357,10 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     /* Skip the initial ":" */
     ++str;
 
-    while ((token = strtok_r(str, " ", &saveptr))) {
+    while ((token = shlex(str, &saveptr))) {
+        if (token == (void *) -1)
+            return -1;
+
         if (argc >= argv_size) {
             argv_size = (argv_size) ? argv_size * 2 : 4;
             argv = realloc(argv, argv_size * sizeof(*argv));
@@ -321,7 +372,7 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     }
 
     if (argc == 0)
-        return -1;
+        return 0;
 
     for (size_t i = 0; i < NUM_BUILTINS; ++i) {
         if (strcmp(argv[0], builtins[i].command) == 0)
