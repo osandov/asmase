@@ -41,6 +41,11 @@ BUILTIN_FUNC(memory);
 BUILTIN_FUNC(registers);
 BUILTIN_FUNC(help);
 BUILTIN_FUNC(quit);
+BUILTIN_FUNC(warranty);
+BUILTIN_FUNC(copying);
+
+void print_warranty();
+void print_copying();
 
 static struct builtin builtins[] = {
     {"memory",    builtin_memory, "dump memory contents"},
@@ -53,7 +58,10 @@ static struct builtin builtins[] = {
     {"h",         builtin_help, NULL},
 
     {"quit",      builtin_quit, "quit the program"},
-    {"q",         builtin_quit, NULL}
+    {"q",         builtin_quit, NULL},
+
+    {"warranty",  builtin_warranty, "show warranty information"},
+    {"copying",   builtin_copying, "show copying information"}
 };
 
 BUILTIN_FUNC(memory)
@@ -253,6 +261,18 @@ BUILTIN_FUNC(help)
 BUILTIN_FUNC(quit)
 {
     return 1;
+}
+
+BUILTIN_FUNC(warranty)
+{
+    print_warranty();
+    return 0;
+}
+
+BUILTIN_FUNC(copying)
+{
+    print_copying();
+    return 0;
 }
 
 int is_builtin(const char *str)

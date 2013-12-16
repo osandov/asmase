@@ -95,6 +95,11 @@ int main(int argc, char *argv[])
 
     struct tracee_info tracee;
 
+    printf("asmase Copyright (C) 2013 Omar Sandoval\n"
+           "This program comes with ABSOLUTELY NO WARRANTY; for details type `:warranty'.\n"
+           "This is free software, and you are welcome to redistribute it\n"
+           "under certain conditions; type `:copying' for details.\n");
+
     /** Only the tracer/parent returns from this. */
     if ((error = create_tracee(&tracee)))
         return error; /* Too early to goto out. */
