@@ -22,6 +22,7 @@
 
 #include "builtins.h"
 #include "memory.h"
+#include "input.h"
 
 #define BUILTIN_FUNC(func) static int builtin_##func(\
         struct assembler *asmb, struct tracee_info *tracee,\
@@ -39,6 +40,7 @@ struct builtin {
 
 BUILTIN_FUNC(memory);
 BUILTIN_FUNC(registers);
+BUILTIN_FUNC(source);
 BUILTIN_FUNC(help);
 BUILTIN_FUNC(quit);
 BUILTIN_FUNC(warranty);
@@ -53,6 +55,8 @@ static struct builtin builtins[] = {
 
     {"registers", builtin_registers, "dump register contents"},
     {"reg",       builtin_registers, NULL},
+
+    {"source",    builtin_source, "redirect input to a given file"},
 
     {"help",      builtin_help, "print this help information"},
     {"h",         builtin_help, NULL},
@@ -241,6 +245,21 @@ BUILTIN_FUNC(registers)
         fprintf(stderr, "Unknown register category `%s'\n", argv[1]);
         return -1;
     }
+
+    return 0;
+}
+
+BUILTIN_FUNC(source)
+{
+    static const char *usage = "Usage: %s FILE\n";
+
+    if (argc != 2) {
+        fprintf(stderr, usage, argv[0]);
+        return -1;
+    }
+
+    if (redirect_input(argv[1]))
+        return -1;
 
     return 0;
 }

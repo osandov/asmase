@@ -18,11 +18,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "assembler.h"
 #include "builtins.h"
+#include "input.h"
 #include "tracing.h"
 
 #define INITIAL_MC_SIZE 32
@@ -50,8 +48,6 @@ int repl(struct assembler *asmb, struct tracee_info *tracee)
     size_t mc_buffer_size = 0;
     ssize_t mc_length;
 
-    using_history();
-
     mc_buffer_size = INITIAL_MC_SIZE;
     if (!(mc_buffer = malloc(mc_buffer_size))) {
         perror("malloc");
@@ -59,9 +55,7 @@ int repl(struct assembler *asmb, struct tracee_info *tracee)
         goto out;
     }
 
-    while ((asm_buffer = readline(PS1))) {
-        add_history(asm_buffer);
-
+    while ((asm_buffer = read_input_line(PS1))) {
         if (is_builtin(asm_buffer)) {
             int result = run_builtin(asmb, tracee, asm_buffer);
             if (result < 0)
@@ -78,13 +72,14 @@ int repl(struct assembler *asmb, struct tracee_info *tracee)
                     goto out;
             }
         }
+
+        free(asm_buffer);
     }
 
     printf("\n");
 
 out:
     free(mc_buffer);
-    clear_history();
     return all_error;
 }
 
@@ -114,12 +109,15 @@ int main(int argc, char *argv[])
         goto out;
     }
 
+    init_input();
+
     if ((error = repl(asmb, &tracee)))
         all_error = error;
 
 out:
     if (asmb)
         destroy_assembler(asmb);
+    shutdown_input();
     shutdown_assemblers();
     cleanup_tracing(&tracee);
     return all_error;
