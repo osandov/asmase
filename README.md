@@ -35,3 +35,6 @@ be executed by the child.
 ### Print ###
 `asmase` provides built-in commands for printing the architectural state of the
 child process, which is implemented in a platform-dependent way with `ptrace`.
+These include the following:
+ * `reg[isters]`: dump register contents
+ * `mem[ory]`: dump memory contents

@@ -27,17 +27,34 @@
         struct assembler *asmb, struct tracee_info *tracee,\
         int argc, char *argv[])
 
+#define NUM_BUILTINS (sizeof(builtins) / sizeof(*builtins))
+
 typedef int (*builtin_func)(struct assembler *, struct tracee_info *, int, char **);
 
 struct builtin {
     const char *command;
     builtin_func func;
+    const char *help_string;
 };
 
-BUILTIN_FUNC(quit)
-{
-    return 1;
-}
+BUILTIN_FUNC(memory);
+BUILTIN_FUNC(registers);
+BUILTIN_FUNC(help);
+BUILTIN_FUNC(quit);
+
+static struct builtin builtins[] = {
+    {"memory",    builtin_memory, "dump memory contents"},
+    {"mem",       builtin_memory, NULL},
+
+    {"registers", builtin_registers, "dump register contents"},
+    {"reg",       builtin_registers, NULL},
+
+    {"help",      builtin_help, "print this help information"},
+    {"h",         builtin_help, NULL},
+
+    {"quit",      builtin_quit, "quit the program"},
+    {"q",         builtin_quit, NULL}
+};
 
 BUILTIN_FUNC(memory)
 {
@@ -220,16 +237,23 @@ BUILTIN_FUNC(registers)
     return 0;
 }
 
-static struct builtin builtins[] = {
-    {"mem",       builtin_memory},
-    {"memory",    builtin_memory},
+BUILTIN_FUNC(help)
+{
+    for (size_t i = 0; i < NUM_BUILTINS; ++i) {
+        printf("%-13s", builtins[i].command);
+        if (builtins[i].help_string)
+            printf("%s\n", builtins[i].help_string);
+        else
+            printf("(same as above)\n");
+    }
 
-    {"reg",       builtin_registers},
-    {"registers", builtin_registers},
+    return 0;
+}
 
-    {"q",         builtin_quit},
-    {"quit",      builtin_quit}
-};
+BUILTIN_FUNC(quit)
+{
+    return 1;
+}
 
 int is_builtin(const char *str)
 {
@@ -260,7 +284,7 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     if (argc == 0)
         return -1;
 
-    for (size_t i = 0; i < sizeof(builtins) / sizeof(*builtins); ++i) {
+    for (size_t i = 0; i < NUM_BUILTINS; ++i) {
         if (strcmp(argv[0], builtins[i].command) == 0)
             return builtins[i].func(asmb, tracee, argc, argv);
     }
