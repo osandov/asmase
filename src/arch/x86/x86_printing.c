@@ -23,6 +23,7 @@
 
 #include <asm/processor-flags.h>
 
+#include "flags.h"
 #include "tracing.h"
 
 #if defined(__x86_64__)
@@ -52,48 +53,64 @@ static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs);
 /** Print the eflags register. */
 static void print_eflags(unsigned long long eflags);
 
-/** Flag in a processor register. */
-struct processor_flag {
-    /** The name of the flag. */
-    const char *name;
-
-    /** Mask in the register. */
-    unsigned long long mask;
-};
-
 /** Flags in the eflags registers. */
 struct processor_flag all_eflags[] = {
-    {"CF",  X86_EFLAGS_CF},  {"PF",   X86_EFLAGS_PF},
-    {"AF",  X86_EFLAGS_AF},  {"ZF",   X86_EFLAGS_ZF},
-    {"SF",  X86_EFLAGS_SF},  {"TF",   X86_EFLAGS_TF},
-    {"IF",  X86_EFLAGS_IF},  {"DF",   X86_EFLAGS_DF},
-    {"OF",  X86_EFLAGS_OF},  {"IOPL", X86_EFLAGS_IOPL},
-    {"NT",  X86_EFLAGS_NT},  {"RF",   X86_EFLAGS_RF},
-    {"VM",  X86_EFLAGS_VM},  {"AC",   X86_EFLAGS_AC},
-    {"VIF", X86_EFLAGS_VIF}, {"VIP",  X86_EFLAGS_VIP},
-    {"ID",  X86_EFLAGS_ID}
+    BIT_FLAG("CF",  X86_EFLAGS_CF),
+    BIT_FLAG("PF",  X86_EFLAGS_PF),
+    BIT_FLAG("AF",  X86_EFLAGS_AF),
+    BIT_FLAG("ZF",  X86_EFLAGS_ZF),
+    BIT_FLAG("SF",  X86_EFLAGS_SF),
+    BIT_FLAG("TF",  X86_EFLAGS_TF),
+    BIT_FLAG("IF",  X86_EFLAGS_IF),
+    BIT_FLAG("DF",  X86_EFLAGS_DF),
+    BIT_FLAG("OF",  X86_EFLAGS_OF),
+    {"IOPL", X86_EFLAGS_IOPL, 0x0, 1},
+    BIT_FLAG("NT",  X86_EFLAGS_NT),
+    BIT_FLAG("RF",  X86_EFLAGS_RF),
+    BIT_FLAG("VM",  X86_EFLAGS_VM),
+    BIT_FLAG("AC",  X86_EFLAGS_AC),
+    BIT_FLAG("VIF", X86_EFLAGS_VIF),
+    BIT_FLAG("VIP", X86_EFLAGS_VIP),
+    BIT_FLAG("ID",  X86_EFLAGS_ID)
 };
 
 /** Flags in the fpcr register (floating point control register). */
 struct processor_flag fpcr_flags[] = {
-    {"RC=RN",  0x0000}, {"RC=R-",  0x2000},
-    {"RC=R+",  0x4000}, {"RC=RZ",  0x6000},
-    {"PC=SGL", 0x0000}, {"PC=DBL", 0x0080},
-    {"PC=EXT", 0x00c0}, {"EM=PM",  0x0020},
-    {"EM=UM",  0x0010}, {"EM=OM",  0x0008},
-    {"EM=ZM",  0x0004}, {"EM=DM",  0x0002},
-    {"EM=IM",  0x0001}
+    /* Rounding mode */
+    {"RC=RN",  0x6000, 0x0, 0},
+    {"RC=R-",  0x6000, 0x1, 0},
+    {"RC=R+",  0x6000, 0x2, 0},
+    {"RC=RZ",  0x6000, 0x3, 0},
+
+    /* Rounding precision */
+    {"PC=SGL", 0x00c0, 0x0, 0},
+    {"PC=DBL", 0x00c0, 0x2, 0},
+    {"PC=EXT", 0x00c0, 0x3, 0},
+
+    BIT_FLAG("EM=PM", 0x0020),
+    BIT_FLAG("EM=UM", 0x0010),
+    BIT_FLAG("EM=OM", 0x0008),
+    BIT_FLAG("EM=ZM", 0x0004),
+    BIT_FLAG("EM=DM", 0x0002),
+    BIT_FLAG("EM=IM", 0x0001)
 };
 
 /** Flags in the fpsr register (floating point status register). */
 struct processor_flag fpsr_flags[] = {
-    {"EF=IE", 0x0001}, {"EF=DE", 0x0002},
-    {"EF=ZE", 0x0004}, {"EF=OE", 0x0008},
-    {"EF=UE", 0x0010}, {"EF=PE", 0x0020},
-    {"SF",    0x0040}, {"ES",    0x0080},
-    {"C3",    0x4000}, {"C2",    0x0400},
-    {"C1",    0x0200}, {"C0",    0x0100},
-    {"B",     0x8000}, {"TOP",   0x3800}
+    {"TOP", 0x3800, 0x8, 1},
+    BIT_FLAG("B",     0x8000),
+    BIT_FLAG("C0",    0x0100),
+    BIT_FLAG("C1",    0x0200),
+    BIT_FLAG("C2",    0x0400),
+    BIT_FLAG("C3",    0x4000),
+    BIT_FLAG("ES",    0x0080),
+    BIT_FLAG("SF",    0x0040),
+    BIT_FLAG("EF=PE", 0x0020),
+    BIT_FLAG("EF=UE", 0x0010),
+    BIT_FLAG("EF=OE", 0x0008),
+    BIT_FLAG("EF=ZE", 0x0004),
+    BIT_FLAG("EF=DE", 0x0002),
+    BIT_FLAG("EF=IE", 0x0001)
 };
 
 /* See tracing.h. */
@@ -107,14 +124,14 @@ int print_registers(pid_t pid)
     print_user_regs(&regs);
 
     printf("\n");
+    print_eflags(regs.eflags);
+
+    printf("\n");
 #if defined(__i386__)
     printf("%%eip = 0x%08lx\n", regs.eip);
 #elif defined(__x86_64__)
     printf("%%rip = 0x%016llx\n", regs.rip);
 #endif
-
-    printf("\n");
-    print_eflags(regs.eflags);
 
     return 0;
 }
@@ -228,23 +245,13 @@ static void print_user_regs(struct user_regs_struct *regs)
 static void print_user_fpregs(struct user_fpxregs_struct *fpxregs)
 {
     unsigned char *st_space = (unsigned char *) fpxregs->st_space;
-    printf("%%fpcr = 0x%04hx = [", fpxregs->cwd);
-    for (size_t i = 0; i < sizeof(fpcr_flags) / sizeof(*fpcr_flags); ++i) {
-        struct processor_flag *flag = &fpcr_flags[i];
-        if (fpxregs->cwd & flag->mask)
-                printf(" %s", flag->name);
-    }
-    printf(" ]\n");
+    printf("%%fpcr = 0x%04hx = ", fpxregs->cwd);
+    print_processor_flags(fpxregs->cwd, fpcr_flags, NUM_FLAGS(fpcr_flags));
+    printf("\n");
 
-    printf("%%fpsr = 0x%04hx = [", fpxregs->swd);
-    for (size_t i = 0; i < sizeof(fpsr_flags) / sizeof(*fpsr_flags); ++i) {
-        struct processor_flag *flag = &fpsr_flags[i];
-        if (strcmp(flag->name, "TOP") == 0) /* Ugly special case. */
-            printf(" TOP=%llu", ((fpxregs->swd & flag->mask) >> 11));
-        else if (fpxregs->swd & flag->mask)
-                    printf(" %s", flag->name);
-    }
-    printf(" ]\n");
+    printf("%%fpsr = 0x%04hx = ", fpxregs->swd);
+    print_processor_flags(fpxregs->swd, fpsr_flags, NUM_FLAGS(fpsr_flags));
+    printf("\n");
 
     printf("\n");
     for (int i = 0; i < 8; ++i) {
@@ -290,16 +297,7 @@ static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs)
 /* See above. */
 static void print_eflags(unsigned long long eflags)
 {
-    printf("%%eflags = 0x%08llx = [", eflags);
-    for (size_t i = 0; i < sizeof(all_eflags) / sizeof(*all_eflags); ++i) {
-        struct processor_flag *flag = &all_eflags[i];
-        if (strcmp(flag->name, "IOPL") == 0) { /* Ugly special case. */
-            if (eflags & flag->mask)
-                    printf(" IOPL=%llu", (eflags & flag->mask) >> 12);
-        } else {
-            if (eflags & flag->mask)
-                    printf(" %s", flag->name);
-        }
-    }
-    printf(" ]\n");
+    printf("%%eflags = 0x%08llx = ", eflags);
+    print_processor_flags(eflags, all_eflags, NUM_FLAGS(all_eflags));
+    printf("\n");
 }
