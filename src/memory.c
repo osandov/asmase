@@ -262,7 +262,7 @@ static void dump_hexadecimal(unsigned char *buf, size_t size)
 
 static void dump_float(unsigned char *buf, size_t size)
 {
-    double floating;
+    double floating = 0.0;
 
     assert(size == sizeof(float) || size == sizeof(double));
 

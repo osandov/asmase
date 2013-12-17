@@ -16,6 +16,7 @@
  */
 
 #include <ctype.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -100,7 +101,7 @@ BUILTIN_FUNC(memory)
         return 0;
     }
 
-    addr = (void*) strtoll(argv[1], &endptr, 0);
+    addr = (void*) (intptr_t) strtoll(argv[1], &endptr, 0);
     if (*endptr != '\0')
         goto err_usage;
 
