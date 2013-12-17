@@ -15,8 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <elf.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <sys/ptrace.h>
 #include <sys/user.h>
@@ -59,6 +59,21 @@ int get_user_fpxregs(pid_t pid, struct user_fpxregs_struct *fpxregs)
         perror("ptrace");
         return 1;
     }
+    return 0;
+}
+
+/* See tracing.h. */
+int generate_sigtrap(unsigned char *buffer, size_t n)
+{
+    static const char software_interrupt[] = {0xcc}; /* int $0x3 */
+
+    if (n < sizeof(software_interrupt)) {
+        fprintf(stderr, "Not enough space for int $0x3\n");
+        return 1;
+    }
+
+    memcpy(buffer, software_interrupt, sizeof(software_interrupt));
+
     return 0;
 }
 

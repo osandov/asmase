@@ -87,11 +87,9 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
                         size_t mc_length)
 {
     pid_t pid = tracee->pid;
-    unsigned char *page = (unsigned char *) tracee->shared_page;
+    unsigned char *pc = (unsigned char *) tracee->shared_page;
     size_t page_size = sysconf(_SC_PAGESIZE);
-    unsigned char *pc = page + page_size - mc_length;
-    void *target_pc = page + page_size;
-
+    int wait_status;
 
     if (mc_length > page_size) {
         fprintf(stderr, "Instruction too long.\n");
@@ -99,50 +97,50 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
     }
 
     memcpy(pc, mc_buffer, mc_length);
-
+    if (generate_sigtrap(pc + mc_length, page_size - mc_length))
+        return 1;
     set_program_counter(pid, pc);
-    while (get_program_counter(pid) < target_pc) {
-        int wait_status;
 
-        if (ptrace(PTRACE_SINGLESTEP, pid, NULL, 0) == -1) {
-            fprintf(stderr, "Could not single-step tracee.\n");
-            return 1;
-        }
-
-        if (waitpid(pid, &wait_status, 0) == -1) {
-            fprintf(stderr, "Could not wait for tracee.\n");
-            return 1;
-        }
-
-        if (WIFEXITED(wait_status)) {
-            fprintf(stderr, "Tracee exited with status %d.\n",
-                    WEXITSTATUS(wait_status));
-            return 1;
-        } else if (WIFSIGNALED(wait_status)) {
-            fprintf(stderr, "Tracee was terminated (%s).\n",
-                    strsignal(WTERMSIG(wait_status)));
-            return 1;
-        } else if (WIFSTOPPED(wait_status)) {
-            int signal = WSTOPSIG(wait_status);
-            switch (signal) {
-                case SIGWINCH:
-                case SIGTRAP:
-                    break;
-                case SIGSEGV:
-                    printf("Tracee recieved SIGSEGV; ignoring.\n");
-                    return 0;
-                default:
-                    fprintf(stderr, "Tracee was stopped (%s).\n",
-                            strsignal(WSTOPSIG(wait_status)));
-                    return 1;
-            }
-        } else if (WIFCONTINUED(wait_status)) {
-            fprintf(stderr, "Tracee continued.\n");
-            return 1;
-        } else {
-            fprintf(stderr, "Tracee disappeared.\n");
-            return 1;
-        }
+    if (ptrace(PTRACE_CONT, pid, NULL, 0) == -1) {
+        perror("ptrace");
+        fprintf(stderr, "Could not continue tracee.\n");
+        return 1;
     }
+
+    if (waitpid(pid, &wait_status, 0) == -1) {
+        fprintf(stderr, "Could not wait for tracee.\n");
+        return 1;
+    }
+
+    if (WIFEXITED(wait_status)) {
+        fprintf(stderr, "Tracee exited with status %d.\n",
+                WEXITSTATUS(wait_status));
+        return 1;
+    } else if (WIFSIGNALED(wait_status)) {
+        fprintf(stderr, "Tracee was terminated (%s).\n",
+                strsignal(WTERMSIG(wait_status)));
+        return 1;
+    } else if (WIFSTOPPED(wait_status)) {
+        int signal = WSTOPSIG(wait_status);
+        switch (signal) {
+            case SIGWINCH:
+            case SIGTRAP:
+                break;
+            case SIGSEGV:
+                printf("Tracee recieved SIGSEGV; ignoring.\n");
+                return 0;
+            default:
+                fprintf(stderr, "Tracee was stopped (%s).\n",
+                        strsignal(WSTOPSIG(wait_status)));
+                return 1;
+        }
+    } else if (WIFCONTINUED(wait_status)) {
+        fprintf(stderr, "Tracee continued.\n");
+        return 1;
+    } else {
+        fprintf(stderr, "Tracee disappeared.\n");
+        return 1;
+    }
+
     return 0;
 }

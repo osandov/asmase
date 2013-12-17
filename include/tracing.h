@@ -41,6 +41,14 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
                         size_t mc_length);
 
 /**
+ * Inject machine code to generate a SIGTRAP at the given buffer.
+ * @param buffer Address at which to put the machine code.
+ * @param n The size of the buffer.
+ * @return Zero on succes, nonzero on failure (e.g., buffer not big enough).
+ */
+int generate_sigtrap(unsigned char *buffer, size_t n);
+
+/**
  * Return the current program counter (a.k.a., instruction pointer) for a
  * stopped, ptraced process.
  * @return The program counter on success or NULL on failure.
