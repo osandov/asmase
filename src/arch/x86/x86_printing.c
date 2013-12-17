@@ -35,6 +35,73 @@
 #error "Unknown x86 variant"
 #endif
 
+/** Flags in the eflags registers. */
+struct processor_flag all_eflags[] = {
+    BIT_FLAG("CF", X86_EFLAGS_CF), /* Carry flag */
+    BIT_FLAG("PF", X86_EFLAGS_PF), /* Parity flag */
+    BIT_FLAG("AF", X86_EFLAGS_AF), /* Adjust flag */
+    BIT_FLAG("ZF", X86_EFLAGS_ZF), /* Zero flag */
+    BIT_FLAG("SF", X86_EFLAGS_SF), /* Sign flag */
+    BIT_FLAG("TF", X86_EFLAGS_TF), /* Trap flag */
+    BIT_FLAG("IF", X86_EFLAGS_IF), /* Interruption flag */
+    BIT_FLAG("DF", X86_EFLAGS_DF), /* Direction flag */
+    BIT_FLAG("OF", X86_EFLAGS_OF), /* Overflow flag */
+    {"IOPL", X86_EFLAGS_IOPL, 0x0, 1}, /* I/O privilege level */
+    BIT_FLAG("NT",  X86_EFLAGS_NT), /* Nested task flag */
+    BIT_FLAG("RF",  X86_EFLAGS_RF), /* Resume flag */
+    BIT_FLAG("VM",  X86_EFLAGS_VM), /* Virtual-8086 mode */
+    BIT_FLAG("AC",  X86_EFLAGS_AC), /* Alignment check */
+    BIT_FLAG("VIF", X86_EFLAGS_VIF), /* Virtual interrupt flag */
+    BIT_FLAG("VIP", X86_EFLAGS_VIP), /* Virtual interrupt pending flag */
+    BIT_FLAG("ID",  X86_EFLAGS_ID) /* Identification flag */
+};
+
+/** Flags in the fpcr register (floating point control register). */
+struct processor_flag fpcr_flags[] = {
+    /* Rounding mode */
+    {"RC=RN", 0x6000, 0x0, 0}, /* Round to nearest */
+    {"RC=R-", 0x6000, 0x1, 0}, /* Round toward negative infinity */
+    {"RC=R+", 0x6000, 0x2, 0}, /* Round toward positive infinity */
+    {"RC=RZ", 0x6000, 0x3, 0}, /* Round toward zero */
+
+    /* Rounding precision */
+    {"PC=SGL", 0x00c0, 0x0, 0}, /* Single-precision */
+    {"PC=DBL", 0x00c0, 0x2, 0}, /* Double-precision */
+    {"PC=EXT", 0x00c0, 0x3, 0}, /* Extended-precision */
+
+    /* Exception enables */
+    BIT_FLAG("EM=PM", 0x0020), /* Precision */
+    BIT_FLAG("EM=UM", 0x0010), /* Underflow */
+    BIT_FLAG("EM=OM", 0x0008), /* Overflow */
+    BIT_FLAG("EM=ZM", 0x0004), /* Zero-divide */
+    BIT_FLAG("EM=DM", 0x0002), /* Denormalized operand */
+    BIT_FLAG("EM=IM", 0x0001) /* Invalid operation */
+};
+
+/** Flags in the fpsr register (floating point status register). */
+struct processor_flag fpsr_flags[] = {
+    {"TOP", 0x3800, 0x8, 1}, /* Top of the floating-point stack */
+
+    BIT_FLAG("B", 0x8000), /* FPU busy */
+    
+    /* Condition bits */
+    BIT_FLAG("C0", 0x0100),
+    BIT_FLAG("C1", 0x0200),
+    BIT_FLAG("C2", 0x0400),
+    BIT_FLAG("C3", 0x4000),
+
+    BIT_FLAG("ES", 0x0080), /* Exception summary status */
+    BIT_FLAG("SF", 0x0040), /* Stack fault */
+
+    /* Exceptions */
+    BIT_FLAG("EF=PE", 0x0020), /* Precision */
+    BIT_FLAG("EF=UE", 0x0010), /* Underflow */
+    BIT_FLAG("EF=OE", 0x0008), /* Overflow */
+    BIT_FLAG("EF=ZE", 0x0004), /* Zero-divide */
+    BIT_FLAG("EF=DE", 0x0002), /* Denormalized operand */
+    BIT_FLAG("EF=IE", 0x0001) /* Invalid operation */
+};
+
 /** See x86_tracing.c. */
 int get_user_regs(pid_t pid, struct user_regs_struct *regs);
 
@@ -53,66 +120,6 @@ static void print_user_fpxregs(struct user_fpxregs_struct *fpxregs);
 /** Print the eflags register. */
 static void print_eflags(unsigned long long eflags);
 
-/** Flags in the eflags registers. */
-struct processor_flag all_eflags[] = {
-    BIT_FLAG("CF",  X86_EFLAGS_CF),
-    BIT_FLAG("PF",  X86_EFLAGS_PF),
-    BIT_FLAG("AF",  X86_EFLAGS_AF),
-    BIT_FLAG("ZF",  X86_EFLAGS_ZF),
-    BIT_FLAG("SF",  X86_EFLAGS_SF),
-    BIT_FLAG("TF",  X86_EFLAGS_TF),
-    BIT_FLAG("IF",  X86_EFLAGS_IF),
-    BIT_FLAG("DF",  X86_EFLAGS_DF),
-    BIT_FLAG("OF",  X86_EFLAGS_OF),
-    {"IOPL", X86_EFLAGS_IOPL, 0x0, 1},
-    BIT_FLAG("NT",  X86_EFLAGS_NT),
-    BIT_FLAG("RF",  X86_EFLAGS_RF),
-    BIT_FLAG("VM",  X86_EFLAGS_VM),
-    BIT_FLAG("AC",  X86_EFLAGS_AC),
-    BIT_FLAG("VIF", X86_EFLAGS_VIF),
-    BIT_FLAG("VIP", X86_EFLAGS_VIP),
-    BIT_FLAG("ID",  X86_EFLAGS_ID)
-};
-
-/** Flags in the fpcr register (floating point control register). */
-struct processor_flag fpcr_flags[] = {
-    /* Rounding mode */
-    {"RC=RN",  0x6000, 0x0, 0},
-    {"RC=R-",  0x6000, 0x1, 0},
-    {"RC=R+",  0x6000, 0x2, 0},
-    {"RC=RZ",  0x6000, 0x3, 0},
-
-    /* Rounding precision */
-    {"PC=SGL", 0x00c0, 0x0, 0},
-    {"PC=DBL", 0x00c0, 0x2, 0},
-    {"PC=EXT", 0x00c0, 0x3, 0},
-
-    BIT_FLAG("EM=PM", 0x0020),
-    BIT_FLAG("EM=UM", 0x0010),
-    BIT_FLAG("EM=OM", 0x0008),
-    BIT_FLAG("EM=ZM", 0x0004),
-    BIT_FLAG("EM=DM", 0x0002),
-    BIT_FLAG("EM=IM", 0x0001)
-};
-
-/** Flags in the fpsr register (floating point status register). */
-struct processor_flag fpsr_flags[] = {
-    {"TOP", 0x3800, 0x8, 1},
-    BIT_FLAG("B",     0x8000),
-    BIT_FLAG("C0",    0x0100),
-    BIT_FLAG("C1",    0x0200),
-    BIT_FLAG("C2",    0x0400),
-    BIT_FLAG("C3",    0x4000),
-    BIT_FLAG("ES",    0x0080),
-    BIT_FLAG("SF",    0x0040),
-    BIT_FLAG("EF=PE", 0x0020),
-    BIT_FLAG("EF=UE", 0x0010),
-    BIT_FLAG("EF=OE", 0x0008),
-    BIT_FLAG("EF=ZE", 0x0004),
-    BIT_FLAG("EF=DE", 0x0002),
-    BIT_FLAG("EF=IE", 0x0001)
-};
-
 /* See tracing.h. */
 int print_registers(pid_t pid)
 {
@@ -122,16 +129,8 @@ int print_registers(pid_t pid)
         return 1;
 
     print_user_regs(&regs);
-
     printf("\n");
     print_eflags(regs.eflags);
-
-    printf("\n");
-#if defined(__i386__)
-    printf("%%eip = 0x%08lx\n", regs.eip);
-#elif defined(__x86_64__)
-    printf("%%rip = 0x%016llx\n", regs.rip);
-#endif
 
     return 0;
 }
@@ -222,9 +221,11 @@ static void print_user_regs(struct user_regs_struct *regs)
     printf("%%eax = 0x%08lx    %%ecx = 0x%08lx\n"
            "%%edx = 0x%08lx    %%ebx = 0x%08lx\n"
            "%%esp = 0x%08lx    %%ebp = 0x%08lx\n"
-           "%%esi = 0x%08lx    %%edi = 0x%08lx\n",
+           "%%esi = 0x%08lx    %%edi = 0x%08lx\n"
+           "%%eip = 0x%08lx\n",
            regs->eax, regs->ecx, regs->edx, regs->ebx,
-           regs->esp, regs->ebp, regs->esi, regs->edi);
+           regs->esp, regs->ebp, regs->esi, regs->edi,
+           regs->eip);
 #elif defined(__x86_64__)
     printf("%%rax = 0x%016llx    %%rcx = 0x%016llx\n"
            "%%rdx = 0x%016llx    %%rbx = 0x%016llx\n"
@@ -233,11 +234,13 @@ static void print_user_regs(struct user_regs_struct *regs)
            "%%r8  = 0x%016llx    %%r9  = 0x%016llx\n"
            "%%r10 = 0x%016llx    %%r11 = 0x%016llx\n"
            "%%r12 = 0x%016llx    %%r13 = 0x%016llx\n"
-           "%%r14 = 0x%016llx    %%r15 = 0x%016llx\n",
+           "%%r14 = 0x%016llx    %%r15 = 0x%016llx\n"
+           "%%rip = 0x%016llx\n",
            regs->rax, regs->rcx, regs->rdx, regs->rbx,
            regs->rsp, regs->rbp, regs->rsi, regs->rdi,
            regs->r8,  regs->r9,  regs->r10, regs->r11,
-           regs->r12, regs->r13, regs->r14, regs->r15);
+           regs->r12, regs->r13, regs->r14, regs->r15,
+           regs->rip);
 #endif
 }
 
