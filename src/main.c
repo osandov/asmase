@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
            "This is free software, and you are welcome to redistribute it\n"
            "under certain conditions; type `:copying' for details.\n");
 
-    /** Only the tracer/parent returns from this. */
+    /* Only the tracer/parent returns from this. */
     if ((error = create_tracee(&tracee)))
         return error; /* Too early to goto out. */
 

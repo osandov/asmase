@@ -1,6 +1,9 @@
 #!/bin/sh
 
 case "$(uname -m)" in
+    arm*)
+        echo "arm"
+        ;;
     x86_64)
         echo "x86"
         ;;

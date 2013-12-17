@@ -1,7 +1,14 @@
 asmase
 ======
 
-`asmase` is a REPL for assembly language using an LLVM backend.
+`asmase` is a REPL for assembly language using an LLVM backend. It provides
+an accurate interactive environment on several platforms.
+
+Supported Platforms
+-------------------
+ * `x86`
+ * `x86-64`
+ * `ARM`
 
 Compilation
 ----------
@@ -11,11 +18,6 @@ your distribution's packages. Versions 3.3 and newer are supported; I haven't
 tried anything older, but it might work. Compilation works under both GCC and
 Clang (make sure you have a C++ compiler). If you meet these requirements, all
 it takes is a `make` in the top-level.
-
-Supported Platforms
--------------------
- * `x86`
- * `x86-64`
 
 Implementation
 --------------
