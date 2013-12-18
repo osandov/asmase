@@ -34,6 +34,7 @@
 using namespace llvm;
 
 #include "assembler.h"
+#include "input.h"
 #include "llvm_assembler.h"
 
 #ifndef LLVM_VERSION_MAJOR
@@ -60,6 +61,27 @@ static error_code GetTextSection(object::ObjectFile &ObjFile,
             return Err;
     }
     return error_code();
+}
+
+static void DiagHandler(const SMDiagnostic &Diag, void *Ctx)
+{
+    struct source_file *file = get_current_file();
+
+    SMDiagnostic Diagnostic(
+        *Diag.getSourceMgr(),
+        Diag.getLoc(),
+        file->filename,
+        file->line,
+        Diag.getColumnNo(),
+        Diag.getKind(),
+        Diag.getMessage(),
+        Diag.getLineContents(),
+        Diag.getRanges(),
+        Diag.getFixIts()
+    );
+
+    raw_ostream &OS = errs();
+    Diagnostic.print(NULL, OS);
 }
 
 /** LLVM implementation of an assembler. */
@@ -173,6 +195,7 @@ ssize_t assemble_instruction(struct assembler *ctx, const char *in,
 
     SourceMgr SrcMgr;
     SrcMgr.AddNewSourceBuffer(InputBuffer, SMLoc());
+    SrcMgr.setDiagHandler(DiagHandler);
 
     OwningPtr<MCObjectFileInfo> MOFI(new MCObjectFileInfo());
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4

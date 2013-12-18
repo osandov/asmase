@@ -18,11 +18,26 @@
 #ifndef ASMASE_INPUT_H
 #define ASMASE_INPUT_H
 
+#include <limits.h>
+
+struct source_file {
+    char filename[NAME_MAX + 1];
+    int line;
+    FILE *file;
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Initialize the input system. */
 void init_input();
 
 /** Shutdown and clean up for the input system. */
 void shutdown_input();
+
+/** Return information for the file we're currently reading from. */
+struct source_file *get_current_file();
 
 /**
  * Read a line of (potentially redirected input). The returned buffer must be
@@ -35,5 +50,9 @@ char *read_input_line(const char *prompt);
  * @return Zero on success, nonzero on failure.
  */
 int redirect_input(const char *path);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASMASE_INPUT_H */

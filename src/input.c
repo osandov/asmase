@@ -29,7 +29,7 @@
 #define MAX_INPUT_STACK_SIZE 128
 
 /** Stack of files from which we are reading. */
-static FILE **input_stack = NULL;
+static struct source_file *input_stack = NULL;
 
 /** Number of files in the stack. */
 static size_t input_stack_size = 0;
@@ -37,49 +37,64 @@ static size_t input_stack_size = 0;
 /** Number of slots in the stack. */
 static size_t input_stack_capacity = 0;
 
-/** See input.h. */
+#define TOP_FILE (input_stack[input_stack_size - 1])
+
+/* See input.h. */
 void init_input()
 {
     using_history();
 
     input_stack_capacity = 4;
     input_stack = malloc(input_stack_capacity * sizeof(*input_stack));
+
+    input_stack_size = 1;
+    strncpy(TOP_FILE.filename, "<stdin>", sizeof(TOP_FILE.filename));
+    TOP_FILE.line = 0;
+    TOP_FILE.file = stdin;
 }
 
-/** See input.h. */
+/* See input.h. */
 void shutdown_input()
 {
     free(input_stack);
     clear_history();
 }
 
-/** See input.h. */
+/* See input.h. */
+struct source_file *get_current_file()
+{
+    return &TOP_FILE;
+}
+
+/* See input.h. */
 char *read_input_line(const char *prompt)
 {
     char *line = NULL;
     size_t n = 0;
+
 retry:
-    if (input_stack_size == 0) {
+    if (TOP_FILE.file == stdin) {
         line = readline(prompt);
         if (line && line[0]) /* If not empty, add to history */
             add_history(line);
     } else {
-        FILE *top_file = input_stack[input_stack_size - 1];
-        char *new_line;
-        if (getline(&line, &n, top_file) == -1) {
-            fclose(top_file);
+        char *newline;
+        if (getline(&line, &n, TOP_FILE.file) == -1) {
+            fclose(TOP_FILE.file);
             --input_stack_size;
             goto retry;
         }
 
-        if ((new_line = strchr(line, '\n')))
-            *new_line = '\0';
+        if ((newline = strchr(line, '\n')))
+            *newline = '\0';
     }
+
+    ++TOP_FILE.line;
 
     return line;
 }
 
-/** See input.h. */
+/* See input.h. */
 int redirect_input(const char *path)
 {
     FILE *file;
@@ -104,7 +119,10 @@ int redirect_input(const char *path)
         }
     }
 
-    input_stack[input_stack_size++] = file;
+    ++input_stack_size;
+    strncpy(TOP_FILE.filename, path, sizeof(TOP_FILE.filename));
+    TOP_FILE.line = 0;
+    TOP_FILE.file = file;
 
     return 0;
 }
