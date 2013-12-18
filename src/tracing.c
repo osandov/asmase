@@ -27,9 +27,13 @@
 
 #include "tracing.h"
 
+/**
+ * The child process' (a.k.a. the tracee) main function. All it does is ask to
+ * be traced.
+ */
 static void tracee_process()
 {
-    if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
+    if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1) {
         perror("ptrace");
         abort();
     }
@@ -43,6 +47,20 @@ static void tracee_process()
     abort();
 }
 
+/** Set up any signal handlers needed by the parent (a.k.a. the tracer). */
+static void install_tracer_signal_handlers()
+{
+    struct sigaction act = {
+        .sa_handler = SIG_IGN,
+        .sa_flags = 0
+    };
+    sigemptyset(&act.sa_mask);
+
+    /* Ignore SIGINT so the user can break out of the tracee */
+    sigaction(SIGINT, &act, NULL);
+}
+
+/* See tracing.h. */
 int create_tracee(struct tracee_info *tracee)
 {
     pid_t pid;
@@ -68,11 +86,12 @@ int create_tracee(struct tracee_info *tracee)
     tracee->pid = pid;
     tracee->shared_page = shared_page;
 
-    signal(SIGINT, SIG_IGN);
+    install_tracer_signal_handlers();
 
     return 0;
 }
 
+/* See tracing.h. */
 void cleanup_tracing(struct tracee_info *tracee)
 {
     size_t page_size = sysconf(_SC_PAGESIZE);
@@ -83,6 +102,7 @@ void cleanup_tracing(struct tracee_info *tracee)
         perror("munmap");
 }
 
+/* See tracing.h. */
 int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
                         size_t mc_length)
 {
@@ -101,6 +121,7 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
         return 1;
     set_program_counter(pid, pc);
 
+retry:
     if (ptrace(PTRACE_CONT, pid, NULL, 0) == -1) {
         perror("ptrace");
         fprintf(stderr, "Could not continue tracee.\n");
@@ -108,6 +129,7 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
     }
 
     if (waitpid(pid, &wait_status, 0) == -1) {
+        perror("waitpid");
         fprintf(stderr, "Could not wait for tracee.\n");
         return 1;
     }
@@ -123,16 +145,18 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
     } else if (WIFSTOPPED(wait_status)) {
         int signal = WSTOPSIG(wait_status);
         switch (signal) {
-            case SIGWINCH:
             case SIGTRAP:
                 break;
-            case SIGSEGV:
-                printf("Tracee recieved SIGSEGV; ignoring.\n");
-                return 0;
+            case SIGWINCH:
+                /*
+                 * We don't want to be interrupted if the window changes size,
+                 * so continue the process and keep waiting.
+                 */
+                goto retry;
             default:
-                fprintf(stderr, "Tracee was stopped (%s).\n",
-                        strsignal(WSTOPSIG(wait_status)));
-                return 1;
+                printf("Tracee was stopped (%s).\n",
+                       strsignal(WSTOPSIG(wait_status)));
+                return 0;
         }
     } else if (WIFCONTINUED(wait_status)) {
         fprintf(stderr, "Tracee continued.\n");
