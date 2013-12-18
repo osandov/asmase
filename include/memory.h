@@ -36,9 +36,17 @@ enum mem_format {
     FMT_STRING
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int dump_memory(pid_t pid, void *addr, size_t repeat,
                 enum mem_format format, size_t size);
 
 int dump_strings(pid_t pid, void *addr, size_t repeat);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASMASE_MEMORY_H */

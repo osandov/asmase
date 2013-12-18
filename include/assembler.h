@@ -53,7 +53,9 @@ void destroy_assembler(struct assembler *ctx);
  */
 ssize_t assemble_instruction(struct assembler *ctx, const char *in,
                              unsigned char **out, size_t *out_size);
+
 #ifdef __cplusplus
 }
 #endif
+
 #endif /* ASMASE_ASSEMBLER_H */

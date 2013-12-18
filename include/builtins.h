@@ -21,6 +21,10 @@
 #include "assembler.h"
 #include "tracing.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Return whether the given string is a command line builtin. */
 int is_builtin(const char *str);
 
@@ -29,5 +33,9 @@ int is_builtin(const char *str);
  * @return -1 on error, 0 on success, 1 on exit.
  */
 int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASMASE_BUILTINS_H */

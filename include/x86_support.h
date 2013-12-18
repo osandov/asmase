@@ -22,7 +22,7 @@
 
 /**
  * Convert a physical floating-point register number to logical (i.e., %st(x))
- * register.
+ * register number.
  */
 #define X87_PHYS_TO_LOG(x, top) (((x) - (top) + 8) % 8)
 
@@ -31,6 +31,10 @@
  * number.
  */
 #define X87_LOG_TO_PHYS(x, top) (((x) + (top)) % 8)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Get the user register structure for a stopped, ptraced process. For x86 and
@@ -47,5 +51,9 @@ int get_user_regs(pid_t pid, struct user_regs_struct *regs);
  * @return Zero on success, nonzero on failure.
  */
 int get_user_fpxregs(pid_t pid, struct user_fpxregs_struct *fpxregs);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASMASE_X86_SUPPORT */

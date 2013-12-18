@@ -20,6 +20,7 @@
 
 #include <limits.h>
 
+/** File we are reading from and our current position in that file. */
 struct source_file {
     char filename[NAME_MAX + 1];
     int line;

@@ -26,10 +26,18 @@ struct processor_flag {
 
 #define NUM_FLAGS(x) (sizeof(x) / sizeof(struct processor_flag))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Pretty-print a status register containing a given set of processor flags.
  */
 void print_processor_flags(unsigned long long reg,
                            struct processor_flag *flags, size_t num_flags);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASMASE_FLAGS_H */

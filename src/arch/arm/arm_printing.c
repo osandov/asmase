@@ -62,10 +62,10 @@ struct processor_flag cpsr_flags[] = {
     {"M=System",     0x0000001f, 0x0000001f, 0}
 };
 
-/** See arm_tracing.c. */
+/* See arm_tracing.c. */
 int get_user_regs(pid_t pid, struct user_regs *regs);
 
-/** See arm_tracing.c. */
+/* See arm_tracing.c. */
 int get_user_fpregs(pid_t pid, struct user_fpregs *fpregs);
 
 /** Print the general purpose registers. */

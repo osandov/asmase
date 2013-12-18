@@ -26,6 +26,10 @@ struct tracee_info {
     void *shared_page;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Create the process to trace and torture, filling in the tracee information
  * (its PID and the shared executable page).
@@ -100,5 +104,9 @@ int print_extra_registers(pid_t pid);
  * @return Zero on success, nonzero on failure.
  */
 int print_segment_registers(pid_t pid);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASMASE_TRACING_H */
