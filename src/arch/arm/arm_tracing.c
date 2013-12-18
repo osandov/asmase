@@ -28,7 +28,7 @@
 /**
  * Get the user register structure for a stopped, ptraced process. For ARM,
  * this includes the general-purpose registers and program status registers.
- * @return Zero on succes, nonzero on failure.
+ * @return Zero on success, nonzero on failure.
  */
 int get_user_regs(pid_t pid, struct user_regs *regs)
 {

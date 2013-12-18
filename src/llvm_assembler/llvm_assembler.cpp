@@ -36,8 +36,8 @@ using namespace llvm;
 #include "assembler.h"
 #include "llvm_assembler.h"
 
-#if LLVM_VERSION_MAJOR < 3
-#error "Please use at least LLVM 3"
+#ifndef LLVM_VERSION_MAJOR
+#error "Please use at least LLVM 3.1"
 #endif
 
 /** The size of the output SmallString. */

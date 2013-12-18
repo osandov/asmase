@@ -1,4 +1,4 @@
-ARCH := $(shell ./getarch.sh)
+ARCH ?= $(shell ./getarch.sh)
 
 SRCS := $(wildcard src/*.c) \
 	$(wildcard src/arch/$(ARCH)/*.c) \

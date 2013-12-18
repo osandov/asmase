@@ -22,20 +22,9 @@
 #include <sys/user.h>
 
 #include "tracing.h"
+#include "x86_support.h"
 
-#if defined(__x86_64__)
-#define user_fpxregs_struct user_fpregs_struct
-#define PTRACE_GETFPXREGS PTRACE_GETFPREGS
-#elif !defined(__i386__)
-#error "Unknown x86 variant"
-#endif
-
-/**
- * Get the user register structure for a stopped, ptraced process. For x86 and
- * x86_64, this includes the general-purpose registers, instruction pointer,
- * flag register, and segment registers.
- * @return Zero on succes, nonzero on failure.
- */
+/* See x86_support.h. */
 int get_user_regs(pid_t pid, struct user_regs_struct *regs)
 {
     int error;
@@ -46,19 +35,59 @@ int get_user_regs(pid_t pid, struct user_regs_struct *regs)
     return 0;
 }
 
-/**
- * Get the user floating point/extra register structure for a stopped, ptraced
- * process. For x86 and x86_64, this includes the floating point stack/MMX
- * registers and SSE registers.
- * @return Zero on succes, nonzero on failure.
- */
+static inline unsigned short x87_tag(unsigned char *raw)
+{
+    struct x87_float {
+        unsigned long long fraction : 63;
+        unsigned long long integer : 1;
+        unsigned long long exponent : 15;
+        unsigned long long sign : 1;
+    } *fp = (struct x87_float *) raw;
+
+    if (fp->exponent == 0x7fff)
+        return 2; /* Special */
+    else if (fp->exponent == 0x0000) {
+        if (fp->fraction == 0 && !fp->integer)
+            return 1; /* Zero */
+        else
+            return 2; /* Special */
+    } else {
+        if (fp->integer)
+            return 0; /* Valid */
+        else
+            return 2; /* Special */
+    }
+}
+
+/* See x86_support.h. */
 int get_user_fpxregs(pid_t pid, struct user_fpxregs_struct *fpxregs)
 {
     int error;
+    unsigned char *st_space;
+    unsigned short valid_bits, top;
+
     if ((error = ptrace(PTRACE_GETFPXREGS, pid, NULL, fpxregs)) == -1) {
         perror("ptrace");
         return 1;
     }
+
+    /* Reconstruct tag word */
+    st_space = (unsigned char *) fpxregs->st_space;
+    top = X87_ST_TOP(fpxregs->swd);
+    valid_bits = fpxregs->twd;
+    fpxregs->twd = 0;
+
+    for (unsigned short physical = 0; physical < 8; ++physical) {
+        unsigned short tag;
+        unsigned short logical = X87_PHYS_TO_LOG(physical, top);
+
+        if (valid_bits & (1 << physical))
+            tag = x87_tag(&st_space[16 * logical]);
+        else
+            tag = 0x3;
+        fpxregs->twd |= tag << (2 * physical);
+    }
+
     return 0;
 }
 

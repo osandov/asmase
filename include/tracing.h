@@ -29,7 +29,7 @@ struct tracee_info {
 /**
  * Create the process to trace and torture, filling in the tracee information
  * (its PID and the shared executable page).
- * @return Zero on succes, nonzero on failure.
+ * @return Zero on success, nonzero on failure.
  */
 int create_tracee(struct tracee_info *tracee);
 
@@ -44,7 +44,7 @@ int execute_instruction(struct tracee_info *tracee, unsigned char *mc_buffer,
  * Inject machine code to generate a SIGTRAP at the given buffer.
  * @param buffer Address at which to put the machine code.
  * @param n The size of the buffer.
- * @return Zero on succes, nonzero on failure (e.g., buffer not big enough).
+ * @return Zero on success, nonzero on failure (e.g., buffer not big enough).
  */
 int generate_sigtrap(unsigned char *buffer, size_t n);
 
