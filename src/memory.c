@@ -31,11 +31,13 @@ static void dump_decimal(unsigned char *buf, size_t size);
 static void dump_unsigned_decimal(unsigned char *buf, size_t size);
 static void dump_octal(unsigned char *buf, size_t size);
 static void dump_hexadecimal(unsigned char *buf, size_t size);
+static void dump_binary(unsigned char *buf, size_t size);
 static void dump_float(unsigned char *buf, size_t size);
 static void dump_character(unsigned char *buf, size_t size);
 static void dump_address(unsigned char *buf, size_t size);
 static void escape_character(unsigned char c, char output[5]);
 
+/* See memory.h. */
 int dump_memory(pid_t pid, void *addr, size_t repeat,
                 enum mem_format format, size_t size)
 {
@@ -48,6 +50,8 @@ int dump_memory(pid_t pid, void *addr, size_t repeat,
         size_t row;
         if (format == FMT_OCTAL)
             row = (size <= SZ_HALFWORD) ? 0x8 : 0x10;
+        else if (format == FMT_BINARY)
+            row = 0x8;
         else if (format == FMT_FLOAT)
             row = (size == SZ_WORD) ? 0x10 : 0x20;
         else if (format == FMT_CHARACTER)
@@ -87,6 +91,9 @@ int dump_memory(pid_t pid, void *addr, size_t repeat,
             case FMT_HEXADECIMAL:
                 dump_hexadecimal(p, size);
                 break;
+            case FMT_BINARY:
+                dump_binary(p, size);
+                break;
             case FMT_FLOAT:
                 dump_float(p, size);
                 break;
@@ -106,6 +113,7 @@ int dump_memory(pid_t pid, void *addr, size_t repeat,
     return 0;
 }
 
+/* See memory.h. */
 int dump_strings(pid_t pid, void *addr, size_t repeat)
 {
     char escaped[5];
@@ -256,6 +264,43 @@ static void dump_hexadecimal(unsigned char *buf, size_t size)
             hexadecimal = *((uint64_t *) buf);
             printf("0x%016llx", hexadecimal);
             printf("      ");
+            break;
+    }
+}
+
+static char *to_binary(unsigned long long value, char *out)
+{
+    for (unsigned long long i = 0; i < 64; ++i)
+        out[63 - i] = (value & (1 << i)) ? '1' : '0';
+    return out;
+}
+
+static void dump_binary(unsigned char *buf, size_t size)
+{
+    char bits[64 + 1];
+    unsigned long long binary;
+
+    bits[64] = '\0';
+
+    switch (size) {
+        case SZ_BYTE:
+            binary = *((uint8_t *) buf);
+            printf("%s", to_binary(binary, bits) + 56);
+            printf("  ");
+            break;
+        case SZ_HALFWORD:
+            binary = *((uint16_t *) buf);
+            printf("%s", to_binary(binary, bits) + 48);
+            printf("  ");
+            break;
+        case SZ_WORD:
+            binary = *((uint32_t *) buf);
+            printf("%s", to_binary(binary, bits) + 32);
+            printf("    ");
+            break;
+        case SZ_GIANT:
+            binary = *((uint64_t *) buf);
+            printf("%s", to_binary(binary, bits));
             break;
     }
 }

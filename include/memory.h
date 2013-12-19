@@ -30,6 +30,7 @@ enum mem_format {
     FMT_UNSIGNED_DECIMAL,
     FMT_OCTAL,
     FMT_HEXADECIMAL,
+    FMT_BINARY,
     FMT_FLOAT,
     FMT_CHARACTER,
     FMT_ADDRESS,

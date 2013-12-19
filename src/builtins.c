@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -91,6 +92,7 @@ BUILTIN_FUNC(memory)
                "  u    unsigned decimal\n"
                "  o    unsigned octal\n"
                "  x    unsigned hexadecimal\n"
+               "  t    unsigned binary\n"
                "  f    floating point\n"
                "  c    character\n");
         printf("Sizes:\n"
@@ -124,6 +126,8 @@ BUILTIN_FUNC(memory)
             format = FMT_OCTAL;
         else if (strcmp(format_str, "x") == 0)
             format = FMT_HEXADECIMAL;
+        else if (strcmp(format_str, "t") == 0)
+            format = FMT_BINARY;
         else if (strcmp(format_str, "f") == 0)
             format = FMT_FLOAT;
         else if (strcmp(format_str, "c") == 0) {
@@ -297,6 +301,8 @@ BUILTIN_FUNC(copying)
 
 int is_builtin(const char *str)
 {
+    while (*str && isspace(*str))
+        ++str;
     return str[0] == ':';
 }
 
@@ -356,6 +362,9 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     char *token, *saveptr;
 
     /* Skip the initial ":" */
+    while (*str && *str != ':')
+        ++str;
+    assert(*str == ':'); /* Make sure we actually got passed a built-in */
     ++str;
 
     while ((token = shlex(str, &saveptr))) {
