@@ -7,25 +7,27 @@ SRCS := $(wildcard src/*.c) \
 BUILD ?= build
 
 OBJS1 := $(patsubst src/%.c, $(BUILD)/%.o, $(SRCS))
-OBJS := $(patsubst src/%.cpp, $(BUILD)/c++/%.o, $(OBJS1))
+OBJS := $(patsubst src/%.cpp, $(BUILD)/%.o, $(OBJS1))
 
-ALL_CFLAGS := -Wall -g -std=c99 -Iinclude `llvm-config --cflags` $(CFLAGS)
-ALL_CXXFLAGS := -Wall -g -Iinclude `llvm-config --cxxflags` $(CXXFLAGS)
-LIBS := `llvm-config --ldflags --libs $(ARCH) support` -lreadline
+LLVM_CONFIG ?= llvm-config
+
+ALL_CFLAGS := -Wall -g -std=c99 -Iinclude `$(LLVM_CONFIG) --cflags` $(CFLAGS)
+ALL_CXXFLAGS := -Wall -g -Iinclude `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
+LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
+
+dir_guard = @mkdir -p $(@D)
 
 $(BUILD)/asmase: $(OBJS)
-	$(CXX) $(ALL_CFLAGS) -o $@ $^ $(LIBS)
+	$(dir_guard)
+	$(CXX) $(ALL_CXXFLAGS) -o $@ $^ $(LIBS)
 
-$(BUILD)/%.o: src/%.c | $(BUILD)
+$(BUILD)/%.o: src/%.c
+	$(dir_guard)
 	$(CC) $(ALL_CFLAGS) -o $@ -c $<
 
-$(BUILD)/c++/%.o: src/%.cpp | $(BUILD)
+$(BUILD)/%.o: src/%.cpp
+	$(dir_guard)
 	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
-
-$(BUILD):
-	mkdir -p $(BUILD)
-	mkdir -p $(BUILD)/c++
-	mkdir -p $(BUILD)/arch/$(ARCH)
 
 .PHONY: clean
 clean:
