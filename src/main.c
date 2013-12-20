@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     if ((error = create_tracee(&tracee)))
         return error; /* Too early to goto out. */
 
-    if ((error = init_assemblers(argc, argv))) {
+    if ((error = init_assemblers())) {
         all_error = error;
         goto out;
     }

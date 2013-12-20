@@ -1,8 +1,8 @@
 ARCH ?= $(shell ./getarch.sh)
 
 SRCS := $(wildcard src/*.c) \
+	$(wildcard src/*.cpp) \
 	$(wildcard src/arch/$(ARCH)/*.c) \
-	$(wildcard src/llvm_assembler/*.cpp)
 
 BUILD ?= build
 
@@ -24,8 +24,8 @@ $(BUILD)/c++/%.o: src/%.cpp | $(BUILD)
 
 $(BUILD):
 	mkdir -p $(BUILD)
+	mkdir -p $(BUILD)/c++
 	mkdir -p $(BUILD)/arch/$(ARCH)
-	mkdir -p $(BUILD)/c++/llvm_assembler
 
 .PHONY: clean
 clean:

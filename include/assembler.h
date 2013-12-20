@@ -27,10 +27,8 @@ struct assembler;
 extern "C" {
 #endif
 
-/**
- * Initialize the assembler system, including parsing command line parameters.
- */
-int init_assemblers(int argc, char **argv);
+/** Initialize the assembler system. */
+int init_assemblers();
 
 /** Shutdown and clean up for the assembler system. */
 void shutdown_assemblers();
