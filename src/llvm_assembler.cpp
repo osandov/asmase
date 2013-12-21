@@ -46,63 +46,34 @@ static const int OUTPUT_BUFFER_SIZE = 2048;
 
 /** Return the text section (i.e., machine code) for an object file. */
 static error_code getTextSection(object::ObjectFile &objFile,
-                                 StringRef &result) {
-    error_code err;
-    object::section_iterator it = objFile.begin_sections();
-    while (it != objFile.end_sections()) {
-        bool isText;
-        err = it->isText(isText);
-        if (err)
-            return err;
-        if (isText)
-            return it->getContents(result);
-        it.increment(err);
-        if (err)
-            return err;
-    }
-    return error_code();
-}
+                                 StringRef &result);
 
 /**
  * Diagnostic callback. We need this because we read input line by line so we
  * have to keep track of diagnostic information on our own in C-land (filename
  * and line number).
  */
-static void asmaseDiagHandler(const SMDiagnostic &diag, void *dummy)
-{
-    struct source_file *file = get_current_file();
-
-    SMDiagnostic diagnostic(
-        *diag.getSourceMgr(),
-        diag.getLoc(),
-        file->filename,
-        file->line,
-        diag.getColumnNo(),
-        diag.getKind(),
-        diag.getMessage(),
-        diag.getLineContents(),
-        diag.getRanges(),
-        diag.getFixIts()
-    );
-
-    diagnostic.print(NULL, errs());
-}
+static void asmaseDiagHandler(const SMDiagnostic &diag, void *dummy);
 
 /** LLVM implementation of an assembler. */
 struct assembler {
+private:
     std::string tripleName;
     std::string cpu;
-
     const Target *target;
     OwningPtr<MCRegisterInfo> registerInfo;
     OwningPtr<MCAsmInfo> asmInfo;
     OwningPtr<MCInstrInfo> instrInfo;
-    OwningPtr<MCSubtargetInfo> subtargetInfo;
 
+public:
     assembler();
 
-    int assembleInput(SourceMgr &srcMgr, MCContext &mcCtx,
-                      MCStreamer &streamer);
+    const std::string &getTripleName() const {return tripleName;}
+    const std::string &getCpu() const {return cpu;}
+    const Target *getTarget() const {return target;}
+    const MCRegisterInfo *getRegisterInfo() const {return registerInfo.get();}
+    const MCAsmInfo *getAsmInfo() const {return asmInfo.get();}
+    const MCInstrInfo *getInstrInfo() const {return instrInfo.get();}
 };
 
 assembler::assembler()
@@ -124,31 +95,6 @@ assembler::assembler()
 
     instrInfo.reset(target->createMCInstrInfo());
     assert(instrInfo && "Unable to create target instruction info!");
-
-    std::string features;
-    subtargetInfo.reset(
-        target->createMCSubtargetInfo(tripleName, cpu, features));
-    assert(subtargetInfo && "Unable to create subtarget info!");
-}
-
-int assembler::assembleInput(SourceMgr &srcMgr, MCContext &mcCtx,
-                             MCStreamer &streamer)
-{
-    OwningPtr<MCAsmParser> parser(
-        createMCAsmParser(srcMgr, mcCtx, streamer, *asmInfo));
-
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
-    OwningPtr<MCTargetAsmParser> TAP(
-        target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo));
-#else
-    OwningPtr<MCTargetAsmParser> TAP(
-        target->createMCAsmParser(*subtargetInfo, *parser));
-#endif
-    assert(TAP && "This target does not support assembly parsing");
-
-    parser->setTargetParser(*TAP);
-
-    return parser->Run(false);
 }
 
 extern "C" {
@@ -184,6 +130,14 @@ void destroy_assembler(struct assembler *ctx)
 ssize_t assemble_instruction(struct assembler *ctx, const char *in,
                              unsigned char **out, size_t *out_size)
 {
+    const std::string &tripleName = ctx->getTripleName();
+    const std::string &mcpu = ctx->getCpu();
+    const Target *target = ctx->getTarget();
+    const MCRegisterInfo *registerInfo = ctx->getRegisterInfo();
+    const MCAsmInfo *asmInfo = ctx->getAsmInfo();
+    const MCInstrInfo *instrInfo = ctx->getInstrInfo();
+
+    // Set up the input
     MemoryBuffer *inputBuffer =
         MemoryBuffer::getMemBufferCopy(StringRef(in), "assembly");
 
@@ -191,37 +145,56 @@ ssize_t assemble_instruction(struct assembler *ctx, const char *in,
     srcMgr.AddNewSourceBuffer(inputBuffer, SMLoc());
     srcMgr.setDiagHandler(asmaseDiagHandler);
 
-    OwningPtr<MCObjectFileInfo> objectFileInfo(new MCObjectFileInfo());
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
-    MCContext mcCtx(ctx->asmInfo.get(), ctx->registerInfo.get(),
-                    objectFileInfo.get(), &srcMgr);
-#else
-    MCContext mcCtx(*ctx->asmInfo, *ctx->registerInfo, objectFileInfo.get(),
-                    &srcMgr);
-#endif
-    objectFileInfo->InitMCObjectFileInfo(ctx->tripleName, Reloc::Default,
-                                         CodeModel::Default, mcCtx);
-
+    // Set up the output
     SmallString<OUTPUT_BUFFER_SIZE> outputString;
     raw_svector_ostream outputStream(outputString);
 
-    MCCodeEmitter *codeEmitter =
-        ctx->target->createMCCodeEmitter(*ctx->instrInfo, *ctx->registerInfo,
-                                         *ctx->subtargetInfo, mcCtx);
+    // Set up the context
+    OwningPtr<MCObjectFileInfo> objectFileInfo(new MCObjectFileInfo());
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+    MCContext mcCtx(asmInfo, registerInfo, objectFileInfo.get(), &srcMgr);
+#else
+    MCContext mcCtx(*asmInfo, *registerInfo, objectFileInfo.get(), &srcMgr);
+#endif
+    objectFileInfo->InitMCObjectFileInfo(tripleName, Reloc::Default,
+                                         CodeModel::Default, mcCtx);
 
+    // Set up the streamer
+    OwningPtr<MCSubtargetInfo> subtargetInfo;
+    std::string features;
+    subtargetInfo.reset(
+        target->createMCSubtargetInfo(tripleName, mcpu, features));
+    assert(subtargetInfo && "Unable to create subtarget info!");
+
+    MCCodeEmitter *codeEmitter =
+        target->createMCCodeEmitter(*instrInfo, *registerInfo, *subtargetInfo,
+                                    mcCtx);
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     MCAsmBackend *MAB =
-        ctx->target->createMCAsmBackend(*ctx->registerInfo, ctx->tripleName,
-                                        ctx->cpu);
+        target->createMCAsmBackend(*registerInfo, tripleName, mcpu);
 #else
     MCAsmBackend *MAB =
-        ctx->target->createMCAsmBackend(ctx->tripleName, ctx->cpu);
+        target->createMCAsmBackend(tripleName, mcpu);
 #endif
 
     OwningPtr<MCStreamer> streamer(
         createPureStreamer(mcCtx, *MAB, outputStream, codeEmitter));
 
-    if (ctx->assembleInput(srcMgr, mcCtx, *streamer) == 0) {
+    // Set up the parser
+    OwningPtr<MCAsmParser> parser(
+        createMCAsmParser(srcMgr, mcCtx, *streamer, *asmInfo));
+
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+    OwningPtr<MCTargetAsmParser> TAP(
+        target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo));
+#else
+    OwningPtr<MCTargetAsmParser> TAP(
+        target->createMCAsmParser(*subtargetInfo, *parser));
+#endif
+    assert(TAP && "This target does not support assembly parsing");
+    parser->setTargetParser(*TAP);
+
+    if (parser->Run(false) == 0) {
         outputStream.flush();
         MemoryBuffer *outputBuffer =
             MemoryBuffer::getMemBuffer(outputString, "machine code", false);
@@ -245,4 +218,44 @@ ssize_t assemble_instruction(struct assembler *ctx, const char *in,
     return -1;
 }
 
+}
+
+/* See above. */
+static error_code getTextSection(object::ObjectFile &objFile,
+                                 StringRef &result) {
+    error_code err;
+    object::section_iterator it = objFile.begin_sections();
+    while (it != objFile.end_sections()) {
+        bool isText;
+        err = it->isText(isText);
+        if (err)
+            return err;
+        if (isText)
+            return it->getContents(result);
+        it.increment(err);
+        if (err)
+            return err;
+    }
+    return error_code();
+}
+
+/* See above. */
+static void asmaseDiagHandler(const SMDiagnostic &diag, void *dummy)
+{
+    struct source_file *file = get_current_file();
+
+    SMDiagnostic diagnostic(
+        *diag.getSourceMgr(),
+        diag.getLoc(),
+        file->filename,
+        file->line,
+        diag.getColumnNo(),
+        diag.getKind(),
+        diag.getMessage(),
+        diag.getLineContents(),
+        diag.getRanges(),
+        diag.getFixIts()
+    );
+
+    diagnostic.print(NULL, errs());
 }
