@@ -2,13 +2,13 @@
 
 namespace Builtins {
 
-const ValueAST *UnaryOp::eval(Environment &env) const
+ValueAST *UnaryOp::eval(Environment &env) const
 {
-    const ValueAST *value = operand->eval(env);
+    ValueAST *value = operand->eval(env);
     if (!value)
         return NULL;
 
-    const ValueAST *result;
+    ValueAST *result;
     switch (op) {
         case UnaryOp::PLUS:
             result = value->unaryPlus(env);

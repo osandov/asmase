@@ -41,7 +41,7 @@ END {
     print "namespace Builtins {"
     print ""
     for (op in unary_ops) {
-        printf "const ValueAST *IntegerExpr::%s(Environment &env) const\n", unary_ops[op]
+        printf "ValueAST *IntegerExpr::%s(Environment &env) const\n", unary_ops[op]
         print "{"
         printf "    return new IntegerExpr(getStart(), getEnd(), %svalue);\n", op
         print "}\n"
@@ -49,7 +49,7 @@ END {
 
     for (op in binary_ops) {
         for (type in types) {
-            printf "const ValueAST *IntegerExpr::%sWith(const %sExpr *lhs, Environment &env) const\n", binary_ops[op], type
+            printf "ValueAST *IntegerExpr::%sWith(const %sExpr *lhs, Environment &env) const\n", binary_ops[op], type
             print "{"
             if (type == "Integer")
                 integer_integer(op)

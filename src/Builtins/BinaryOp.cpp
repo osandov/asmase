@@ -2,14 +2,14 @@
 
 namespace Builtins {
 
-const ValueAST *BinaryOp::eval(Environment &env) const
+ValueAST *BinaryOp::eval(Environment &env) const
 {
-    const ValueAST *left = lhs->eval(env);
-    const ValueAST *right = rhs->eval(env);
+    ValueAST *left = lhs->eval(env);
+    ValueAST *right = rhs->eval(env);
     if (!left || !right)
         return NULL;
 
-    const ValueAST *result;
+    ValueAST *result;
     switch (op) {
         case BinaryOp::ADD:
             result = left->add(right, env);

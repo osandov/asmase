@@ -16,13 +16,13 @@ END {
     print "namespace Builtins {"
     print ""
     for (op in unary_ops) {
-        printf "const ValueAST *IdentifierExpr::%s(Environment &env) const\n", unary_ops[op]
+        printf "ValueAST *IdentifierExpr::%s(Environment &env) const\n", unary_ops[op]
         print "{\n    return (ValueAST *) -1;\n}\n"
     }
 
     for (op in binary_ops) {
         for (type in types) {
-            printf "const ValueAST *IdentifierExpr::%sWith(const %sExpr *lhs, Environment &env) const\n", binary_ops[op], type
+            printf "ValueAST *IdentifierExpr::%sWith(const %sExpr *lhs, Environment &env) const\n", binary_ops[op], type
             print "{\n    return (ValueAST *) -1;\n}\n"
         }
     }

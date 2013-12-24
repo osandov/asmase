@@ -2,8 +2,9 @@
 
 namespace Builtins {
 
-const ValueAST *VariableExpr::eval(Environment &env) const
+ValueAST *VariableExpr::eval(Environment &env) const
 {
+    env.errorContext.printMessage("not implemented", getStart());
     return NULL;
 }
 

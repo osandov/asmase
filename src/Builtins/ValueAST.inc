@@ -35,7 +35,7 @@ public:
     IdentifierExpr(int columnStart, int columnEnd, const std::string &name)
         : ValueAST(columnStart, columnEnd, ValueAST::IDENTIFIER), name(name) {}
 
-    virtual const ValueAST *eval(Environment &env) const
+    virtual ValueAST *eval(Environment &env) const
     {
         return new IdentifierExpr(*this);
     }
@@ -52,7 +52,7 @@ public:
     IntegerExpr(int columnStart, int columnEnd, long long value)
         : ValueAST(columnStart, columnEnd, ValueAST::INTEGER), value(value) {}
 
-    virtual const ValueAST *eval(Environment &env) const
+    virtual ValueAST *eval(Environment &env) const
     {
         return new IntegerExpr(*this);
     }
@@ -69,7 +69,7 @@ public:
     FloatExpr(int columnStart, int columnEnd, double value)
         : ValueAST(columnStart, columnEnd, ValueAST::FLOAT), value(value) {}
 
-    virtual const ValueAST *eval(Environment &env) const
+    virtual ValueAST *eval(Environment &env) const
     {
         return new FloatExpr(*this);
     }
@@ -86,7 +86,7 @@ public:
     StringExpr(int columnStart, int columnEnd, const std::string &str)
         : ValueAST(columnStart, columnEnd, ValueAST::STRING), str(str) {}
 
-    virtual const ValueAST *eval(Environment &env) const
+    virtual ValueAST *eval(Environment &env) const
     {
         return new StringExpr(*this);
     }

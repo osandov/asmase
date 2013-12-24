@@ -3,6 +3,8 @@
 
 #include <llvm/Support/SourceMgr.h>
 
+namespace Builtins {
+
 /** Context for printing errors when parsing or evaluating. */
 class ErrorContext {
     /**
@@ -11,6 +13,9 @@ class ErrorContext {
      * this is fine.
      */
     llvm::SourceMgr dummySourceMgr;
+
+    const char *filename;
+    int lineno;
 
     /** The line that we're handling. */
     const char *line;
@@ -25,8 +30,8 @@ public:
      * example, when we trim the leading ':' for a built-in). This offset is
      * added to the column number every time.
      */
-    ErrorContext(const char *line, int offset = 0)
-        : line(line), offset(offset) {}
+    ErrorContext(const char *filename, int lineno, const char *line, int offset = 0)
+        : filename(filename), lineno(lineno), line(line), offset(offset) {}
 
     void printMessage(const char *msg);
 
@@ -38,5 +43,7 @@ public:
     void printMessage(const char *msg, int column,
                       int start1, int end1, int start2, int end2);
 };
+
+}
 
 #endif /* ASMASE_ERROR_CONTEXT_H */

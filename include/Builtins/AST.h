@@ -18,7 +18,7 @@ public:
         : columnStart(columnStart), columnEnd(columnEnd) {}
     virtual ~ExprAST() {}
 
-    virtual const ValueAST *eval(Environment &env) const = 0;
+    virtual ValueAST *eval(Environment &env) const = 0;
 
     int getStart() const { return columnStart; }
     int getEnd() const { return columnEnd; }
@@ -31,7 +31,7 @@ public:
     VariableExpr(int columnStart, int columnEnd, const std::string &name)
         : ExprAST(columnStart, columnEnd), name(name) {}
 
-    virtual const ValueAST *eval(Environment &env) const;
+    virtual ValueAST *eval(Environment &env) const;
 };
 
 /** Unary operator. */
@@ -55,7 +55,7 @@ public:
 
     ~UnaryOp() { delete operand; }
 
-    virtual const ValueAST *eval(Environment &env) const;
+    virtual ValueAST *eval(Environment &env) const;
 };
 
 typedef UnaryOp::Opcode UnaryOpcode;
@@ -84,7 +84,7 @@ public:
 
     ~BinaryOp() { delete lhs; delete rhs; }
 
-    virtual const ValueAST *eval(Environment &env) const;
+    virtual ValueAST *eval(Environment &env) const;
 };
 
 typedef BinaryOp::Opcode BinaryOpcode;
@@ -98,7 +98,10 @@ public:
         : command(command), args(args) {}
     ~CommandAST();
 
-    const std::vector<ExprAST*> &getArgs() {return args;}
+    const std::vector<ExprAST*> &getArgs() { return args; }
+
+    std::vector<ExprAST*>::iterator begin() { return args.begin(); }
+    std::vector<ExprAST*>::iterator end() { return args.end(); }
 };
 
 }

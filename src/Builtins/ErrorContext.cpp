@@ -3,6 +3,8 @@ using namespace llvm;
 
 #include "Builtins/ErrorContext.h"
 
+namespace Builtins {
+
 /* See Builtins/ErrorContext.h. */
 void ErrorContext::printMessage(const char *msg)
 {
@@ -17,8 +19,8 @@ void ErrorContext::printMessage(const char *msg, int column)
     SMDiagnostic diagnostic(
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),
-        "<stdin>",
-        1,
+        filename,
+        lineno,
         column,
         SourceMgr::DK_Error,
         msg,
@@ -40,8 +42,8 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
     SMDiagnostic diagnostic(
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),
-        "<stdin>",
-        1,
+        filename,
+        lineno,
         column,
         SourceMgr::DK_Error,
         msg,
@@ -66,12 +68,14 @@ void ErrorContext::printMessage(const char *msg, int column,
     SMDiagnostic diagnostic(
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),
-        "<stdin>",
-        1,
+        filename,
+        lineno,
         column,
         SourceMgr::DK_Error,
         msg,
         line,
         ArrayRef<std::pair<unsigned, unsigned> >(ranges));
     diagnostic.print(NULL, errs());
+}
+
 }

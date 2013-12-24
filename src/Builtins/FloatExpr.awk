@@ -34,7 +34,7 @@ END {
     print "namespace Builtins {"
     print ""
     for (op in unary_ops) {
-        printf "const ValueAST *FloatExpr::%s(Environment &env) const\n", unary_ops[op]
+        printf "ValueAST *FloatExpr::%s(Environment &env) const\n", unary_ops[op]
         print "{"
         if (op == "+" || op == "-" || op == "!")
             printf "    return new FloatExpr(getStart(), getEnd(), %svalue);\n", op
@@ -45,7 +45,7 @@ END {
 
     for (op in binary_ops) {
         for (type in types) {
-            printf "const ValueAST *FloatExpr::%sWith(const %sExpr *lhs, Environment &env) const\n", binary_ops[op], type
+            printf "ValueAST *FloatExpr::%sWith(const %sExpr *lhs, Environment &env) const\n", binary_ops[op], type
             print "{"
             if (type == "Integer")
                 integer_float(op)
