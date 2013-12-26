@@ -19,6 +19,7 @@ struct BuiltinCommand {
 #define BUILTIN_FUNC(func) int builtin_##func(\
         const std::vector<Builtins::ValueAST*> &args, Builtins::Environment &env)
 
+BUILTIN_FUNC(source);
 BUILTIN_FUNC(memory);
 BUILTIN_FUNC(register);
 BUILTIN_FUNC(warranty);

@@ -1,4 +1,5 @@
-#include "Builtins/AST.h"
+#include <cstdio>
+
 #include "Builtins/Commands.h"
 
 static void print_warranty()

@@ -10,6 +10,11 @@
 #include "builtins.h"
 #include "input.h"
 
+static BUILTIN_FUNC(quit)
+{
+    return -1;
+}
+
 static BUILTIN_FUNC(test)
 {
     for (const Builtins::ValueAST *value : args) {
@@ -34,11 +39,13 @@ static BUILTIN_FUNC(test)
 }
 
 static std::map<std::string, BuiltinCommand> commands = {
-    {"test", {builtin_test}},
-    {"memory", {builtin_memory}},
+    {"quit",     {builtin_quit}},
+    {"test",     {builtin_test}},
+    {"source",   {builtin_source}},
+    {"memory",   {builtin_memory}},
     {"register", {builtin_register}},
     {"warranty", {builtin_warranty}},
-    {"copying", {builtin_copying}},
+    {"copying",  {builtin_copying}},
 };
 
 extern "C" {
