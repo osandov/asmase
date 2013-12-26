@@ -104,6 +104,11 @@ int main(int argc, char *argv[])
         goto out;
     }
 
+    if ((error = init_builtins())) {
+        all_error = error;
+        goto out;
+    }
+
     if (!(asmb = create_assembler())) {
         all_error = 1;
         goto out;
@@ -118,6 +123,7 @@ out:
     if (asmb)
         destroy_assembler(asmb);
     shutdown_input();
+    shutdown_builtins();
     shutdown_assemblers();
     cleanup_tracing(&tracee);
     return all_error;

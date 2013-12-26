@@ -35,7 +35,7 @@ class Parser {
     const std::string &currentStr() { return currentToken()->token; }
 
     /** Helper method to get the token type of the current token. */
-    Token::Type currentType() { return currentToken()->type; }
+    TokenType currentType() { return currentToken()->type; }
 
     /** Helper method to get the starting column of the current token. */
     int currentStart() { return currentToken()->columnStart; }

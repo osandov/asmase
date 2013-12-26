@@ -5,35 +5,31 @@ class IntegerExpr;
 class FloatExpr;
 class StringExpr;
 
+enum class ValueType {
+    IDENTIFIER,
+    INTEGER,
+    FLOAT,
+    STRING
+};
+
 class ValueAST : public ExprAST {
-public:
-    enum Type {
-        IDENTIFIER,
-        INTEGER,
-        FLOAT,
-        STRING
-    };
-
-private:
-    Type type;
+    ValueType type;
 
 public:
-    ValueAST(int columnStart, int columnEnd, Type type)
+    ValueAST(int columnStart, int columnEnd, ValueType type)
         : ExprAST(columnStart, columnEnd), type(type) {}
 
-    Type getType() const { return type; }
+    ValueType getType() const { return type; }
 
     OP_FUNCTIONS pure
 };
-
-typedef ValueAST::Type ValueType;
 
 /** Identifiers include command names and flags. */
 class IdentifierExpr : public ValueAST {
     std::string name;
 public:
     IdentifierExpr(int columnStart, int columnEnd, const std::string &name)
-        : ValueAST(columnStart, columnEnd, ValueAST::IDENTIFIER), name(name) {}
+        : ValueAST(columnStart, columnEnd, ValueType::IDENTIFIER), name(name) {}
 
     virtual ValueAST *eval(Environment &env) const
     {
@@ -50,7 +46,7 @@ class IntegerExpr : public ValueAST {
     long long value;
 public:
     IntegerExpr(int columnStart, int columnEnd, long long value)
-        : ValueAST(columnStart, columnEnd, ValueAST::INTEGER), value(value) {}
+        : ValueAST(columnStart, columnEnd, ValueType::INTEGER), value(value) {}
 
     virtual ValueAST *eval(Environment &env) const
     {
@@ -67,7 +63,7 @@ class FloatExpr : public ValueAST {
     double value;
 public:
     FloatExpr(int columnStart, int columnEnd, double value)
-        : ValueAST(columnStart, columnEnd, ValueAST::FLOAT), value(value) {}
+        : ValueAST(columnStart, columnEnd, ValueType::FLOAT), value(value) {}
 
     virtual ValueAST *eval(Environment &env) const
     {
@@ -84,7 +80,7 @@ class StringExpr : public ValueAST {
     std::string str;
 public:
     StringExpr(int columnStart, int columnEnd, const std::string &str)
-        : ValueAST(columnStart, columnEnd, ValueAST::STRING), str(str) {}
+        : ValueAST(columnStart, columnEnd, ValueType::STRING), str(str) {}
 
     virtual ValueAST *eval(Environment &env) const
     {

@@ -30,7 +30,7 @@ public:
     const Token *getNextToken();
 
     /** Set the current token. This is only for use by yylex(). */
-    void setToken(Token::Type type);
+    void setToken(TokenType type);
 
     /**
      * Advance the current column without doing anything else. This is only

@@ -63,8 +63,8 @@ void ErrorContext::printMessage(const char *msg, int column,
     start2 += offset;
     end2 += offset;
 
-    ranges.push_back(std::pair<unsigned, unsigned>(start1, end1));
-    ranges.push_back(std::pair<unsigned, unsigned>(start2, end2));
+    ranges.emplace_back(start1, end1);
+    ranges.emplace_back(start2, end2);
     SMDiagnostic diagnostic(
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),

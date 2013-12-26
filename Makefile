@@ -16,7 +16,7 @@ LLVM_CONFIG ?= llvm-config
 
 COMMON_FLAGS := -Wall -g -Iinclude -I$(BUILD)/include
 ALL_CFLAGS := $(COMMON_FLAGS) -std=c99 `$(LLVM_CONFIG) --cflags` $(CFLAGS)
-ALL_CXXFLAGS := $(COMMON_FLAGS) `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
+ALL_CXXFLAGS := $(COMMON_FLAGS) -std=c++11 `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
 LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
 
 dir_guard = @mkdir -p $(@D)

@@ -3,6 +3,9 @@
 
 #include "Builtins/Scanner.h"
 
+// Suppress clang warnings about deprecated storage class
+#define register
+
 /** Set the lexed token in the scanner and return 1. */
 #define EMIT_TOKEN(type) do { \
     yyextra->setToken((type)); \
@@ -11,7 +14,7 @@
 
 /** Set the lexed token to indicate an unknown character and return -1. */
 #define EMIT_UNKNOWN_TOKEN() do { \
-    yyextra->setToken(Builtins::Token::UNKNOWN); \
+    yyextra->setToken(Builtins::TokenType::UNKNOWN); \
     return -1; \
 } while (0)
 %}
@@ -33,33 +36,33 @@ whitespace [ \t\r\n]
 %option extra-type="Builtins::Scanner *"
 
 %%
-{integer}       EMIT_TOKEN(Builtins::Token::INTEGER);
-{float}         EMIT_TOKEN(Builtins::Token::FLOAT);
-{identifier}    EMIT_TOKEN(Builtins::Token::IDENTIFIER);
-{string}        EMIT_TOKEN(Builtins::Token::STRING);
-{variable}      EMIT_TOKEN(Builtins::Token::VARIABLE);
-"("             EMIT_TOKEN(Builtins::Token::OPEN_PAREN);
-")"             EMIT_TOKEN(Builtins::Token::CLOSE_PAREN);
-"+"             EMIT_TOKEN(Builtins::Token::PLUS);
-"-"             EMIT_TOKEN(Builtins::Token::MINUS);
-"*"             EMIT_TOKEN(Builtins::Token::STAR);
-"/"             EMIT_TOKEN(Builtins::Token::SLASH);
-"%"             EMIT_TOKEN(Builtins::Token::PERCENT);
-"=="            EMIT_TOKEN(Builtins::Token::DOUBLE_EQUAL);
-"!="            EMIT_TOKEN(Builtins::Token::EXCLAMATION_EQUAL);
-">"             EMIT_TOKEN(Builtins::Token::GREATER);
-"<"             EMIT_TOKEN(Builtins::Token::LESS);
-">="            EMIT_TOKEN(Builtins::Token::GREATER_EQUAL);
-"<="            EMIT_TOKEN(Builtins::Token::LESS_EQUAL);
-"!"             EMIT_TOKEN(Builtins::Token::EXCLAMATION);
-"&&"            EMIT_TOKEN(Builtins::Token::DOUBLE_AMPERSAND);
-"||"            EMIT_TOKEN(Builtins::Token::DOUBLE_PIPE);
-"~"             EMIT_TOKEN(Builtins::Token::TILDE);
-"&"             EMIT_TOKEN(Builtins::Token::AMPERSAND);
-"|"             EMIT_TOKEN(Builtins::Token::PIPE);
-"^"             EMIT_TOKEN(Builtins::Token::CARET);
-"<<"            EMIT_TOKEN(Builtins::Token::DOUBLE_LESS);
-">>"            EMIT_TOKEN(Builtins::Token::DOUBLE_GREATER);
+{integer}       EMIT_TOKEN(Builtins::TokenType::INTEGER);
+{float}         EMIT_TOKEN(Builtins::TokenType::FLOAT);
+{identifier}    EMIT_TOKEN(Builtins::TokenType::IDENTIFIER);
+{string}        EMIT_TOKEN(Builtins::TokenType::STRING);
+{variable}      EMIT_TOKEN(Builtins::TokenType::VARIABLE);
+"("             EMIT_TOKEN(Builtins::TokenType::OPEN_PAREN);
+")"             EMIT_TOKEN(Builtins::TokenType::CLOSE_PAREN);
+"+"             EMIT_TOKEN(Builtins::TokenType::PLUS);
+"-"             EMIT_TOKEN(Builtins::TokenType::MINUS);
+"*"             EMIT_TOKEN(Builtins::TokenType::STAR);
+"/"             EMIT_TOKEN(Builtins::TokenType::SLASH);
+"%"             EMIT_TOKEN(Builtins::TokenType::PERCENT);
+"=="            EMIT_TOKEN(Builtins::TokenType::DOUBLE_EQUAL);
+"!="            EMIT_TOKEN(Builtins::TokenType::EXCLAMATION_EQUAL);
+">"             EMIT_TOKEN(Builtins::TokenType::GREATER);
+"<"             EMIT_TOKEN(Builtins::TokenType::LESS);
+">="            EMIT_TOKEN(Builtins::TokenType::GREATER_EQUAL);
+"<="            EMIT_TOKEN(Builtins::TokenType::LESS_EQUAL);
+"!"             EMIT_TOKEN(Builtins::TokenType::EXCLAMATION);
+"&&"            EMIT_TOKEN(Builtins::TokenType::DOUBLE_AMPERSAND);
+"||"            EMIT_TOKEN(Builtins::TokenType::DOUBLE_PIPE);
+"~"             EMIT_TOKEN(Builtins::TokenType::TILDE);
+"&"             EMIT_TOKEN(Builtins::TokenType::AMPERSAND);
+"|"             EMIT_TOKEN(Builtins::TokenType::PIPE);
+"^"             EMIT_TOKEN(Builtins::TokenType::CARET);
+"<<"            EMIT_TOKEN(Builtins::TokenType::DOUBLE_LESS);
+">>"            EMIT_TOKEN(Builtins::TokenType::DOUBLE_GREATER);
 {whitespace}+   yyextra->skipWhitespace();
 .               EMIT_UNKNOWN_TOKEN();
 %%
@@ -131,7 +134,7 @@ Scanner::Scanner(const char *line)
     yy_scan_string(line, yyscanner);
     yyset_extra(this, yyscanner);
 
-    currentToken.type = Token::EOFT;
+    currentToken.type = TokenType::EOFT;
     currentToken.columnStart = currentToken.columnEnd = 0;
 }
 
@@ -151,20 +154,20 @@ const Token *Scanner::getCurrentToken() const
 const Token *Scanner::getNextToken()
 {
     if (!yylex(yyscanner)) {
-        currentToken.type = Token::EOFT;
+        currentToken.type = TokenType::EOFT;
         currentToken.columnStart = currentToken.columnEnd = currentColumn;
     }
     return &currentToken;
 }
 
 /* See BuiltinScanner.h. */
-void Scanner::setToken(Token::Type type)
+void Scanner::setToken(TokenType type)
 {
     yy_size_t leng = yyget_leng(yyscanner);
     const char *text = yyget_text(yyscanner);
 
     currentToken.type = type;
-    currentToken.token = (type == Token::STRING) ?
+    currentToken.token = (type == TokenType::STRING) ?
         parseString(text) : text;
     currentToken.columnStart = currentColumn;
     currentToken.columnEnd = currentColumn + leng;

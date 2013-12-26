@@ -34,23 +34,23 @@ public:
     virtual ValueAST *eval(Environment &env) const;
 };
 
+enum UnaryOpcode {
+    NONE,
+    PLUS,
+    MINUS,
+    LOGIC_NEGATE,
+    BIT_NEGATE,
+};
+
 /** Unary operator. */
 class UnaryOp : public ExprAST {
-public:
-    enum Opcode {
-        NONE,
-        PLUS,
-        MINUS,
-        LOGIC_NEGATE,
-        BIT_NEGATE,
-    };
 
 private:
-    Opcode op;
+    UnaryOpcode op;
     ExprAST *operand; // Owned pointer
 
 public:
-    UnaryOp(int columnStart, int columnEnd, Opcode op, ExprAST *operand)
+    UnaryOp(int columnStart, int columnEnd, UnaryOpcode op, ExprAST *operand)
         : ExprAST(columnStart, columnEnd), op(op), operand(operand) {}
 
     ~UnaryOp() { delete operand; }
@@ -58,27 +58,23 @@ public:
     virtual ValueAST *eval(Environment &env) const;
 };
 
-typedef UnaryOp::Opcode UnaryOpcode;
+enum class BinaryOpcode {
+    NONE,
+    ADD, SUBTRACT, MULTIPLY, DIVIDE, MOD,
+    EQUALS, NOT_EQUALS,
+    GREATER_THAN, LESS_THAN,
+    GREATER_THAN_OR_EQUALS, LESS_THAN_OR_EQUALS,
+    LOGIC_AND, LOGIC_OR,
+    BIT_AND, BIT_OR, BIT_XOR, LEFT_SHIFT, RIGHT_SHIFT
+};
 
 /** Binary operator. */
 class BinaryOp : public ExprAST {
-public:
-    enum Opcode {
-        NONE,
-        ADD, SUBTRACT, MULTIPLY, DIVIDE, MOD,
-        EQUALS, NOT_EQUALS,
-        GREATER_THAN, LESS_THAN,
-        GREATER_THAN_OR_EQUALS, LESS_THAN_OR_EQUALS,
-        LOGIC_AND, LOGIC_OR,
-        BIT_AND, BIT_OR, BIT_XOR, LEFT_SHIFT, RIGHT_SHIFT
-    };
-
-private:
-    Opcode op;
+    BinaryOpcode op;
     ExprAST *lhs, *rhs; // Owned pointers
 
 public:
-    BinaryOp(int columnStart, int columnEnd, Opcode op,
+    BinaryOp(int columnStart, int columnEnd, BinaryOpcode op,
              ExprAST *lhs, ExprAST *rhs)
         : ExprAST(columnStart, columnEnd), op(op), lhs(lhs), rhs(rhs) {}
 
@@ -87,18 +83,22 @@ public:
     virtual ValueAST *eval(Environment &env) const;
 };
 
-typedef BinaryOp::Opcode BinaryOpcode;
-
 /** Full command line (not an expression). */
 class CommandAST {
     std::string command;
+    int commandStart, commandEnd;
     std::vector<ExprAST*> args; // Owned pointers
 public:
-    CommandAST(const std::string &command, const std::vector<ExprAST*> &args)
-        : command(command), args(args) {}
+    CommandAST(const std::string &command, int commandStart, int commandEnd,
+               const std::vector<ExprAST*> &args)
+        : command(command), commandStart(commandStart), commandEnd(commandEnd),
+          args(args) {}
     ~CommandAST();
 
-    const std::vector<ExprAST*> &getArgs() { return args; }
+    const std::string &getCommand() const { return command; }
+    int getCommandStart() const { return commandStart; }
+    int getCommandEnd() const { return commandEnd; }
+    const std::vector<ExprAST*> &getArgs() const { return args; }
 
     std::vector<ExprAST*>::iterator begin() { return args.begin(); }
     std::vector<ExprAST*>::iterator end() { return args.end(); }

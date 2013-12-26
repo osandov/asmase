@@ -25,6 +25,12 @@
 extern "C" {
 #endif
 
+/** Initialize the built-ins system. */
+int init_builtins();
+
+/** Shutdown the built-ins system. */
+void shutdown_builtins();
+
 /** Return whether the given string is a command line builtin. */
 int is_builtin(const char *str);
 

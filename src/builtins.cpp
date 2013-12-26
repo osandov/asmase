@@ -1,12 +1,61 @@
 #include <cassert>
+#include <cstdio>
+#include <map>
+#include <sstream>
 
+#include "Builtins/Commands.h"
 #include "Builtins/ErrorContext.h"
+#include "Builtins/Init.h"
 #include "Builtins/Parser.h"
 
 #include "builtins.h"
 #include "input.h"
 
+static std::map<std::string, BuiltinCommand> commands;
+
+static BUILTIN_FUNC(test)
+{
+    for (const Builtins::ValueAST *value : args) {
+        Builtins::ValueType type = value->getType();
+        if (type == Builtins::ValueType::IDENTIFIER) {
+            const Builtins::IdentifierExpr *identifier =
+                static_cast<const Builtins::IdentifierExpr*>(value);
+
+            printf("%s\n", identifier->getName().c_str());
+        } else if (type == Builtins::ValueType::INTEGER) {
+            const Builtins::IntegerExpr *integer =
+                static_cast<const Builtins::IntegerExpr*>(value);
+
+            printf("0x%016llx\n", integer->getValue());
+        } else if (type == Builtins::ValueType::FLOAT) {
+            const Builtins::FloatExpr *floating =
+                static_cast<const Builtins::FloatExpr*>(value);
+
+            printf("%f\n", floating->getValue());
+        } else if (type == Builtins::ValueType::STRING) {
+            const Builtins::StringExpr *str =
+                static_cast<const Builtins::StringExpr*>(value);
+
+            printf("\"%s\"\n", str->getStr().c_str());
+        } else
+            assert(false);
+    }
+
+    return 0;
+}
+
 extern "C" {
+
+int init_builtins()
+{
+    Builtins::initParser();
+    commands["test"] = {builtin_test};
+    return 0;
+}
+
+void shutdown_builtins()
+{
+}
 
 /* See builtins.h. */
 int is_builtin(const char *str)
@@ -43,16 +92,59 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     Builtins::Parser parser(scanner, errorContext);
     Builtins::CommandAST *command = parser.parseCommand();
     if (!command)
-        return 1;
+        return -1;
 
-
-    // Evaluate the input by looping over the command arguments
+    // Evaluate the input by looping over the command arguments and evaulating
+    // each one
     std::vector<Builtins::ValueAST*> values;
     std::vector<Builtins::ExprAST*>::iterator it;
-    for (it = command->begin(); it != command->end(); ++it)
-        values.push_back((*it)->eval(env));
+    bool failedEval = false;
+    for (Builtins::ExprAST *expr : *command) {
+        Builtins::ValueAST *value = expr->eval(env);
+        failedEval |= value == NULL;
+        values.push_back(expr->eval(env));
+    }
 
-    return 0;
+    if (failedEval) {
+        delete command;
+        return -1;
+    }
+
+    const std::string &abbrev = command->getCommand();
+
+    // Find the given command. 
+    std::vector<std::string> potentialMatches;
+    for (const std::pair<std::string, BuiltinCommand> &command : commands) {
+        if (command.first.compare(0, abbrev.size(), abbrev) == 0) {
+            if (abbrev.size() == command.first.size()) {
+                // Allow full matches to bypass the ambiguity check
+                potentialMatches.clear();
+                potentialMatches.push_back(command.first);
+                break;
+            } else
+                potentialMatches.push_back(command.first);
+        }
+    }
+
+    int error = 0;
+    if (potentialMatches.size() == 0) {
+        errorContext.printMessage("unknown command", command->getCommandStart());
+        error = -1;
+    } else if (potentialMatches.size() > 1) {
+        std::stringstream ss;
+        ss << "ambigious command; did you mean ";
+        for (size_t i = 0; i < potentialMatches.size() - 1; ++i)
+            ss << '\'' << potentialMatches[i] << "', ";
+        ss << "or '" << potentialMatches.back() << "'?";
+        errorContext.printMessage(ss.str().c_str(), command->getCommandStart());
+        error = -1;
+    } else {
+        BuiltinFunc func = commands[potentialMatches.front()].func;
+        error = func(values, env);
+    }
+
+    delete command;
+    return error;
 }
 
 }

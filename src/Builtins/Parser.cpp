@@ -1,19 +1,20 @@
 #include <llvm/Support/SourceMgr.h>
 using namespace llvm;
 
+#include "Builtins/Init.h"
 #include "Builtins/Parser.h"
 
 namespace Builtins {
 
 /**
- * Convert a token type to the corresponding unary operator, or UnaryOp::NONE
- * if it isn't a unary operator.
+ * Convert a token type to the corresponding unary operator, or
+ * UnaryOpcode::NONE if it isn't a unary operator.
  */
 static inline UnaryOpcode tokenTypeToUnaryOpcode(TokenType type);
 
 /**
- * Convert a token type to the corresponding Binary operator, or BinaryOp::NONE
- * if it isn't a binary operator.
+ * Convert a token type to the corresponding Binary operator, or
+ * BinaryOpcode::NONE if it isn't a binary operator.
  */
 static inline BinaryOpcode tokenTypeToBinaryOpcode(TokenType type);
 
@@ -42,21 +43,21 @@ ExprAST *Parser::parseExpression()
 ExprAST *Parser::parsePrimaryExpr()
 {
     switch (currentType()) {
-        case Token::IDENTIFIER:
+        case TokenType::IDENTIFIER:
             return parseIdentifierExpr();
-        case Token::INTEGER:
+        case TokenType::INTEGER:
             return parseIntegerExpr();
-        case Token::FLOAT:
+        case TokenType::FLOAT:
             return parseFloatExpr();
-        case Token::STRING:
+        case TokenType::STRING:
             return parseStringExpr();
-        case Token::VARIABLE:
+        case TokenType::VARIABLE:
             return parseVariableExpr();
-        case Token::OPEN_PAREN:
+        case TokenType::OPEN_PAREN:
             return parseParenExpr();
-        case Token::CLOSE_PAREN:
+        case TokenType::CLOSE_PAREN:
             return error(*currentToken(), "unmatched parentheses");
-        case Token::UNKNOWN:
+        case TokenType::UNKNOWN:
             return error(*currentToken(), "invalid character in input");
         default:
             return error(*currentToken(), "expected primary expression");
@@ -118,7 +119,7 @@ ExprAST *Parser::parseParenExpr()
     if (!expr)
         return NULL;
 
-    if (currentType() != Token::CLOSE_PAREN)
+    if (currentType() != TokenType::CLOSE_PAREN)
         return error(openParen, "unmatched parentheses");
 
     consumeToken();
@@ -128,9 +129,9 @@ ExprAST *Parser::parseParenExpr()
 /* See Builtins/Parser.h. */
 ExprAST *Parser::parseUnaryOpExpr()
 {
-    UnaryOp::Opcode op = tokenTypeToUnaryOpcode(currentType());
+    UnaryOpcode op = tokenTypeToUnaryOpcode(currentType());
     int opStart = currentStart(), opEnd = currentEnd();
-    if (op == UnaryOp::NONE)
+    if (op == UnaryOpcode::NONE)
         return parsePrimaryExpr();
 
     consumeToken();
@@ -146,7 +147,7 @@ ExprAST *Parser::parseUnaryOpExpr()
 ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *lhs)
 {
     for (;;) {
-        BinaryOp::Opcode op = tokenTypeToBinaryOpcode(currentType());
+        BinaryOpcode op = tokenTypeToBinaryOpcode(currentType());
         int opStart = currentStart(), opEnd = currentEnd();
         int tokenPrecedence = binaryOpPrecedence(op);
 
@@ -159,7 +160,7 @@ ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *lhs)
         if (!rhs)
             return NULL;
 
-        BinaryOp::Opcode nextOp = tokenTypeToBinaryOpcode(currentType());
+        BinaryOpcode nextOp = tokenTypeToBinaryOpcode(currentType());
         int nextPrecedence = binaryOpPrecedence(nextOp);
 
         if (tokenPrecedence < nextPrecedence) {
@@ -177,24 +178,26 @@ CommandAST *Parser::parseCommand()
 {
     consumeToken(); // Prime the parser
 
-    if (currentType() != Token::IDENTIFIER) {
+    if (currentType() != TokenType::IDENTIFIER) {
         errorContext.printMessage("expected command", currentStart());
         return NULL;
     }
 
     std::string command = currentStr();
+    int commandStart = currentStart();
+    int commandEnd = currentEnd();
     consumeToken();
 
     std::vector<ExprAST*> args;
-    while (currentType() != Token::EOFT) {
+    while (currentType() != TokenType::EOFT) {
         ExprAST *arg = parseUnaryOpExpr();
         if (arg)
             args.push_back(arg);
         else
-            consumeToken();
+            consumeToken(); // Eat the token that caused the error
     }
 
-    return new CommandAST(command, args);
+    return new CommandAST(command, commandStart, commandEnd, args);
 }
 
 CommandAST::~CommandAST()
@@ -205,109 +208,21 @@ CommandAST::~CommandAST()
 }
 
 /* See above. */
-static inline UnaryOp::Opcode tokenTypeToUnaryOpcode(TokenType type)
+static inline UnaryOpcode tokenTypeToUnaryOpcode(TokenType type)
 {
-    switch (type) {
-        case Token::PLUS:
-            return UnaryOp::PLUS;
-        case Token::MINUS:
-            return UnaryOp::MINUS;
-        case Token::EXCLAMATION:
-            return UnaryOp::LOGIC_NEGATE;
-        case Token::TILDE:
-            return UnaryOp::BIT_NEGATE;
-        default:
-            return UnaryOp::NONE;
-    }
+    return findWithDefault(unaryTokenMap, type, UnaryOpcode::NONE);
 }
 
 /* See above. */
-static inline BinaryOp::Opcode tokenTypeToBinaryOpcode(TokenType type)
+static inline BinaryOpcode tokenTypeToBinaryOpcode(TokenType type)
 {
-    switch (type) {
-        case Token::PLUS:
-            return BinaryOp::ADD;
-        case Token::MINUS:
-            return BinaryOp::SUBTRACT;
-        case Token::STAR:
-            return BinaryOp::MULTIPLY;
-        case Token::SLASH:
-            return BinaryOp::DIVIDE;
-        case Token::PERCENT:
-            return BinaryOp::MOD;
-        case Token::DOUBLE_EQUAL:
-            return BinaryOp::EQUALS;
-        case Token::EXCLAMATION_EQUAL:
-            return BinaryOp::NOT_EQUALS;
-        case Token::GREATER:
-            return BinaryOp::GREATER_THAN;
-        case Token::LESS:
-            return BinaryOp::LESS_THAN;
-        case Token::GREATER_EQUAL:
-            return BinaryOp::GREATER_THAN_OR_EQUALS;
-        case Token::LESS_EQUAL:
-            return BinaryOp::LESS_THAN_OR_EQUALS;
-        case Token::DOUBLE_AMPERSAND:
-            return BinaryOp::LOGIC_AND;
-        case Token::DOUBLE_PIPE:
-            return BinaryOp::LOGIC_OR;
-        case Token::AMPERSAND:
-            return BinaryOp::BIT_AND;
-        case Token::PIPE:
-            return BinaryOp::BIT_OR;
-        case Token::CARET:
-            return BinaryOp::BIT_XOR;
-        case Token::DOUBLE_LESS:
-            return BinaryOp::LEFT_SHIFT;
-        case Token::DOUBLE_GREATER:
-            return BinaryOp::RIGHT_SHIFT;
-        default:
-            return BinaryOp::NONE;
-    }
+    return findWithDefault(binaryTokenMap, type, BinaryOpcode::NONE);
 }
 
 /* See above. */
 static inline int binaryOpPrecedence(BinaryOpcode op)
 {
-    switch (op) {
-        case BinaryOp::MULTIPLY:
-        case BinaryOp::DIVIDE:
-        case BinaryOp::MOD:
-            return 700;
-
-        case BinaryOp::ADD:
-        case BinaryOp::SUBTRACT:
-            return 600;
-
-        case BinaryOp::LEFT_SHIFT:
-        case BinaryOp::RIGHT_SHIFT:
-            return 500;
-
-        case BinaryOp::GREATER_THAN:
-        case BinaryOp::LESS_THAN:
-        case BinaryOp::GREATER_THAN_OR_EQUALS:
-        case BinaryOp::LESS_THAN_OR_EQUALS:
-            return 400;
-
-        case BinaryOp::EQUALS:
-        case BinaryOp::NOT_EQUALS:
-            return 300;
-
-        case BinaryOp::BIT_AND:
-            return 266;
-        case BinaryOp::BIT_XOR:
-            return 233;
-        case BinaryOp::BIT_OR:
-            return 200;
-
-        case BinaryOp::LOGIC_AND:
-            return 150;
-        case BinaryOp::LOGIC_OR:
-            return 100;
-
-        case BinaryOp::NONE:
-            return -1;
-    }
+    return binaryPrecedences[op];
 }
 
 }
