@@ -37,6 +37,8 @@ static std::map<std::string, BuiltinCommand> commands = {
     {"test", {builtin_test}},
     {"memory", {builtin_memory}},
     {"register", {builtin_register}},
+    {"warranty", {builtin_warranty}},
+    {"copying", {builtin_copying}},
 };
 
 extern "C" {
@@ -84,7 +86,7 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     bool failedEval = false;
     for (Builtins::ExprAST *expr : *command) {
         Builtins::ValueAST *value = expr->eval(env);
-        failedEval |= value == NULL;
+        failedEval |= value == nullptr;
         values.push_back(value);
     }
 

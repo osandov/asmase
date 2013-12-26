@@ -17,10 +17,9 @@ ValueAST *UnaryOp::eval(Environment &env) const
 {
     ValueAST *value = operand->eval(env);
     if (!value)
-        return NULL;
+        return nullptr;
 
-    UnaryOpFunction func = findWithDefault(unaryFunctionMap, op,
-                                           (UnaryOpFunction) NULL);
+    UnaryOpFunction func = findWithDefault(unaryFunctionMap, op, nullptr);
     assert(func);
 
     ValueAST *result = (value->*func)(env);
@@ -28,7 +27,7 @@ ValueAST *UnaryOp::eval(Environment &env) const
     if (result == (ValueAST *) -1) {
         env.errorContext.printMessage("invalid argument type to unary expression",
                                       getStart(), value->getStart(), value->getEnd());
-        result = NULL;
+        result = nullptr;
     }
 
     delete value;

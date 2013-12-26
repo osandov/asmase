@@ -21,5 +21,7 @@ struct BuiltinCommand {
 
 BUILTIN_FUNC(memory);
 BUILTIN_FUNC(register);
+BUILTIN_FUNC(warranty);
+BUILTIN_FUNC(copying);
 
 #endif /* ASMASE_BUILTINS_COMMANDS_H */

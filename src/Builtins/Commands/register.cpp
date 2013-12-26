@@ -56,8 +56,7 @@ BUILTIN_FUNC(register)
 
         auto category = static_cast<const Builtins::IdentifierExpr *>(value);
 
-        regPrinter = findWithDefault(regPrinters, category->getName(),
-                                     (register_printer) NULL);
+        regPrinter = findWithDefault(regPrinters, category->getName(), nullptr);
 
         if (!regPrinter) {
             env.errorContext.printMessage("unknown register category",

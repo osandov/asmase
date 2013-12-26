@@ -34,10 +34,9 @@ ValueAST *BinaryOp::eval(Environment &env) const
     ValueAST *left = lhs->eval(env);
     ValueAST *right = rhs->eval(env);
     if (!left || !right)
-        return NULL;
+        return nullptr;
 
-    BinaryOpFunction func = findWithDefault(binaryFunctionMap, op,
-                                            (BinaryOpFunction) NULL);
+    BinaryOpFunction func = findWithDefault(binaryFunctionMap, op, nullptr);
     assert(func);
 
     ValueAST *result = (left->*func)(right, env);
@@ -46,7 +45,7 @@ ValueAST *BinaryOp::eval(Environment &env) const
         env.errorContext.printMessage("invalid operands to binary expression",
                                       getStart(), left->getStart(), left->getEnd(),
                                       right->getStart(), right->getEnd());
-        result = NULL;
+        result = nullptr;
     }
 
     delete left;

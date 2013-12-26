@@ -9,7 +9,7 @@ namespace Builtins {
 void ErrorContext::printMessage(const char *msg)
 {
     SMDiagnostic diagnostic("<stdin>", SourceMgr::DK_Error, msg);
-    diagnostic.print(NULL, errs());
+    diagnostic.print(nullptr, errs());
 }
 
 /* See Builtins/ErrorContext.h. */
@@ -26,7 +26,7 @@ void ErrorContext::printMessage(const char *msg, int column)
         msg,
         line,
         None);
-    diagnostic.print(NULL, errs());
+    diagnostic.print(nullptr, errs());
 }
 
 /* See Builtins/ErrorContext.h. */
@@ -49,7 +49,7 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
         msg,
         line,
         ranges);
-    diagnostic.print(NULL, errs());
+    diagnostic.print(nullptr, errs());
 }
 
 /* See Builtins/ErrorContext.h. */
@@ -75,7 +75,7 @@ void ErrorContext::printMessage(const char *msg, int column,
         msg,
         line,
         ArrayRef<std::pair<unsigned, unsigned>>(ranges));
-    diagnostic.print(NULL, errs());
+    diagnostic.print(nullptr, errs());
 }
 
 }

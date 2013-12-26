@@ -19,7 +19,7 @@ ValueAST *Environment::lookupVariable(const std::string &var,
     struct register_value regval;
     if (get_register_value(pid, var.c_str() + 1, &regval)) {
         errorMsg = "unknown variable";
-        return NULL;
+        return nullptr;
     }
 
     switch (regval.type) {
@@ -30,7 +30,7 @@ ValueAST *Environment::lookupVariable(const std::string &var,
     }
 
     assert(false);
-    return NULL;
+    return nullptr;
 }
 
 }

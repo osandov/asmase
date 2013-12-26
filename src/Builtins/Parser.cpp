@@ -85,7 +85,7 @@ static inline int binaryOpPrecedence(BinaryOpcode op);
 ExprAST *Parser::error(const Token &erringToken, const char *msg)
 {
     errorContext.printMessage(msg, erringToken.columnStart);
-    return NULL;
+    return nullptr;
 }
 
 /* See Builtins/Parser.h. */
@@ -93,7 +93,7 @@ ExprAST *Parser::parseExpression()
 {
     ExprAST *lhs = parseUnaryOpExpr();
     if (!lhs)
-        return NULL;
+        return nullptr;
 
     return parseBinaryOpRHS(0, lhs);
 }
@@ -176,7 +176,7 @@ ExprAST *Parser::parseParenExpr()
 
     ExprAST *expr = parseExpression();
     if (!expr)
-        return NULL;
+        return nullptr;
 
     if (currentType() != TokenType::CLOSE_PAREN)
         return error(openParen, "unmatched parentheses");
@@ -197,7 +197,7 @@ ExprAST *Parser::parseUnaryOpExpr()
 
     ExprAST *operand = parseUnaryOpExpr();
     if (!operand)
-        return NULL;
+        return nullptr;
 
     return new UnaryOp(opStart, opEnd, op, operand);
 }
@@ -217,7 +217,7 @@ ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *lhs)
 
         ExprAST *rhs = parseUnaryOpExpr();
         if (!rhs)
-            return NULL;
+            return nullptr;
 
         BinaryOpcode nextOp = tokenTypeToBinaryOpcode(currentType());
         int nextPrecedence = binaryOpPrecedence(nextOp);
@@ -225,7 +225,7 @@ ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *lhs)
         if (tokenPrecedence < nextPrecedence) {
             rhs = parseBinaryOpRHS(tokenPrecedence + 1, rhs);
             if (!rhs)
-                return NULL;
+                return nullptr;
         }
 
         lhs = new BinaryOp(opStart, opEnd, op, lhs, rhs);
@@ -239,7 +239,7 @@ CommandAST *Parser::parseCommand()
 
     if (currentType() != TokenType::IDENTIFIER) {
         errorContext.printMessage("expected command", currentStart());
-        return NULL;
+        return nullptr;
     }
 
     std::string command = currentStr();

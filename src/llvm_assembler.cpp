@@ -257,5 +257,5 @@ static void asmaseDiagHandler(const SMDiagnostic &diag, void *dummy)
         diag.getFixIts()
     );
 
-    diagnostic.print(NULL, errs());
+    diagnostic.print(nullptr, errs());
 }
