@@ -55,7 +55,7 @@ BUILTIN_FUNC(register)
         }
 
         const Builtins::IdentifierExpr *category =
-            static_cast<const Builtins::IdentifierExpr*>(value);
+            static_cast<const Builtins::IdentifierExpr *>(value);
 
         regPrinter = findWithDefault(regPrinters, category->getName(),
                                      (register_printer) NULL);
@@ -66,6 +66,7 @@ BUILTIN_FUNC(register)
             return 1;
         }
     } else {
+        // TODO: figure out how usage will work
         return 1;
     }
 

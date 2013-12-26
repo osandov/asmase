@@ -16,22 +16,22 @@ static BUILTIN_FUNC(test)
         Builtins::ValueType type = value->getType();
         if (type == Builtins::ValueType::IDENTIFIER) {
             const Builtins::IdentifierExpr *identifier =
-                static_cast<const Builtins::IdentifierExpr*>(value);
+                static_cast<const Builtins::IdentifierExpr *>(value);
 
             printf("%s\n", identifier->getName().c_str());
         } else if (type == Builtins::ValueType::INTEGER) {
             const Builtins::IntegerExpr *integer =
-                static_cast<const Builtins::IntegerExpr*>(value);
+                static_cast<const Builtins::IntegerExpr *>(value);
 
             printf("0x%016llx\n", integer->getValue());
         } else if (type == Builtins::ValueType::FLOAT) {
             const Builtins::FloatExpr *floating =
-                static_cast<const Builtins::FloatExpr*>(value);
+                static_cast<const Builtins::FloatExpr *>(value);
 
             printf("%f\n", floating->getValue());
         } else if (type == Builtins::ValueType::STRING) {
             const Builtins::StringExpr *str =
-                static_cast<const Builtins::StringExpr*>(value);
+                static_cast<const Builtins::StringExpr *>(value);
 
             printf("\"%s\"\n", str->getStr().c_str());
         } else
@@ -43,6 +43,7 @@ static BUILTIN_FUNC(test)
 
 static std::map<std::string, BuiltinCommand> commands = {
     {"test", {builtin_test}},
+    {"memory", {builtin_memory}},
     {"register", {builtin_register}},
 };
 
