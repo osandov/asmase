@@ -49,8 +49,7 @@ BUILTIN_FUNC(memory)
         return 1;
     }
 
-    const Builtins::IntegerExpr *addressExpr =
-        static_cast<const Builtins::IntegerExpr *>(args[0]);
+    auto addressExpr = static_cast<const Builtins::IntegerExpr *>(args[0]);
 
     addr = (void*) (intptr_t) addressExpr->getValue();
 
@@ -62,8 +61,7 @@ BUILTIN_FUNC(memory)
             return 1;
         }
 
-        const Builtins::IntegerExpr *repeatExpr =
-            static_cast<const Builtins::IntegerExpr *>(args[1]);
+        auto repeatExpr = static_cast<const Builtins::IntegerExpr *>(args[1]);
 
         repeat = repeatExpr->getValue();
     }
@@ -76,8 +74,7 @@ BUILTIN_FUNC(memory)
             return 1;
         }
 
-        const Builtins::IdentifierExpr *formatExpr =
-            static_cast<const Builtins::IdentifierExpr *>(args[2]);
+        auto formatExpr = static_cast<const Builtins::IdentifierExpr *>(args[2]);
         const std::string &formatStr = formatExpr->getName();
 
         if (!formatMap.count(formatStr)) {
@@ -110,8 +107,7 @@ BUILTIN_FUNC(memory)
             return 1;
         }
 
-        const Builtins::IdentifierExpr *sizeExpr =
-            static_cast<const Builtins::IdentifierExpr *>(args[3]);
+        auto sizeExpr = static_cast<const Builtins::IdentifierExpr *>(args[3]);
         const std::string &sizeStr = sizeExpr->getName();
 
         if (!sizeMap.count(sizeStr)) {
