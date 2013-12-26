@@ -1,7 +1,17 @@
+#include <map>
+
 #include "Builtins/AST.h"
-#include "Builtins/Init.h"
+#include "Builtins/Support.h"
 
 namespace Builtins {
+
+typedef ValueAST* (ValueAST::*UnaryOpFunction)(Environment &) const;
+static std::map<UnaryOpcode, UnaryOpFunction> unaryFunctionMap = {
+    {UnaryOpcode::PLUS,         &ValueAST::unaryPlus},
+    {UnaryOpcode::MINUS,        &ValueAST::unaryMinus},
+    {UnaryOpcode::LOGIC_NEGATE, &ValueAST::logicNegate},
+    {UnaryOpcode::BIT_NEGATE,   &ValueAST::bitNegate},
+};
 
 ValueAST *UnaryOp::eval(Environment &env) const
 {

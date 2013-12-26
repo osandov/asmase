@@ -3,7 +3,7 @@
 
 #include "Builtins/AST.h"
 #include "Builtins/Commands.h"
-#include "Builtins/Init.h"
+#include "Builtins/Support.h"
 
 #include "tracing.h"
 
@@ -11,38 +11,33 @@ using Builtins::findWithDefault;
 
 typedef int (*register_printer)(pid_t);
 
-std::unordered_map<std::string, register_printer> regPrinters;
+static std::unordered_map<std::string, register_printer> regPrinters = {
+    {"", &print_registers},
 
-BUILTIN_INIT_FUNC(register)
-{
-    regPrinters[""] = &print_registers;
+    {"general-purpose", print_general_purpose_registers},
+    {"general",         print_general_purpose_registers},
+    {"gp",              print_general_purpose_registers},
+    {"g",               print_general_purpose_registers},
 
-    regPrinters["general-purpose"] =
-    regPrinters["general"]         =
-    regPrinters["gp"]              =
-    regPrinters["g"]               = print_general_purpose_registers;
+    {"condition-codes", print_condition_code_registers},
+    {"condition",       print_condition_code_registers},
+    {"status",          print_condition_code_registers},
+    {"flags",           print_condition_code_registers},
+    {"cc",              print_condition_code_registers},
 
-    regPrinters["condition-codes"] =
-    regPrinters["condition"]       =
-    regPrinters["status"]          =
-    regPrinters["flags"]           =
-    regPrinters["cc"]              = print_condition_code_registers;
+    {"floating-point", print_floating_point_registers},
+    {"floating",       print_floating_point_registers},
+    {"fp",             print_floating_point_registers},
+    {"f",              print_floating_point_registers},
 
-    regPrinters["floating-point"]  =
-    regPrinters["floating"]        =
-    regPrinters["fp"]              =
-    regPrinters["f"]               = print_floating_point_registers;
+    {"extra", print_extra_registers},
+    {"xr",    print_extra_registers},
+    {"x",     print_extra_registers},
 
-    regPrinters["extra"]           =
-    regPrinters["xr"]              =
-    regPrinters["x"]               = print_extra_registers;
-
-    regPrinters["segment"]         =
-    regPrinters["seg"]             =
-    regPrinters["s"]               = print_segment_registers;
-
-    return 0;
-}
+    {"segment", print_segment_registers},
+    {"seg",     print_segment_registers},
+    {"s",       print_segment_registers},
+};
 
 BUILTIN_FUNC(register)
 {

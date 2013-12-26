@@ -5,13 +5,10 @@
 
 #include "Builtins/Commands.h"
 #include "Builtins/ErrorContext.h"
-#include "Builtins/Init.h"
 #include "Builtins/Parser.h"
 
 #include "builtins.h"
 #include "input.h"
-
-static std::map<std::string, BuiltinCommand> commands;
 
 static BUILTIN_FUNC(test)
 {
@@ -44,22 +41,12 @@ static BUILTIN_FUNC(test)
     return 0;
 }
 
+static std::map<std::string, BuiltinCommand> commands = {
+    {"test", {builtin_test}},
+    {"register", {builtin_register}},
+};
+
 extern "C" {
-
-int init_builtins()
-{
-    Builtins::initParser();
-    commands["test"] = {builtin_test};
-
-    commands["register"] = {builtin_register};
-    builtin_init_register();
-
-    return 0;
-}
-
-void shutdown_builtins()
-{
-}
 
 /* See builtins.h. */
 int is_builtin(const char *str)
