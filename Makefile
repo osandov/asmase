@@ -5,6 +5,7 @@ SRCS := $(wildcard src/*.c) \
 	$(wildcard src/*.cpp) \
 	$(wildcard src/arch/$(ARCH)/*.c) \
 	$(wildcard src/Builtins/*.cpp) \
+	$(wildcard src/Builtins/Commands/*.cpp) \
 	$(patsubst src/%.awk, $(BUILD)/%.cpp, $(wildcard src/Builtins/*Expr.awk)) \
 	$(BUILD)/Builtins/Scanner.cpp
 

@@ -26,6 +26,20 @@ struct tracee_info {
     void *shared_page;
 };
 
+enum register_value_type {
+    REGISTER_INTEGER,
+    REGISTER_FLOATING
+};
+
+struct register_value {
+    enum register_value_type type;
+
+    union {
+        long long integer;
+        double floating;
+    };
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -65,6 +79,13 @@ void *get_program_counter(pid_t pid);
  * @return Zero on success, nonzero on failure.
  */
 int set_program_counter(pid_t pid, void *pc);
+
+/**
+ * Gets the value stored in a given register.
+ * @return Zero on success, nonzero on failure.
+ */
+int get_register_value(pid_t pid, const char *reg_name,
+                       struct register_value *val_out);
 
 /**
  * Print the `normal' registers for a stopped, ptraced process. This includes

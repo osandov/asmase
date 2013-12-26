@@ -58,9 +58,9 @@ int repl(struct assembler *asmb, struct tracee_info *tracee)
     while ((asm_buffer = read_input_line(PS1))) {
         if (is_builtin(asm_buffer)) {
             int result = run_builtin(asmb, tracee, asm_buffer);
-            if (result < 0)
+            if (result > 0)
                 continue;
-            else if (result > 0)
+            else if (result < 0)
                 goto out;
         } else {
             mc_length = assemble_instruction(asmb, asm_buffer,

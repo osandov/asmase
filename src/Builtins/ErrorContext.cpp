@@ -36,7 +36,7 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
     start += offset;
     end += offset;
 
-    ArrayRef<std::pair<unsigned, unsigned> > ranges(
+    ArrayRef<std::pair<unsigned, unsigned>> ranges(
         std::pair<unsigned, unsigned>(start, end));
 
     SMDiagnostic diagnostic(
@@ -56,7 +56,7 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
 void ErrorContext::printMessage(const char *msg, int column,
                                 int start1, int end1, int start2, int end2)
 {
-    std::vector<std::pair<unsigned, unsigned> > ranges;
+    std::vector<std::pair<unsigned, unsigned>> ranges;
     column += offset;
     start1 += offset;
     end1 += offset;
@@ -74,7 +74,7 @@ void ErrorContext::printMessage(const char *msg, int column,
         SourceMgr::DK_Error,
         msg,
         line,
-        ArrayRef<std::pair<unsigned, unsigned> >(ranges));
+        ArrayRef<std::pair<unsigned, unsigned>>(ranges));
     diagnostic.print(NULL, errs());
 }
 

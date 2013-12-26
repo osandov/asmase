@@ -307,11 +307,11 @@ static void print_user_fpregs(struct user_fpxregs_struct *fpxregs)
     printf("\n");
 
     printf("\n");
-#if defined(__x86_64__)
-    printf("fip = 0x%016llx    fdp = 0x%016llx\n", fpxregs->rip, fpxregs->rdp);
-#elif defined(__i386__)
+#if defined(__i386__)
     printf("fip = 0x%04lx:0x%08lx    fdp = 0x%04lx:0x%08lx\n",
            fpxregs->fcs, fpxregs->fip, fpxregs->fos, fpxregs->foo);
+#elif defined(__x86_64__)
+    printf("fip = 0x%016llx    fdp = 0x%016llx\n", fpxregs->rip, fpxregs->rdp);
 #endif
     printf("fop = 0x%04x\n", fpxregs->fop & 0x7ff);
 }

@@ -4,8 +4,11 @@ namespace Builtins {
 
 ValueAST *VariableExpr::eval(Environment &env) const
 {
-    env.errorContext.printMessage("not implemented", getStart());
-    return NULL;
+    std::string errorMsg;
+    ValueAST *result = env.lookupVariable(name, errorMsg);
+    if (!result)
+        env.errorContext.printMessage(errorMsg.c_str(), getStart());
+    return result;
 }
 
 }

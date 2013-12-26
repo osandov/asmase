@@ -36,7 +36,7 @@ int is_builtin(const char *str);
 
 /**
  * Run a command line builtin.
- * @return -1 on error, 0 on success, 1 on exit.
+ * @return 1 on error, 0 on success, -1 on exit.
  */
 int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str);
 

@@ -50,6 +50,10 @@ int init_builtins()
 {
     Builtins::initParser();
     commands["test"] = {builtin_test};
+
+    commands["register"] = {builtin_register};
+    builtin_init_register();
+
     return 0;
 }
 
@@ -77,7 +81,6 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
         ++str;
         ++offset;
     }
-
     assert(*str == ':');
     ++str;
     ++offset;
@@ -85,14 +88,14 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     // Set up the environment to work in
     Builtins::ErrorContext errorContext(current_file->filename,
                                         current_file->line, line, offset);
-    Builtins::Environment env(errorContext);
+    Builtins::Environment env(asmb, tracee, errorContext);
 
     // Lex and parse the input
     Builtins::Scanner scanner(str);
     Builtins::Parser parser(scanner, errorContext);
     Builtins::CommandAST *command = parser.parseCommand();
     if (!command)
-        return -1;
+        return 1;
 
     // Evaluate the input by looping over the command arguments and evaulating
     // each one
@@ -102,12 +105,12 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     for (Builtins::ExprAST *expr : *command) {
         Builtins::ValueAST *value = expr->eval(env);
         failedEval |= value == NULL;
-        values.push_back(expr->eval(env));
+        values.push_back(value);
     }
 
     if (failedEval) {
         delete command;
-        return -1;
+        return 1;
     }
 
     const std::string &abbrev = command->getCommand();
@@ -129,7 +132,7 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     int error = 0;
     if (potentialMatches.size() == 0) {
         errorContext.printMessage("unknown command", command->getCommandStart());
-        error = -1;
+        error = 1;
     } else if (potentialMatches.size() > 1) {
         std::stringstream ss;
         ss << "ambigious command; did you mean ";
@@ -137,7 +140,7 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
             ss << '\'' << potentialMatches[i] << "', ";
         ss << "or '" << potentialMatches.back() << "'?";
         errorContext.printMessage(ss.str().c_str(), command->getCommandStart());
-        error = -1;
+        error = 1;
     } else {
         BuiltinFunc func = commands[potentialMatches.front()].func;
         error = func(values, env);

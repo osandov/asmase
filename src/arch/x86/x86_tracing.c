@@ -142,3 +142,81 @@ int set_program_counter(pid_t pid, void *pc)
     }
     return 0;
 }
+
+
+/* See tracing.h. */
+int get_register_value(pid_t pid, const char *reg_name,
+                       struct register_value *val_out)
+{
+#define INTEGER_REGISTER(name, member) \
+    if (strcmp(reg_name, (name)) == 0) { \
+        val_out->type = REGISTER_INTEGER; \
+        val_out->integer = regs.member; \
+        return 0; \
+    }
+#define FPX_INTEGER_REGISTER(name, member) \
+    if (strcmp(reg_name, (name)) == 0) { \
+        val_out->type = REGISTER_INTEGER; \
+        val_out->integer = fpxregs.member; \
+        return 0; \
+    }
+
+    struct user_regs_struct regs;
+    struct user_fpxregs_struct fpxregs;
+
+    if (get_user_regs(pid, &regs))
+        return 1;
+    if (get_user_fpxregs(pid, &fpxregs))
+        return 1;
+
+#if defined(__i386__)
+    /* General-purpose */
+    INTEGER_REGISTER("eax", eax); INTEGER_REGISTER("ecx", ecx);
+    INTEGER_REGISTER("edx", edx); INTEGER_REGISTER("ebx", ebx);
+    INTEGER_REGISTER("esp", esp); INTEGER_REGISTER("ebp", ebp);
+    INTEGER_REGISTER("esi", esi); INTEGER_REGISTER("edi", edi);
+    INTEGER_REGISTER("eip", eip);
+
+    /* Segment */
+    INTEGER_REGISTER("ds", xds); INTEGER_REGISTER("es", xes);
+    INTEGER_REGISTER("fs", xfs); INTEGER_REGISTER("gs", xgs);
+    INTEGER_REGISTER("cs", xcs); INTEGER_REGISTER("ss", xss);
+
+    /* Floating-point status */
+    FPX_INTEGER_REGISTER("fcs", fcs); FPX_INTEGER_REGISTER("fip", fip);
+    FPX_INTEGER_REGISTER("fos", fos); FPX_INTEGER_REGISTER("fdp", fdp);
+#elif defined(__x86_64__)
+    /* General-purpose */
+    INTEGER_REGISTER("rax", rax); INTEGER_REGISTER("rcx", rcx);
+    INTEGER_REGISTER("rdx", rdx); INTEGER_REGISTER("rbx", rbx);
+    INTEGER_REGISTER("rsp", rsp); INTEGER_REGISTER("rbp", rbp);
+    INTEGER_REGISTER("rsi", rsi); INTEGER_REGISTER("rdi", rdi);
+    INTEGER_REGISTER("r8",  r8);  INTEGER_REGISTER("r9",  r9);
+    INTEGER_REGISTER("r10", r10); INTEGER_REGISTER("r11", r11);
+    INTEGER_REGISTER("r12", r12); INTEGER_REGISTER("r13", r13);
+    INTEGER_REGISTER("r14", r14); INTEGER_REGISTER("r15", r15);
+    INTEGER_REGISTER("rip", rip);
+
+    /* Segment */
+    INTEGER_REGISTER("ds", ds); INTEGER_REGISTER("es", es);
+    INTEGER_REGISTER("fs", fs); INTEGER_REGISTER("gs", gs);
+    INTEGER_REGISTER("cs", cs); INTEGER_REGISTER("ss", ss);
+    INTEGER_REGISTER("fs.base", fs_base);
+    INTEGER_REGISTER("gs.base", gs_base);
+
+    /* Floating-point status */
+    FPX_INTEGER_REGISTER("fip", rip); FPX_INTEGER_REGISTER("fdp", rdp);
+#endif
+    /* Floating-point status */
+    INTEGER_REGISTER("eflags", eflags);
+    FPX_INTEGER_REGISTER("fcw", cwd);
+    FPX_INTEGER_REGISTER("fsw", swd);
+    FPX_INTEGER_REGISTER("ftw", twd);
+    FPX_INTEGER_REGISTER("fop", fop);
+    FPX_INTEGER_REGISTER("mxcsr", mxcsr);
+
+
+    return 1;
+#undef FPX_INTEGER_REGISTER
+#undef INTEGER_REGISTER
+}

@@ -20,10 +20,10 @@ extern std::map<BinaryOpcode, int> binaryPrecedences;
 
 int initParser();
 
-template <typename K, typename V>
-V findWithDefault(std::map<K, V> map, K key, V defaultValue)
+template <typename Map>
+typename Map::mapped_type findWithDefault(Map map, typename Map::key_type key, typename Map::mapped_type defaultValue)
 {
-    typename std::map<K, V>::iterator it = map.find(key);
+    typename Map::iterator it = map.find(key);
     if (it == map.end())
         return defaultValue;
     else
