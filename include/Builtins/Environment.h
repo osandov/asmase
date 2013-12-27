@@ -1,5 +1,5 @@
-#ifndef ASMASE_BUILTIN_ENVIRONMENT_H
-#define ASMASE_BUILTIN_ENVIRONMENT_H
+#ifndef ASMASE_BUILTINS_ENVIRONMENT_H
+#define ASMASE_BUILTINS_ENVIRONMENT_H
 
 #include <string>
 #include <sys/types.h>
@@ -27,4 +27,4 @@ public:
 
 }
 
-#endif /* ASMASE_BUILTIN_ENVIRONMENT_H */
+#endif /* ASMASE_BUILTINS_ENVIRONMENT_H */

@@ -9,60 +9,60 @@ using namespace llvm;
 namespace Builtins {
 
 static std::map<TokenType, UnaryOpcode> unaryTokenMap = {
-    {TokenType::PLUS, UnaryOpcode::PLUS},
-    {TokenType::MINUS, UnaryOpcode::MINUS},
+    {TokenType::PLUS,        UnaryOpcode::PLUS},
+    {TokenType::MINUS,       UnaryOpcode::MINUS},
     {TokenType::EXCLAMATION, UnaryOpcode::LOGIC_NEGATE},
-    {TokenType::TILDE, UnaryOpcode::BIT_NEGATE},
+    {TokenType::TILDE,       UnaryOpcode::BIT_NEGATE},
 };
 
 static std::map<TokenType, BinaryOpcode> binaryTokenMap = {
-    {TokenType::PLUS, BinaryOpcode::ADD},
-    {TokenType::MINUS, BinaryOpcode::SUBTRACT},
-    {TokenType::STAR, BinaryOpcode::MULTIPLY},
-    {TokenType::SLASH, BinaryOpcode::DIVIDE},
-    {TokenType::PERCENT, BinaryOpcode::MOD},
-    {TokenType::DOUBLE_EQUAL, BinaryOpcode::EQUALS},
+    {TokenType::PLUS,              BinaryOpcode::ADD},
+    {TokenType::MINUS,             BinaryOpcode::SUBTRACT},
+    {TokenType::STAR,              BinaryOpcode::MULTIPLY},
+    {TokenType::SLASH,             BinaryOpcode::DIVIDE},
+    {TokenType::PERCENT,           BinaryOpcode::MOD},
+    {TokenType::DOUBLE_EQUAL,      BinaryOpcode::EQUALS},
     {TokenType::EXCLAMATION_EQUAL, BinaryOpcode::NOT_EQUALS},
-    {TokenType::GREATER, BinaryOpcode::GREATER_THAN},
-    {TokenType::LESS, BinaryOpcode::LESS_THAN},
-    {TokenType::GREATER_EQUAL, BinaryOpcode::GREATER_THAN_OR_EQUALS},
-    {TokenType::LESS_EQUAL, BinaryOpcode::LESS_THAN_OR_EQUALS},
-    {TokenType::DOUBLE_AMPERSAND, BinaryOpcode::LOGIC_AND},
-    {TokenType::DOUBLE_PIPE, BinaryOpcode::LOGIC_OR},
-    {TokenType::AMPERSAND, BinaryOpcode::BIT_AND},
-    {TokenType::PIPE, BinaryOpcode::BIT_OR},
-    {TokenType::CARET, BinaryOpcode::BIT_XOR},
-    {TokenType::DOUBLE_LESS, BinaryOpcode::LEFT_SHIFT},
-    {TokenType::DOUBLE_GREATER, BinaryOpcode::RIGHT_SHIFT},
+    {TokenType::GREATER,           BinaryOpcode::GREATER_THAN},
+    {TokenType::LESS,              BinaryOpcode::LESS_THAN},
+    {TokenType::GREATER_EQUAL,     BinaryOpcode::GREATER_THAN_OR_EQUALS},
+    {TokenType::LESS_EQUAL,        BinaryOpcode::LESS_THAN_OR_EQUALS},
+    {TokenType::DOUBLE_AMPERSAND,  BinaryOpcode::LOGIC_AND},
+    {TokenType::DOUBLE_PIPE,       BinaryOpcode::LOGIC_OR},
+    {TokenType::AMPERSAND,         BinaryOpcode::BIT_AND},
+    {TokenType::PIPE,              BinaryOpcode::BIT_OR},
+    {TokenType::CARET,             BinaryOpcode::BIT_XOR},
+    {TokenType::DOUBLE_LESS,       BinaryOpcode::LEFT_SHIFT},
+    {TokenType::DOUBLE_GREATER,    BinaryOpcode::RIGHT_SHIFT},
 };
 
 static std::map<BinaryOpcode, int> binaryPrecedences = {
-    {BinaryOpcode::MULTIPLY, 700},
-    {BinaryOpcode::DIVIDE,   700},
-    {BinaryOpcode::MOD,      700},
+    {BinaryOpcode::MULTIPLY,               700},
+    {BinaryOpcode::DIVIDE,                 700},
+    {BinaryOpcode::MOD,                    700},
 
-    {BinaryOpcode::ADD,      600},
-    {BinaryOpcode::SUBTRACT, 600},
+    {BinaryOpcode::ADD,                    600},
+    {BinaryOpcode::SUBTRACT,               600},
 
-    {BinaryOpcode::LEFT_SHIFT,  500},
-    {BinaryOpcode::RIGHT_SHIFT, 500},
+    {BinaryOpcode::LEFT_SHIFT,             500},
+    {BinaryOpcode::RIGHT_SHIFT,            500},
 
     {BinaryOpcode::GREATER_THAN,           400},
     {BinaryOpcode::LESS_THAN,              400},
     {BinaryOpcode::GREATER_THAN_OR_EQUALS, 400},
     {BinaryOpcode::LESS_THAN_OR_EQUALS,    400},
 
-    {BinaryOpcode::EQUALS,     300},
-    {BinaryOpcode::NOT_EQUALS, 300},
+    {BinaryOpcode::EQUALS,                 300},
+    {BinaryOpcode::NOT_EQUALS,             300},
 
-    {BinaryOpcode::BIT_AND, 266},
-    {BinaryOpcode::BIT_XOR, 233},
-    {BinaryOpcode::BIT_OR,  200},
+    {BinaryOpcode::BIT_AND,                266},
+    {BinaryOpcode::BIT_XOR,                233},
+    {BinaryOpcode::BIT_OR,                 200},
 
-    {BinaryOpcode::LOGIC_AND, 150},
-    {BinaryOpcode::LOGIC_OR,  100},
+    {BinaryOpcode::LOGIC_AND,              150},
+    {BinaryOpcode::LOGIC_OR,               100},
 
-    {BinaryOpcode::NONE, -1},
+    {BinaryOpcode::NONE,                   -1},
 };
 
 /**

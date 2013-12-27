@@ -1,5 +1,5 @@
-#ifndef ASMASE_BUILTIN_SCANNER_H
-#define ASMASE_BUILTIN_SCANNER_H
+#ifndef ASMASE_BUILTINS_SCANNER_H
+#define ASMASE_BUILTINS_SCANNER_H
 
 #include "Builtins/Token.h"
 
@@ -41,4 +41,4 @@ public:
 
 }
 
-#endif /* ASMASE_BUILTIN_SCANNER_H */
+#endif /* ASMASE_BUILTINS_SCANNER_H */

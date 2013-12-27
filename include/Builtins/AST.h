@@ -1,5 +1,5 @@
-#ifndef ASMASE_BUILTIN_AST_H
-#define ASMASE_BUILTIN_AST_H
+#ifndef ASMASE_BUILTINS_AST_H
+#define ASMASE_BUILTINS_AST_H
 
 #include <vector>
 
@@ -108,4 +108,4 @@ public:
 
 #include "Builtins/ValueAST.h"
 
-#endif /* ASMASE_BUILTIN_AST_H */
+#endif /* ASMASE_BUILTINS_AST_H */

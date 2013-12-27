@@ -1,5 +1,5 @@
-#ifndef ASMASE_BUILTIN_PARSER_H
-#define ASMASE_BUILTIN_PARSER_H
+#ifndef ASMASE_BUILTINS_PARSER_H
+#define ASMASE_BUILTINS_PARSER_H
 
 #include "Builtins/AST.h"
 #include "Builtins/Scanner.h"
@@ -94,4 +94,4 @@ public:
 
 }
 
-#endif /* ASMASE_BUILTIN_PARSER_H */
+#endif /* ASMASE_BUILTINS_PARSER_H */
