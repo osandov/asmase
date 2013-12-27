@@ -189,7 +189,7 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     std::vector<std::unique_ptr<Builtins::ValueAST>> evaledArgs;
     std::vector<Builtins::ExprAST*>::iterator it;
     bool failedEval = false;
-    for (Builtins::ExprAST *expr : *command) {
+    for (auto &expr : *command) {
         Builtins::ValueAST *value = expr->eval(env);
         failedEval |= value == nullptr;
         evaledArgs.emplace_back(value);

@@ -110,22 +110,20 @@ class CommandAST {
     int commandStart, commandEnd;
 
     /** The argument expressions. */
-    std::vector<ExprAST*> args; // Owned pointers
+    std::vector<std::unique_ptr<ExprAST>> args; // Owned pointers
 
 public:
-    CommandAST(const std::string &command, int commandStart, int commandEnd,
-               const std::vector<ExprAST*> &args)
-        : command(command), commandStart(commandStart), commandEnd(commandEnd),
-          args(args) {}
-    ~CommandAST();
+    CommandAST(const std::string &command, int commandStart, int commandEnd)
+        : command(command), commandStart(commandStart), commandEnd(commandEnd) {}
 
     const std::string &getCommand() const { return command; }
     int getCommandStart() const { return commandStart; }
     int getCommandEnd() const { return commandEnd; }
-    const std::vector<ExprAST*> &getArgs() const { return args; }
+    const std::vector<std::unique_ptr<ExprAST>> &getArgs() const { return args; }
+    std::vector<std::unique_ptr<ExprAST>> &getArgs() { return args; }
 
-    std::vector<ExprAST*>::iterator begin() { return args.begin(); }
-    std::vector<ExprAST*>::iterator end() { return args.end(); }
+    std::vector<std::unique_ptr<ExprAST>>::iterator begin() { return args.begin(); }
+    std::vector<std::unique_ptr<ExprAST>>::iterator end() { return args.end(); }
 };
 
 }

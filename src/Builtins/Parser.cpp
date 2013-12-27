@@ -186,8 +186,10 @@ ExprAST *Parser::parseParenExpr()
     if (!expr)
         return nullptr;
 
-    if (currentType() != TokenType::CLOSE_PAREN)
+    if (currentType() != TokenType::CLOSE_PAREN) {
+        delete expr;
         return error(openParen, "unmatched parentheses");
+    }
 
     consumeToken();
     return expr;
@@ -255,23 +257,25 @@ CommandAST *Parser::parseCommand()
     int commandEnd = currentEnd();
     consumeToken();
 
-    std::vector<ExprAST*> args;
+    CommandAST *commandAST = new CommandAST(command, commandStart, commandEnd);
+
+    std::vector<std::unique_ptr<ExprAST>> &args = commandAST->getArgs();
+    bool hadError = false;
     while (currentType() != TokenType::EOFT) {
         ExprAST *arg = parseUnaryOpExpr();
         if (arg)
-            args.push_back(arg);
-        else
+            args.emplace_back(arg);
+        else {
             consumeToken(); // Eat the token that caused the error
+            hadError = true;
+        }
     }
 
-    return new CommandAST(command, commandStart, commandEnd, args);
-}
-
-CommandAST::~CommandAST()
-{
-    std::vector<ExprAST*>::iterator it;
-    for (it = args.begin(); it != args.end(); ++it)
-        delete *it;
+    if (hadError) {
+        delete commandAST;
+        return NULL;
+    } else
+        return commandAST;
 }
 
 /* See above. */
