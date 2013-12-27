@@ -47,7 +47,7 @@ BUILTIN_FUNC(register)
         regPrinter = regPrinters[""];
         assert(regPrinter);
     } else if (args.size() == 1) {
-        Builtins::ValueAST *value = args[0];
+        Builtins::ValueAST *value = args[0].get();
         if (value->getType() != Builtins::ValueType::IDENTIFIER) {
             env.errorContext.printMessage("expected register category",
                                           value->getStart());

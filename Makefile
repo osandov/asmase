@@ -33,17 +33,17 @@ $(BUILD)/%.o: src/%.c
 	$(CC) $(ALL_CFLAGS) -o $@ -c $<
 
 # C++ files
-$(BUILD)/%.o: src/%.cpp $(BUILD)/include/Builtins/ValueAST.h
+$(BUILD)/%.o: src/%.cpp $(BUILD)/include/Builtins/ValueAST.inc
 	$(dir_guard)
 	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
 
 # Generated C++ compilation
-$(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp $(BUILD)/include/Builtins/ValueAST.h
+$(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp $(BUILD)/include/Builtins/ValueAST.inc
 	$(dir_guard)
 	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
 
 # AWK-generated AST header
-$(BUILD)/include/Builtins/ValueAST.h: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc src/Builtins/ops.table
+$(BUILD)/include/Builtins/ValueAST.inc: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc src/Builtins/ops.table
 	$(dir_guard)
 	awk -f $< src/Builtins/ops.table src/Builtins/ValueAST.inc > $@
 

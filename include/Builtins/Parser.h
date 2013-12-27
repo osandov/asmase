@@ -25,7 +25,7 @@ class Parser {
     /** Helper method to get the current token from the scanner. */
     const Token *currentToken() { return scanner.getCurrentToken(); }
 
-    /** Helper method to get the consume a token from the scanner. */
+    /** Helper method to consume a token from the scanner. */
     void consumeToken() { scanner.getNextToken(); };
 
     /** Helper method to get the C string for the current token. */
@@ -80,7 +80,9 @@ class Parser {
      */
     ExprAST *parseUnaryOpExpr();
 
-    /** binaryop_rhs ::= (binaryop unaryop_expr)* */
+    /**
+     * binaryop_rhs ::= (binaryop unaryop_expr)*
+     */
     ExprAST *parseBinaryOpRHS(int exprPrecedence, ExprAST *lhs);
 
 public:

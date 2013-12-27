@@ -3,7 +3,7 @@
 
 #include "Builtins/Token.h"
 
-typedef void* yyscan_t;
+typedef void* yyscan_t; // XXX: can we assume this?
 
 namespace Builtins {
 
@@ -19,7 +19,7 @@ class Scanner {
     int currentColumn;
 
 public:
-    /** Create a new scanner (lexer) over line. */
+    /** Create a new scanner (lexer) over a line. */
     Scanner(const char *line);
     ~Scanner();
 
@@ -29,12 +29,15 @@ public:
     /** Lex another token and return it. */
     const Token *getNextToken();
 
-    /** Set the current token. This is only for use by yylex(). */
+    /**
+     * Set the current token.
+     * @note This is only for use by yylex().
+     */
     void setToken(TokenType type);
 
     /**
-     * Advance the current column without doing anything else. This is only
-     * for use by yylex().
+     * Advance the current column without doing anything else.
+     * @note This is only for use by yylex().
      */
     void skipWhitespace();
 };

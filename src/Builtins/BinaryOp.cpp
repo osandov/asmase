@@ -31,15 +31,15 @@ static std::map<BinaryOpcode, BinaryOpFunction> binaryFunctionMap = {
 
 ValueAST *BinaryOp::eval(Environment &env) const
 {
-    ValueAST *left = lhs->eval(env);
-    ValueAST *right = rhs->eval(env);
+    std::unique_ptr<ValueAST> left(lhs->eval(env));
+    std::unique_ptr<ValueAST> right(rhs->eval(env));
     if (!left || !right)
         return nullptr;
 
     BinaryOpFunction func = findWithDefault(binaryFunctionMap, op, nullptr);
     assert(func);
 
-    ValueAST *result = (left->*func)(right, env);
+    ValueAST *result = (*left.*func)(right.get(), env);
 
     if (result == (ValueAST *) -1) {
         env.errorContext.printMessage("invalid operands to binary expression",
@@ -48,8 +48,6 @@ ValueAST *BinaryOp::eval(Environment &env) const
         result = nullptr;
     }
 
-    delete left;
-    delete right;
     return result;
 }
 

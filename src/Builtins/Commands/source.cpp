@@ -16,7 +16,7 @@ BUILTIN_FUNC(source)
         return 1;
     }
 
-    auto filename = static_cast<const Builtins::StringExpr *>(args[0]);
+    auto filename = static_cast<const Builtins::StringExpr *>(args[0].get());
 
     if (redirect_input(filename->getStr().c_str()))
         return 1;

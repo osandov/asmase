@@ -1,6 +1,7 @@
 #ifndef ASMASE_BUILTINS_COMMANDS_H
 #define ASMASE_BUILTINS_COMMANDS_H
 
+#include <memory>
 #include <vector>
 
 namespace Builtins {
@@ -10,10 +11,13 @@ class ValueAST;
 
 }
 
-typedef int (*BuiltinFunc)(const std::vector<Builtins::ValueAST*> &, Builtins::Environment &);
+/** Built-in command function pointer type. */
+typedef int (*BuiltinFunc)(const std::vector<std::unique_ptr<Builtins::ValueAST>> &, Builtins::Environment &);
 
+/** Declare a built-in command function. */
 #define BUILTIN_FUNC(func) int builtin_##func(\
-        const std::vector<Builtins::ValueAST*> &args, Builtins::Environment &env)
+        const std::vector<std::unique_ptr<Builtins::ValueAST>> &args, \
+        Builtins::Environment &env)
 
 BUILTIN_FUNC(source);
 BUILTIN_FUNC(memory);

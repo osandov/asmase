@@ -1,5 +1,5 @@
-#ifndef ASMASE_ERROR_CONTEXT_H
-#define ASMASE_ERROR_CONTEXT_H
+#ifndef ASMASE_BUILTINS_ERROR_CONTEXT_H
+#define ASMASE_BUILTINS_ERROR_CONTEXT_H
 
 #include <llvm/Support/SourceMgr.h>
 
@@ -14,7 +14,10 @@ class ErrorContext {
      */
     llvm::SourceMgr dummySourceMgr;
 
+    /** The name of the file that we're handling. */
     const char *filename;
+
+    /** The line number that we're handling. */
     int lineno;
 
     /** The line that we're handling. */
@@ -33,17 +36,23 @@ public:
     ErrorContext(const char *filename, int lineno, const char *line, int offset = 0)
         : filename(filename), lineno(lineno), line(line), offset(offset) {}
 
+    /** Print an error message. */
     void printMessage(const char *msg);
 
     /** Print an error message with a caret at the given column. */
     void printMessage(const char *msg, int column);
 
+    /** Print an error message with a caret and a single range. */
     void printMessage(const char *msg, int column, int start, int end);
 
+    /** Print an error message with a caret and two ranges. */
     void printMessage(const char *msg, int column,
                       int start1, int end1, int start2, int end2);
+
+    // It's probably not worth generalizing the printMessage function since
+    // this handles 99% of cases we might want for the built-in system.
 };
 
 }
 
-#endif /* ASMASE_ERROR_CONTEXT_H */
+#endif /* ASMASE_BUILTINS_ERROR_CONTEXT_H */

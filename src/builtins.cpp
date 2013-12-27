@@ -17,7 +17,8 @@ struct BuiltinCommand {
 
 static BUILTIN_FUNC(print)
 {
-    for (const Builtins::ValueAST *arg : args) {
+    for (auto &argPtr : args) {
+        Builtins::ValueAST *arg = argPtr.get();
         Builtins::ValueType type = arg->getType();
         if (type == Builtins::ValueType::IDENTIFIER) {
             auto identifier = static_cast<const Builtins::IdentifierExpr *>(arg);
@@ -111,7 +112,8 @@ static BUILTIN_FUNC(help)
             wantedCommands.emplace_back(commandName, helpString);
         }
     } else {
-        for (const Builtins::ValueAST *arg : args) {
+        for (auto &argPtr : args) {
+            Builtins::ValueAST *arg = argPtr.get();
             if (arg->getType() != Builtins::ValueType::IDENTIFIER) {
                 env.errorContext.printMessage("expected command identifier",
                                               arg->getStart());
@@ -135,7 +137,7 @@ static BUILTIN_FUNC(help)
         }
     }
 
-    for (auto command : wantedCommands) {
+    for (auto &command : wantedCommands) {
         const char *commandName = command.first;
         const char *helpString = command.second;
         printf("%-*s -- %s\n", (int) maxCommandLength, commandName, helpString);
@@ -178,25 +180,23 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     // Lex and parse the input
     Builtins::Scanner scanner(str);
     Builtins::Parser parser(scanner, errorContext);
-    Builtins::CommandAST *command = parser.parseCommand();
+    std::unique_ptr<Builtins::CommandAST> command(parser.parseCommand());
     if (!command)
         return 1;
 
     // Evaluate the input by looping over the command arguments and evaulating
     // each one
-    std::vector<Builtins::ValueAST*> evaledArgs;
+    std::vector<std::unique_ptr<Builtins::ValueAST>> evaledArgs;
     std::vector<Builtins::ExprAST*>::iterator it;
     bool failedEval = false;
     for (Builtins::ExprAST *expr : *command) {
         Builtins::ValueAST *value = expr->eval(env);
         failedEval |= value == nullptr;
-        evaledArgs.push_back(value);
+        evaledArgs.emplace_back(value);
     }
 
-    if (failedEval) {
-        delete command;
+    if (failedEval)
         return 1;
-    }
 
     // Look up the command and execute it
     const std::string &abbrev = command->getCommand();
@@ -206,7 +206,6 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     if (!error)
         error = builtinCommand.func(evaledArgs, env);
 
-    delete command;
     return error;
 }
 

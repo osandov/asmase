@@ -15,14 +15,14 @@ static std::map<UnaryOpcode, UnaryOpFunction> unaryFunctionMap = {
 
 ValueAST *UnaryOp::eval(Environment &env) const
 {
-    ValueAST *value = operand->eval(env);
+    std::unique_ptr<ValueAST> value(operand->eval(env));
     if (!value)
         return nullptr;
 
     UnaryOpFunction func = findWithDefault(unaryFunctionMap, op, nullptr);
     assert(func);
 
-    ValueAST *result = (value->*func)(env);
+    ValueAST *result = (*value.*func)(env);
 
     if (result == (ValueAST *) -1) {
         env.errorContext.printMessage("invalid argument type to unary expression",
@@ -30,7 +30,6 @@ ValueAST *UnaryOp::eval(Environment &env) const
         result = nullptr;
     }
 
-    delete value;
     return result;
 }
 

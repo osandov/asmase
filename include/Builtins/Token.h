@@ -2,10 +2,10 @@
 #define ASMASE_BUILTINS_TOKEN_H
 
 #include <string>
-#include <vector>
 
 namespace Builtins {
 
+/** Types of tokens recognize by the lexer. */
 enum class TokenType {
     UNKNOWN = -1, EOFT,
     IDENTIFIER, INTEGER, FLOAT, STRING, VARIABLE,
