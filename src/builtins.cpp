@@ -10,26 +10,26 @@
 #include "builtins.h"
 #include "input.h"
 
-static BUILTIN_FUNC(quit)
-{
-    return -1;
-}
+struct BuiltinCommand {
+    BuiltinFunc func;
+    std::string helpString;
+};
 
-static BUILTIN_FUNC(test)
+static BUILTIN_FUNC(print)
 {
-    for (const Builtins::ValueAST *value : args) {
-        Builtins::ValueType type = value->getType();
+    for (const Builtins::ValueAST *arg : args) {
+        Builtins::ValueType type = arg->getType();
         if (type == Builtins::ValueType::IDENTIFIER) {
-            auto identifier = static_cast<const Builtins::IdentifierExpr *>(value);
+            auto identifier = static_cast<const Builtins::IdentifierExpr *>(arg);
             printf("%s\n", identifier->getName().c_str());
         } else if (type == Builtins::ValueType::INTEGER) {
-            auto integer = static_cast<const Builtins::IntegerExpr *>(value);
+            auto integer = static_cast<const Builtins::IntegerExpr *>(arg);
             printf("0x%016llx\n", integer->getValue());
         } else if (type == Builtins::ValueType::FLOAT) {
-            auto floating = static_cast<const Builtins::FloatExpr *>(value);
+            auto floating = static_cast<const Builtins::FloatExpr *>(arg);
             printf("%f\n", floating->getValue());
         } else if (type == Builtins::ValueType::STRING) {
-            auto str = static_cast<const Builtins::StringExpr *>(value);
+            auto str = static_cast<const Builtins::StringExpr *>(arg);
             printf("\"%s\"\n", str->getStr().c_str());
         } else
             assert(false);
@@ -38,15 +38,111 @@ static BUILTIN_FUNC(test)
     return 0;
 }
 
+static BUILTIN_FUNC(quit)
+{
+    return -1;
+}
+
+static BUILTIN_FUNC(help);
+
 static std::map<std::string, BuiltinCommand> commands = {
-    {"quit",     {builtin_quit}},
-    {"test",     {builtin_test}},
-    {"source",   {builtin_source}},
-    {"memory",   {builtin_memory}},
-    {"register", {builtin_register}},
-    {"warranty", {builtin_warranty}},
-    {"copying",  {builtin_copying}},
+    {"print",    {builtin_print, "print evaluated arguments"}},
+
+    {"quit",     {builtin_quit, "quit the program"}},
+    {"help",     {builtin_help, "print this help information"}},
+
+    {"source",   {builtin_source, "redirect input to a given file"}},
+
+    {"memory",   {builtin_memory,   "dump memory contents"}},
+    {"register", {builtin_register, "dump register contents"}},
+
+    {"warranty", {builtin_warranty, "show warranty information"}},
+    {"copying",  {builtin_copying,  "show copying information"}},
 };
+
+static int lookupCommand(const std::string &abbrev,
+                         BuiltinCommand &commandOut,
+                         int commandStart,
+                         Builtins::ErrorContext &errorContext)
+{
+    std::vector<std::string> potentialMatches;
+    for (const std::pair<std::string, BuiltinCommand> &command : commands) {
+        if (command.first.compare(0, abbrev.size(), abbrev) == 0) {
+            if (abbrev.size() == command.first.size()) {
+                // Allow full matches to bypass the ambiguity check
+                potentialMatches.clear();
+                potentialMatches.push_back(command.first);
+                break;
+            } else
+                potentialMatches.push_back(command.first);
+        }
+    }
+
+    if (potentialMatches.size() == 0) {
+        errorContext.printMessage("unknown command", commandStart);
+        return 1;
+    } else if (potentialMatches.size() > 1) {
+        std::stringstream ss;
+        ss << "ambigious command; did you mean ";
+        for (size_t i = 0; i < potentialMatches.size() - 1; ++i)
+            ss << '\'' << potentialMatches[i] << "', ";
+        ss << "or '" << potentialMatches.back() << "'?";
+        errorContext.printMessage(ss.str().c_str(), commandStart);
+        return 1;
+    } else {
+        commandOut = commands[potentialMatches.front()];
+        return 0;
+    }
+}
+
+static BUILTIN_FUNC(help)
+{
+    std::vector<std::pair<const char *, const char *>> wantedCommands;
+
+    int maxCommandLength = 0;
+    if (args.size() == 0) {
+        for (auto command : commands) {
+            const char *commandName = command.first.c_str();
+            const char *helpString = command.second.helpString.c_str();
+
+            int commandLength = command.first.size();
+            maxCommandLength = std::max(commandLength, maxCommandLength);
+
+            wantedCommands.emplace_back(commandName, helpString);
+        }
+    } else {
+        for (const Builtins::ValueAST *arg : args) {
+            if (arg->getType() != Builtins::ValueType::IDENTIFIER) {
+                env.errorContext.printMessage("expected command identifier",
+                                              arg->getStart());
+                return 1;
+            }
+
+            auto abbrevExpr =
+                static_cast<const Builtins::IdentifierExpr *>(arg);
+            const std::string &abbrev = abbrevExpr->getName();
+
+            BuiltinCommand builtinCommand;
+            int error = lookupCommand(abbrev, builtinCommand, arg->getStart(),
+                                      env.errorContext);
+            if (error)
+                return 1;
+
+            int abbrevLength = abbrev.size();
+            maxCommandLength = std::max(abbrevLength, maxCommandLength);
+            wantedCommands.emplace_back(abbrev.c_str(),
+                                        builtinCommand.helpString.c_str());
+        }
+    }
+
+    for (auto command : wantedCommands) {
+        const char *commandName = command.first;
+        const char *helpString = command.second;
+        printf("%-*s -- %s\n", (int) maxCommandLength, commandName, helpString);
+    }
+
+    return 0;
+}
 
 extern "C" {
 
@@ -88,13 +184,13 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
 
     // Evaluate the input by looping over the command arguments and evaulating
     // each one
-    std::vector<Builtins::ValueAST*> values;
+    std::vector<Builtins::ValueAST*> evaledArgs;
     std::vector<Builtins::ExprAST*>::iterator it;
     bool failedEval = false;
     for (Builtins::ExprAST *expr : *command) {
         Builtins::ValueAST *value = expr->eval(env);
         failedEval |= value == nullptr;
-        values.push_back(value);
+        evaledArgs.push_back(value);
     }
 
     if (failedEval) {
@@ -102,38 +198,13 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
         return 1;
     }
 
+    // Look up the command and execute it
     const std::string &abbrev = command->getCommand();
-
-    // Find the given command. 
-    std::vector<std::string> potentialMatches;
-    for (const std::pair<std::string, BuiltinCommand> &command : commands) {
-        if (command.first.compare(0, abbrev.size(), abbrev) == 0) {
-            if (abbrev.size() == command.first.size()) {
-                // Allow full matches to bypass the ambiguity check
-                potentialMatches.clear();
-                potentialMatches.push_back(command.first);
-                break;
-            } else
-                potentialMatches.push_back(command.first);
-        }
-    }
-
-    int error = 0;
-    if (potentialMatches.size() == 0) {
-        errorContext.printMessage("unknown command", command->getCommandStart());
-        error = 1;
-    } else if (potentialMatches.size() > 1) {
-        std::stringstream ss;
-        ss << "ambigious command; did you mean ";
-        for (size_t i = 0; i < potentialMatches.size() - 1; ++i)
-            ss << '\'' << potentialMatches[i] << "', ";
-        ss << "or '" << potentialMatches.back() << "'?";
-        errorContext.printMessage(ss.str().c_str(), command->getCommandStart());
-        error = 1;
-    } else {
-        BuiltinFunc func = commands[potentialMatches.front()].func;
-        error = func(values, env);
-    }
+    BuiltinCommand builtinCommand;
+    int error = lookupCommand(abbrev, builtinCommand,
+                              command->getCommandStart(), errorContext);
+    if (!error)
+        error = builtinCommand.func(evaledArgs, env);
 
     delete command;
     return error;
