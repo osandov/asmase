@@ -135,8 +135,12 @@ ExprAST *Parser::parseIdentifierExpr()
 /* See Builtins/Parser.h. */
 ExprAST *Parser::parseIntegerExpr()
 {
-    ExprAST *result =
-        new IntegerExpr(currentStart(), currentEnd(), atoll(currentCStr()));
+    errno = 0;
+    long long value = strtoull(currentCStr(), nullptr, 0);
+    if (errno == ERANGE)
+        return error(*currentToken(), "integer constant out of range");
+
+    ExprAST *result = new IntegerExpr(currentStart(), currentEnd(), value);
     consumeToken();
     return result;
 }
@@ -144,8 +148,12 @@ ExprAST *Parser::parseIntegerExpr()
 /* See Builtins/Parser.h. */
 ExprAST *Parser::parseFloatExpr()
 {
-    ExprAST *result =
-        new FloatExpr(currentStart(), currentEnd(), atof(currentCStr()));
+    errno = 0;
+    double value = strtod(currentCStr(), nullptr);
+    if (errno == ERANGE)
+        return error(*currentToken(), "floating-point constant out of range");
+
+    ExprAST *result = new FloatExpr(currentStart(), currentEnd(), value);
     consumeToken();
     return result;
 }
