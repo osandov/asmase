@@ -30,6 +30,22 @@ public:
     void setEnd(int end) { columnEnd = end; }
 };
 
+/**
+ * A parenthetical expression (i.e., an expression surrounded by parentheses).
+ * This class is only needed for keeping track of bounds in the input.
+ */
+class ParenExpr : public ExprAST {
+    /** The expression in parentheses. */
+    std::unique_ptr<ExprAST> expr;
+
+public:
+    ParenExpr(int columnStart, int columnEnd, ExprAST *expr)
+        : ExprAST(columnStart, columnEnd), expr(expr) {}
+
+    /** Evaluate the expression in parentheses and adjust its bounds. */
+    virtual ValueAST *eval(Environment &env) const;
+};
+
 /** A variable to be evaluated later. */
 class VariableExpr : public ExprAST {
     /** The name of the variable. */
@@ -40,7 +56,7 @@ public:
         : ExprAST(columnStart, columnEnd), name(name) {}
 
     /**
-     * Evaulate the value of the variable by looking it up in the environment.
+     * Evaluate the value of the variable by looking it up in the environment.
      */
     virtual ValueAST *eval(Environment &env) const;
 };

@@ -197,6 +197,7 @@ ExprAST *Parser::parseVariableExpr()
 ExprAST *Parser::parseParenExpr()
 {
     Token openParen = *currentToken();
+    int parenStart = currentStart();
     consumeToken();
 
     std::unique_ptr<ExprAST> expr(parseExpression());
@@ -206,8 +207,9 @@ ExprAST *Parser::parseParenExpr()
     if (currentType() != TokenType::CLOSE_PAREN)
         return error(openParen, "unmatched parentheses");
 
+    int parenEnd = currentEnd();
     consumeToken();
-    return expr.release();
+    return new ParenExpr(parenStart, parenEnd, expr.release());
 }
 
 /* See Builtins/Parser.h. */
@@ -240,7 +242,10 @@ ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *_lhs)
         int opStart = currentStart(), opEnd = currentEnd();
         int tokenPrecedence = binaryOpPrecedence(op);
 
-        // Next operator's precedence is too low; return the parsed expression
+        // Next operator's precedence is lower than the current precedence;
+        // therefore, we've parsed an entire right-hand side, so return it.
+        // Note that because tokens that aren't binary operators have a
+        // precedence of -1, this also handles that
         if (tokenPrecedence < exprPrecedence)
             return lhs.release();
 

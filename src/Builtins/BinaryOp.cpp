@@ -56,6 +56,9 @@ ValueAST *BinaryOp::eval(Environment &env) const
         result = nullptr;
     }
 
+    // No need to adjust bounds; the implementation function returns an
+    // expression with the LHS's start and RHS's end.
+
     return result;
 }
 

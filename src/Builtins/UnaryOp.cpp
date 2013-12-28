@@ -38,6 +38,11 @@ ValueAST *UnaryOp::eval(Environment &env) const
         result = nullptr;
     }
 
+    // Adjust the bounds of the evaluated expression to reflect the applied
+    // operator as well
+    if (result)
+        result->setStart(getStart());
+
     return result;
 }
 
