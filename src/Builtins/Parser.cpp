@@ -199,17 +199,15 @@ ExprAST *Parser::parseParenExpr()
     Token openParen = *currentToken();
     consumeToken();
 
-    ExprAST *expr = parseExpression();
+    std::unique_ptr<ExprAST> expr(parseExpression());
     if (!expr)
         return nullptr;
 
-    if (currentType() != TokenType::CLOSE_PAREN) {
-        delete expr;
+    if (currentType() != TokenType::CLOSE_PAREN)
         return error(openParen, "unmatched parentheses");
-    }
 
     consumeToken();
-    return expr;
+    return expr.release();
 }
 
 /* See Builtins/Parser.h. */
@@ -229,40 +227,49 @@ ExprAST *Parser::parseUnaryOpExpr()
     return new UnaryOp(opStart, opEnd, op, operand);
 }
 
-/* See Builtins/Parser.h. */
-ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *lhs)
+/*
+ * See Builtins/Parser.h for definition.
+ * This implements an operator-precedence parser for binary operators. _lhs is
+ * deleted if the parse fails.
+ */
+ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *_lhs)
 {
+    std::unique_ptr<ExprAST> lhs(_lhs);
     for (;;) {
         BinaryOpcode op = tokenTypeToBinaryOpcode(currentType());
         int opStart = currentStart(), opEnd = currentEnd();
         int tokenPrecedence = binaryOpPrecedence(op);
 
+        // Next operator's precedence is too low; return the parsed expression
         if (tokenPrecedence < exprPrecedence)
-            return lhs;
+            return lhs.release();
 
         consumeToken();
 
-        ExprAST *rhs = parseUnaryOpExpr();
+        std::unique_ptr<ExprAST> rhs(parseUnaryOpExpr());
         if (!rhs)
             return nullptr;
 
         BinaryOpcode nextOp = tokenTypeToBinaryOpcode(currentType());
         int nextPrecedence = binaryOpPrecedence(nextOp);
 
+        // Next operator has a higher precedence, so the right-hand expression
+        // should bind to it instead
         if (tokenPrecedence < nextPrecedence) {
-            rhs = parseBinaryOpRHS(tokenPrecedence + 1, rhs);
+            rhs.reset(parseBinaryOpRHS(tokenPrecedence + 1, rhs.release()));
             if (!rhs)
                 return nullptr;
         }
 
-        lhs = new BinaryOp(opStart, opEnd, op, lhs, rhs);
+        // Combine the left and right expressions
+        lhs.reset(new BinaryOp(opStart, opEnd, op, lhs.release(), rhs.release()));
     }
 }
 
 /* See Builtins/Parser.h. */
 CommandAST *Parser::parseCommand()
 {
-    consumeToken(); // Prime the parser
+    consumeToken(); // Prime the scanner
 
     if (currentType() != TokenType::IDENTIFIER) {
         errorContext.printMessage("expected command", currentStart());
@@ -274,7 +281,8 @@ CommandAST *Parser::parseCommand()
     int commandEnd = currentEnd();
     consumeToken();
 
-    CommandAST *commandAST = new CommandAST(command, commandStart, commandEnd);
+    std::unique_ptr<CommandAST> commandAST(
+        new CommandAST(command, commandStart, commandEnd));
 
     std::vector<std::unique_ptr<ExprAST>> &args = commandAST->getArgs();
     bool hadError = false;
@@ -288,11 +296,7 @@ CommandAST *Parser::parseCommand()
         }
     }
 
-    if (hadError) {
-        delete commandAST;
-        return NULL;
-    } else
-        return commandAST;
+    return (hadError) ? nullptr : commandAST.release();
 }
 
 }
