@@ -5,7 +5,13 @@
 
 namespace Builtins {
 
+/** ValueAST member function type for applying a unaryinary operator. */
 typedef ValueAST* (ValueAST::*UnaryOpFunction)(Environment &) const;
+
+/**
+ * Lookup table from unary opcodes to the corresponding ValueAST member
+ * function.
+ */
 static std::map<UnaryOpcode, UnaryOpFunction> unaryFunctionMap = {
     {UnaryOpcode::PLUS,         &ValueAST::unaryPlus},
     {UnaryOpcode::MINUS,        &ValueAST::unaryMinus},
@@ -13,6 +19,8 @@ static std::map<UnaryOpcode, UnaryOpFunction> unaryFunctionMap = {
     {UnaryOpcode::BIT_NEGATE,   &ValueAST::bitNegate},
 };
 
+// To evaluate a unary operator is to evaluate the operand and apply the
+// operator to it.
 ValueAST *UnaryOp::eval(Environment &env) const
 {
     std::unique_ptr<ValueAST> value(operand->eval(env));

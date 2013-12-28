@@ -8,6 +8,7 @@ using namespace llvm;
 
 namespace Builtins {
 
+/** Lookup table from token types to the corresponding unary opcode. */
 static std::map<TokenType, UnaryOpcode> unaryTokenMap = {
     {TokenType::PLUS,        UnaryOpcode::PLUS},
     {TokenType::MINUS,       UnaryOpcode::MINUS},
@@ -15,6 +16,7 @@ static std::map<TokenType, UnaryOpcode> unaryTokenMap = {
     {TokenType::TILDE,       UnaryOpcode::BIT_NEGATE},
 };
 
+/** Lookup table from token types to the corresponding binary opcode. */
 static std::map<TokenType, BinaryOpcode> binaryTokenMap = {
     {TokenType::PLUS,              BinaryOpcode::ADD},
     {TokenType::MINUS,             BinaryOpcode::SUBTRACT},
@@ -36,6 +38,10 @@ static std::map<TokenType, BinaryOpcode> binaryTokenMap = {
     {TokenType::DOUBLE_GREATER,    BinaryOpcode::RIGHT_SHIFT},
 };
 
+/**
+ * Lookup table from binary opcodes to their corresponding precedences (higher
+ * binds tighter).
+ */
 static std::map<BinaryOpcode, int> binaryPrecedences = {
     {BinaryOpcode::MULTIPLY,               700},
     {BinaryOpcode::DIVIDE,                 700},
@@ -62,6 +68,7 @@ static std::map<BinaryOpcode, int> binaryPrecedences = {
     {BinaryOpcode::LOGIC_AND,              150},
     {BinaryOpcode::LOGIC_OR,               100},
 
+    // Tokens which aren't opcodes get this sentinel precedence.
     {BinaryOpcode::NONE,                   -1},
 };
 
@@ -69,19 +76,29 @@ static std::map<BinaryOpcode, int> binaryPrecedences = {
  * Convert a token type to the corresponding unary operator, or
  * UnaryOpcode::NONE if it isn't a unary operator.
  */
-static inline UnaryOpcode tokenTypeToUnaryOpcode(TokenType type);
+static inline UnaryOpcode tokenTypeToUnaryOpcode(TokenType type)
+{
+    return findWithDefault(unaryTokenMap, type, UnaryOpcode::NONE);
+}
 
 /**
  * Convert a token type to the corresponding Binary operator, or
  * BinaryOpcode::NONE if it isn't a binary operator.
  */
-static inline BinaryOpcode tokenTypeToBinaryOpcode(TokenType type);
+static inline BinaryOpcode tokenTypeToBinaryOpcode(TokenType type)
+{
+    return findWithDefault(binaryTokenMap, type, BinaryOpcode::NONE);
+}
 
 /**
  * Return the precedence for a given binary operator (higher binds tighter).
  */
-static inline int binaryOpPrecedence(BinaryOpcode op);
+static inline int binaryOpPrecedence(BinaryOpcode op)
+{
+    return binaryPrecedences[op];
+}
 
+/* See Builtins/Parser.h. */
 ExprAST *Parser::error(const Token &erringToken, const char *msg)
 {
     errorContext.printMessage(msg, erringToken.columnStart);
@@ -276,24 +293,6 @@ CommandAST *Parser::parseCommand()
         return NULL;
     } else
         return commandAST;
-}
-
-/* See above. */
-static inline UnaryOpcode tokenTypeToUnaryOpcode(TokenType type)
-{
-    return findWithDefault(unaryTokenMap, type, UnaryOpcode::NONE);
-}
-
-/* See above. */
-static inline BinaryOpcode tokenTypeToBinaryOpcode(TokenType type)
-{
-    return findWithDefault(binaryTokenMap, type, BinaryOpcode::NONE);
-}
-
-/* See above. */
-static inline int binaryOpPrecedence(BinaryOpcode op)
-{
-    return binaryPrecedences[op];
 }
 
 }

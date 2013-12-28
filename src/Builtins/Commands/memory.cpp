@@ -7,10 +7,7 @@
 
 #include "memory.h"
 
-using Builtins::findWithDefault;
-
-typedef int (*register_printer)(pid_t);
-
+/** Lookup table from format specifier to format constant. */
 static std::unordered_map<std::string, enum mem_format> formatMap = {
     {"d", FMT_DECIMAL},
     {"u", FMT_UNSIGNED_DECIMAL},
@@ -23,6 +20,7 @@ static std::unordered_map<std::string, enum mem_format> formatMap = {
     {"s", FMT_STRING},
 };
 
+/** Lookup table from size specifier to represented size. */
 static std::unordered_map<std::string, size_t> sizeMap = {
     {"b", SZ_BYTE},
     {"h", SZ_HALFWORD},

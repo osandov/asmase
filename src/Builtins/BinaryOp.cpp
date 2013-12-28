@@ -5,7 +5,13 @@
 
 namespace Builtins {
 
+/** ValueAST member function type for applying a binary operator. */
 typedef ValueAST* (ValueAST::*BinaryOpFunction)(const ValueAST *, Environment &) const;
+
+/**
+ * Lookup table from binary opcodes to the corresponding ValueAST member
+ * function.
+ */
 static std::map<BinaryOpcode, BinaryOpFunction> binaryFunctionMap = {
     {BinaryOpcode::ADD,      &ValueAST::add},
     {BinaryOpcode::SUBTRACT, &ValueAST::subtract},
@@ -29,6 +35,8 @@ static std::map<BinaryOpcode, BinaryOpFunction> binaryFunctionMap = {
     {BinaryOpcode::RIGHT_SHIFT, &ValueAST::rightShift},
 };
 
+// To evaluate a binary operation is to evaluate the two operands and apply the
+// operator to them.
 ValueAST *BinaryOp::eval(Environment &env) const
 {
     std::unique_ptr<ValueAST> left(lhs->eval(env));

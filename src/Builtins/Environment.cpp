@@ -13,6 +13,7 @@ Environment::Environment(struct assembler *asmb, struct tracee_info *tracee,
     : asmb(asmb), pid(tracee->pid), shared_page(tracee->shared_page),
         errorContext(errorContext) {}
 
+// Currently, the only variables are registers.
 ValueAST *Environment::lookupVariable(const std::string &var,
                                       std::string &errorMsg)
 {

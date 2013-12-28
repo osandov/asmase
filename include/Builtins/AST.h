@@ -128,6 +128,7 @@ public:
 
 }
 
+// Pull in the definitions for value expressions
 #include "Builtins/ValueAST.inc"
 
 #endif /* ASMASE_BUILTINS_AST_H */

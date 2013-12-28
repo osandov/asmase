@@ -2,6 +2,7 @@
 
 namespace Builtins {
 
+// To evaluate a variable is to get its value from the environment.
 ValueAST *VariableExpr::eval(Environment &env) const
 {
     std::string errorMsg;

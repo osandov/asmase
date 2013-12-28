@@ -1,3 +1,5 @@
+// This file is not intended to be included except by AST.h.
+
 namespace Builtins {
 
 class IdentifierExpr;
@@ -5,6 +7,7 @@ class IntegerExpr;
 class FloatExpr;
 class StringExpr;
 
+/** Types of values. */
 enum class ValueType {
     IDENTIFIER,
     INTEGER,
@@ -12,7 +15,9 @@ enum class ValueType {
     STRING
 };
 
+/** Base class for all value expressions. */
 class ValueAST : public ExprAST {
+    /** The type of this value. */
     ValueType type;
 
 public:
@@ -21,12 +26,24 @@ public:
 
     ValueType getType() const { return type; }
 
+    // All value types return a copy of themselves from eval rather than just
+    // returning "this". This is so that it is safe to adjust the column
+    // bounds of the evaluated expression if necessary.
+
+    // Value types provide a getter to access the underlying value but no
+    // setter in order to prevent accidentally modifying existing expressions.
+
+    // ValueAST.awk fills in these lines with the declarations for unary and
+    // binary operators acting on each value type. Binary operators are applied
+    // with simulated double dispatch.
     OP_FUNCTIONS pure
 };
 
 /** Identifiers include command names and flags. */
 class IdentifierExpr : public ValueAST {
+    /** The name of this identifier. */
     std::string name;
+
 public:
     IdentifierExpr(int columnStart, int columnEnd, const std::string &name)
         : ValueAST(columnStart, columnEnd, ValueType::IDENTIFIER), name(name) {}
@@ -43,7 +60,12 @@ public:
 
 /** Integer with a 64-bit capacity. */
 class IntegerExpr : public ValueAST {
+    /**
+    * The stored integer. There is no concept of "signed" or "unsigned", we
+    * just let arithmetic overflow regardless (XXX: how portable is this?).
+    */
     long long value;
+
 public:
     IntegerExpr(int columnStart, int columnEnd, long long value)
         : ValueAST(columnStart, columnEnd, ValueType::INTEGER), value(value) {}
@@ -60,7 +82,9 @@ public:
 
 /** Floating-point number with double precision. */
 class FloatExpr : public ValueAST {
+    /** The floating-point number. */
     double value;
+
 public:
     FloatExpr(int columnStart, int columnEnd, double value)
         : ValueAST(columnStart, columnEnd, ValueType::FLOAT), value(value) {}
@@ -77,7 +101,9 @@ public:
 
 /** A string, used as an argument for certain commands. */
 class StringExpr : public ValueAST {
+    /** The stored string. */
     std::string str;
+
 public:
     StringExpr(int columnStart, int columnEnd, const std::string &str)
         : ValueAST(columnStart, columnEnd, ValueType::STRING), str(str) {}

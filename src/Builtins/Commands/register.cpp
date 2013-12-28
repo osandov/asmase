@@ -9,8 +9,10 @@
 
 using Builtins::findWithDefault;
 
+/** Register printer function type. */
 typedef int (*register_printer)(pid_t);
 
+/** Lookup table from register category to register printer. */
 static std::unordered_map<std::string, register_printer> regPrinters = {
     {"", &print_registers},
 
