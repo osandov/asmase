@@ -15,23 +15,23 @@ struct BuiltinCommand {
     std::string helpString;
 };
 
-static BUILTIN_FUNC(print)
+static BUILTIN_FUNC(test)
 {
     for (auto &argPtr : args) {
         Builtins::ValueAST *arg = argPtr.get();
         Builtins::ValueType type = arg->getType();
         if (type == Builtins::ValueType::IDENTIFIER) {
             auto identifier = static_cast<const Builtins::IdentifierExpr *>(arg);
-            printf("%s\n", identifier->getName().c_str());
+            printf("identifier: %s\n", identifier->getName().c_str());
         } else if (type == Builtins::ValueType::INTEGER) {
             auto integer = static_cast<const Builtins::IntegerExpr *>(arg);
-            printf("0x%016llx\n", integer->getValue());
+            printf("integer: %1$lld (0x%1$llx)\n", integer->getValue());
         } else if (type == Builtins::ValueType::FLOAT) {
             auto floating = static_cast<const Builtins::FloatExpr *>(arg);
-            printf("%f\n", floating->getValue());
+            printf("floating: %f\n", floating->getValue());
         } else if (type == Builtins::ValueType::STRING) {
             auto str = static_cast<const Builtins::StringExpr *>(arg);
-            printf("\"%s\"\n", str->getStr().c_str());
+            printf("string: \"%s\"\n", str->getStr().c_str());
         } else
             assert(false);
     }
@@ -47,7 +47,7 @@ static BUILTIN_FUNC(quit)
 static BUILTIN_FUNC(help);
 
 static std::map<std::string, BuiltinCommand> commands = {
-    {"print",    {builtin_print, "print evaluated arguments"}},
+    {"test",     {builtin_test, "print evaluated arguments as a test"}},
 
     {"quit",     {builtin_quit, "quit the program"}},
     {"help",     {builtin_help, "print this help information"}},
