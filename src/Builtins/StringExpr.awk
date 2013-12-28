@@ -1,20 +1,14 @@
-$1 == "type" {
-    types[$2] = $2
-}
-
-$1 == "unary" {
-    unary_ops[$2] = $4
-}
-
-$1 == "binary" {
-    binary_ops[$2] = $4
-}
+@include "Ops.awk"
 
 END {
     print "#include \"Builtins/AST.h\""
     print ""
     print "namespace Builtins {"
     print ""
+
+    # No operator makes sense with a string (although we might want to support
+    # concatenation at some point).
+
     for (op in unary_ops) {
         printf "ValueAST *StringExpr::%s(Environment &env) const\n", unary_ops[op]
         print "{\n    return (ValueAST *) -1;\n}\n"
@@ -26,5 +20,6 @@ END {
             print "{\n    return (ValueAST *) -1;\n}\n"
         }
     }
+
     print "}"
 }

@@ -20,6 +20,7 @@ ALL_CFLAGS := $(COMMON_FLAGS) -std=c99 `$(LLVM_CONFIG) --cflags` $(CFLAGS)
 ALL_CXXFLAGS := $(COMMON_FLAGS) -std=c++11 `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
 LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
 
+ops_table := src/Builtins/ops_table.txt
 dir_guard = @mkdir -p $(@D)
 
 # asmase linking
@@ -43,19 +44,19 @@ $(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp $(BUILD)/include/Builtins/ValueAS
 	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
 
 # AWK-generated AST header
-$(BUILD)/include/Builtins/ValueAST.inc: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc src/Builtins/ops.table
+$(BUILD)/include/Builtins/ValueAST.inc: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc $(ops_table)
 	$(dir_guard)
-	awk -f $< src/Builtins/ops.table src/Builtins/ValueAST.inc > $@
+	AWKPATH="$(<D)" gawk -f $< $(ops_table) src/Builtins/ValueAST.inc > $@
 
 # flex scanner
 $(BUILD)/Builtins/Scanner.cpp: src/Builtins/Scanner.l
 	$(dir_guard)
 	flex -o $@ $<
 
-# AWK-generated C++ generation
-$(BUILD)/%.cpp: src/%.awk src/Builtins/ops.table
+# AWK-generated C++
+$(BUILD)/%.cpp: src/%.awk $(ops_table)
 	$(dir_guard)
-	awk -f $< src/Builtins/ops.table > $@
+	AWKPATH="$(<D)" gawk -f $< $(ops_table) > $@
 
 .PHONY: clean
 clean:
