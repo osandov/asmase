@@ -160,6 +160,18 @@ int get_register_value(pid_t pid, const char *reg_name,
         val_out->integer = fpxregs.member; \
         return 0; \
     }
+#define ST_REGISTER(name, i) \
+    if (strcmp(reg_name, (name)) == 0) { \
+        val_out->type = REGISTER_FLOATING; \
+        val_out->floating = *((long double *) &fpxregs.st_space[16 * (i)]); \
+        return 0; \
+    }
+#define MMX_REGISTER(name, i) \
+    if (strcmp(reg_name, (name)) == 0) { \
+        val_out->type = REGISTER_INTEGER; \
+        val_out->integer = *((long long *) &fpxregs.st_space[16 * (i)]); \
+        return 0; \
+    }
 
     struct user_regs_struct regs;
     struct user_fpxregs_struct fpxregs;
@@ -168,6 +180,27 @@ int get_register_value(pid_t pid, const char *reg_name,
         return 1;
     if (get_user_fpxregs(pid, &fpxregs))
         return 1;
+
+    INTEGER_REGISTER("eflags", eflags);
+
+    /* Floating-point */
+    FPX_INTEGER_REGISTER("fcw", cwd); FPX_INTEGER_REGISTER("fsw", swd);
+    FPX_INTEGER_REGISTER("ftw", twd); FPX_INTEGER_REGISTER("fop", fop);
+    ST_REGISTER("st", 0);
+    ST_REGISTER("st(0)", 0); ST_REGISTER("st(1)", 1);
+    ST_REGISTER("st(2)", 2); ST_REGISTER("st(3)", 3);
+    ST_REGISTER("st(4)", 4); ST_REGISTER("st(5)", 5);
+    ST_REGISTER("st(6)", 6); ST_REGISTER("st(7)", 7);
+
+    /* MMX */
+    MMX_REGISTER("mm0", 0); MMX_REGISTER("mm1", 1);
+    MMX_REGISTER("mm2", 2); MMX_REGISTER("mm3", 3);
+    MMX_REGISTER("mm4", 4); MMX_REGISTER("mm5", 5);
+    MMX_REGISTER("mm6", 6); MMX_REGISTER("mm7", 7);
+
+    /* SSE */
+    FPX_INTEGER_REGISTER("mxcsr", mxcsr);
+    /* TODO: not sure what to do about 128-bit XMM registers. */
 
 #if defined(__i386__)
     /* General-purpose */
@@ -184,7 +217,7 @@ int get_register_value(pid_t pid, const char *reg_name,
 
     /* Floating-point status */
     FPX_INTEGER_REGISTER("fcs", fcs); FPX_INTEGER_REGISTER("fip", fip);
-    FPX_INTEGER_REGISTER("fos", fos); FPX_INTEGER_REGISTER("fdp", fdp);
+    FPX_INTEGER_REGISTER("fos", fos); FPX_INTEGER_REGISTER("fdp", foo);
 #elif defined(__x86_64__)
     /* General-purpose */
     INTEGER_REGISTER("rax", rax); INTEGER_REGISTER("rcx", rcx);
@@ -201,22 +234,16 @@ int get_register_value(pid_t pid, const char *reg_name,
     INTEGER_REGISTER("ds", ds); INTEGER_REGISTER("es", es);
     INTEGER_REGISTER("fs", fs); INTEGER_REGISTER("gs", gs);
     INTEGER_REGISTER("cs", cs); INTEGER_REGISTER("ss", ss);
-    INTEGER_REGISTER("fs.base", fs_base);
-    INTEGER_REGISTER("gs.base", gs_base);
+    INTEGER_REGISTER("fs_base", fs_base);
+    INTEGER_REGISTER("gs_base", gs_base);
 
     /* Floating-point status */
     FPX_INTEGER_REGISTER("fip", rip); FPX_INTEGER_REGISTER("fdp", rdp);
 #endif
-    /* Floating-point status */
-    INTEGER_REGISTER("eflags", eflags);
-    FPX_INTEGER_REGISTER("fcw", cwd);
-    FPX_INTEGER_REGISTER("fsw", swd);
-    FPX_INTEGER_REGISTER("ftw", twd);
-    FPX_INTEGER_REGISTER("fop", fop);
-    FPX_INTEGER_REGISTER("mxcsr", mxcsr);
-
 
     return 1;
+#undef MMX_REGISTER
+#undef ST_REGISTER
 #undef FPX_INTEGER_REGISTER
 #undef INTEGER_REGISTER
 }

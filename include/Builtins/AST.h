@@ -2,6 +2,7 @@
 #define ASMASE_BUILTINS_AST_H
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace Builtins {

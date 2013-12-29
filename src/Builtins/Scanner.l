@@ -25,7 +25,7 @@ alnum [a-zA-Z0-9]
 hexdigit [a-fA-F0-9]
 octaldigit [0-7]
 
-identifier {alnum}+
+identifier ({alnum}|_)+
 integer (0|[1-9]{digit}*|0[xX]{hexdigit}+|0{octaldigit}+)
 float ({digit}*\.{digit}+|{digit}+\.{digit}*)
 string \"(\\.|[^\\"])*\"
