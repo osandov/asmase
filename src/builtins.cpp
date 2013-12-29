@@ -8,6 +8,7 @@
 #include "Builtins/Environment.h"
 #include "Builtins/ErrorContext.h"
 #include "Builtins/Parser.h"
+#include "Builtins/Support.h"
 
 #include "builtins.h"
 #include "input.h"
@@ -19,23 +20,21 @@ struct BuiltinCommand {
 
 static BUILTIN_FUNC(test)
 {
-    for (auto &argPtr : args) {
-        Builtins::ValueAST *arg = argPtr.get();
-        Builtins::ValueType type = arg->getType();
-        if (type == Builtins::ValueType::IDENTIFIER) {
-            auto identifier = static_cast<const Builtins::IdentifierExpr *>(arg);
-            printf("identifier: %s\n", identifier->getName().c_str());
-        } else if (type == Builtins::ValueType::INTEGER) {
-            auto integer = static_cast<const Builtins::IntegerExpr *>(arg);
-            printf("integer: %1$lld (0x%1$llx)\n", integer->getValue());
-        } else if (type == Builtins::ValueType::FLOAT) {
-            auto floating = static_cast<const Builtins::FloatExpr *>(arg);
-            printf("floating: %f\n", floating->getValue());
-        } else if (type == Builtins::ValueType::STRING) {
-            auto str = static_cast<const Builtins::StringExpr *>(arg);
-            printf("string: \"%s\"\n", str->getStr().c_str());
-        } else
-            assert(false);
+    for (auto &arg : args) {
+        switch (arg->getType()) {
+            case Builtins::ValueType::IDENTIFIER:
+                printf("identifier: %s\n", arg->getIdentifier().c_str());
+                break;
+            case Builtins::ValueType::INTEGER:
+                printf("integer: %1$lld (0x%1$llx)\n", arg->getInteger());
+                break;
+            case Builtins::ValueType::FLOAT:
+                printf("floating: %F\n", arg->getFloat());
+                break;
+            case Builtins::ValueType::STRING:
+                printf("string: \"%s\"\n", arg->getString().c_str());
+                break;
+        }
     }
 
     return 0;
@@ -116,15 +115,11 @@ static BUILTIN_FUNC(help)
     } else {
         for (auto &argPtr : args) {
             Builtins::ValueAST *arg = argPtr.get();
-            if (arg->getType() != Builtins::ValueType::IDENTIFIER) {
-                env.errorContext.printMessage("expected command identifier",
-                                              arg->getStart());
+            if (checkValueType(*arg, Builtins::ValueType::IDENTIFIER,
+                            "expected command identifier", env.errorContext))
                 return 1;
-            }
 
-            auto abbrevExpr =
-                static_cast<const Builtins::IdentifierExpr *>(arg);
-            const std::string &abbrev = abbrevExpr->getName();
+            const std::string &abbrev = arg->getIdentifier();
 
             BuiltinCommand builtinCommand;
             int error = lookupCommand(abbrev, builtinCommand, arg->getStart(),

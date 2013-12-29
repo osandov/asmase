@@ -48,45 +48,32 @@ BUILTIN_FUNC(memory)
     }
 
     // Address
-    if (args[0]->getType() != Builtins::ValueType::INTEGER) {
-        env.errorContext.printMessage("expected address", args[0]->getStart());
+    if (checkValueType(*args[0], Builtins::ValueType::INTEGER,
+                       "expected address", env.errorContext))
         return 1;
-    }
 
-    auto addressExpr =
-        static_cast<const Builtins::IntegerExpr *>(args[0].get());
-
-    addr = (void*) (intptr_t) addressExpr->getValue();
+    addr = (void *) args[0]->getInteger();
 
     // Repeat count
     if (args.size() > 1) {
-        if (args[1]->getType() != Builtins::ValueType::INTEGER) {
-            env.errorContext.printMessage("expected repeat count",
-                                          args[1]->getStart());
+        if (checkValueType(*args[1], Builtins::ValueType::INTEGER,
+                           "expected repeat count", env.errorContext))
             return 1;
-        }
 
-        auto repeatExpr =
-            static_cast<const Builtins::IntegerExpr *>(args[1].get());
-
-        repeat = repeatExpr->getValue();
+        repeat = args[1]->getInteger();
     }
 
     // Format
     if (args.size() > 2) {
-        if (args[2]->getType() != Builtins::ValueType::IDENTIFIER) {
-            env.errorContext.printMessage("expected format specifier",
-                                          args[2]->getStart());
+        if (checkValueType(*args[2], Builtins::ValueType::IDENTIFIER,
+                           "expected format specifier", env.errorContext))
             return 1;
-        }
 
-        auto formatExpr =
-            static_cast<const Builtins::IdentifierExpr *>(args[2].get());
-        const std::string &formatStr = formatExpr->getName();
+        const std::string &formatStr = args[2]->getIdentifier();
 
         if (!formatMap.count(formatStr)) {
             env.errorContext.printMessage("invalid format specifier",
-                                          formatExpr->getStart());
+                                          args[2]->getStart());
             return 1;
         }
 
@@ -101,11 +88,9 @@ BUILTIN_FUNC(memory)
 
     // Size
     if (args.size() > 3) {
-        if (args[3]->getType() != Builtins::ValueType::IDENTIFIER) {
-            env.errorContext.printMessage("expected size specifier",
-                                          args[3]->getStart());
+        if (checkValueType(*args[3], Builtins::ValueType::IDENTIFIER,
+                           "expected size specifier", env.errorContext))
             return 1;
-        }
 
         // Sanity check
         if (format == FMT_STRING) {
@@ -114,18 +99,15 @@ BUILTIN_FUNC(memory)
             return 1;
         }
 
-        auto sizeExpr =
-            static_cast<const Builtins::IdentifierExpr *>(args[3].get());
-        const std::string &sizeStr = sizeExpr->getName();
+        const std::string &sizeStr = args[3]->getIdentifier();
 
         if (!sizeMap.count(sizeStr)) {
             env.errorContext.printMessage("invalid size specifier",
-                                          sizeExpr->getStart());
+                                          args[3]->getStart());
             return 1;
         }
 
         size = sizeMap[sizeStr];
-
     }
 
     // Sanity checks

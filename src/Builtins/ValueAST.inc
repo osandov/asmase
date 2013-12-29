@@ -1,5 +1,7 @@
 // This file is not intended to be included except by AST.h.
 
+#include <cassert>
+
 namespace Builtins {
 
 class IdentifierExpr;
@@ -37,6 +39,12 @@ public:
     // binary operators acting on each value type. Binary operators are applied
     // with simulated double dispatch.
     OP_FUNCTIONS pure
+
+    // Get the stored value for different types.
+    const std::string &getIdentifier() const;
+    long long getInteger() const;
+    double getFloat() const;
+    const std::string &getString() const;
 };
 
 /** Identifiers include command names and flags. */
@@ -117,5 +125,33 @@ public:
 
     OP_FUNCTIONS
 };
+
+inline const std::string &ValueAST::getIdentifier() const
+{
+    assert(type == ValueType::IDENTIFIER);
+    auto identifier = static_cast<const Builtins::IdentifierExpr *>(this);
+    return identifier->getName();
+}
+
+inline long long ValueAST::getInteger() const
+{
+    assert(type == ValueType::INTEGER);
+    auto integer = static_cast<const Builtins::IntegerExpr *>(this);
+    return integer->getValue();
+}
+
+inline double ValueAST::getFloat() const
+{
+    assert(type == ValueType::FLOAT);
+    auto floating = static_cast<const Builtins::FloatExpr *>(this);
+    return floating->getValue();
+}
+
+inline const std::string &ValueAST::getString() const
+{
+    assert(type == ValueType::STRING);
+    auto str = static_cast<const Builtins::StringExpr *>(this);
+    return str->getStr();
+}
 
 }

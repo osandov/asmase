@@ -3,6 +3,10 @@
 
 namespace Builtins {
 
+class ErrorContext;
+class ValueAST;
+enum class ValueType;
+
 /**
  * Find the value with the given key in the map object, returning the given
  * defaut value if it is not found.
@@ -16,6 +20,14 @@ typename Map::mapped_type findWithDefault(Map map, typename Map::key_type key, t
     else
         return it->second;
 }
+
+/**
+ * Assert that the given value has the given type. If it does not, print
+ * the given error message.
+ * @return True if there was a type error, false otherwise.
+ */
+bool checkValueType(const ValueAST &value, ValueType type,
+                    const char *errorMsg, ErrorContext &errorContext);
 
 }
 

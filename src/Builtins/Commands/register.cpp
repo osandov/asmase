@@ -52,20 +52,17 @@ BUILTIN_FUNC(register)
         regPrinter = regPrinters[""];
         assert(regPrinter);
     } else if (args.size() == 1) {
-        Builtins::ValueAST *value = args[0].get();
-        if (value->getType() != Builtins::ValueType::IDENTIFIER) {
-            env.errorContext.printMessage("expected register category",
-                                          value->getStart());
+        if (checkValueType(*args[0], Builtins::ValueType::IDENTIFIER,
+                           "expected register category", env.errorContext))
             return 1;
-        }
 
-        auto category = static_cast<const Builtins::IdentifierExpr *>(value);
+        const std::string &category = args[0]->getIdentifier();
 
-        regPrinter = findWithDefault(regPrinters, category->getName(), nullptr);
+        regPrinter = findWithDefault(regPrinters, category, nullptr);
 
         if (!regPrinter) {
             env.errorContext.printMessage("unknown register category",
-                                          value->getStart());
+                                          args[0]->getStart());
             return 1;
         }
     } else {
