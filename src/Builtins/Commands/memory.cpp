@@ -1,4 +1,5 @@
 #include <cassert>
+#include <sstream>
 #include <unordered_map>
 
 #include "Builtins/AST.h"
@@ -37,7 +38,10 @@ BUILTIN_FUNC(memory)
     void *addr;
 
     if (args.size() < 1 || args.size() > 4) {
-        // TODO: figure out how usage will work
+        std::stringstream ss;
+        ss << "usage: " << commandName << " ";
+        ss << "ADDR [REPEAT] [FORMAT] [SIZE]";
+        env.errorContext.printMessage(ss.str().c_str(), commandStart);
         return 1;
     }
 

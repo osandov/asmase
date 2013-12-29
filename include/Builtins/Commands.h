@@ -12,11 +12,13 @@ class ValueAST;
 }
 
 /** Built-in command function pointer type. */
-typedef int (*BuiltinFunc)(const std::vector<std::unique_ptr<Builtins::ValueAST>> &, Builtins::Environment &);
+typedef int (*BuiltinFunc)(const std::vector<std::unique_ptr<Builtins::ValueAST>> &,
+                           const std::string &, int, int, Builtins::Environment &);
 
 /** Declare a built-in command function. */
 #define BUILTIN_FUNC(func) int builtin_##func(\
         const std::vector<std::unique_ptr<Builtins::ValueAST>> &args, \
+        const std::string &commandName, int commandStart, int commandEnd, \
         Builtins::Environment &env)
 
 BUILTIN_FUNC(source);

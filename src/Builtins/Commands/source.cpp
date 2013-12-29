@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "Builtins/AST.h"
 #include "Builtins/Commands.h"
 
@@ -6,7 +8,9 @@
 BUILTIN_FUNC(source)
 {
     if (args.size() != 1) {
-        // TODO: figure out how usage will work
+        std::stringstream ss;
+        ss << "usage: " << commandName << " FILE";
+        env.errorContext.printMessage(ss.str().c_str(), commandStart);
         return 1;
     }
 

@@ -1,4 +1,5 @@
 #include <cassert>
+#include <sstream>
 #include <unordered_map>
 
 #include "Builtins/AST.h"
@@ -66,7 +67,9 @@ BUILTIN_FUNC(register)
             return 1;
         }
     } else {
-        // TODO: figure out how usage will work
+        std::stringstream ss;
+        ss << "usage: " << commandName << " [CATEGORY]";
+        env.errorContext.printMessage(ss.str().c_str(), commandStart);
         return 1;
     }
 

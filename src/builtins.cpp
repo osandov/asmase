@@ -203,8 +203,11 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     BuiltinCommand builtinCommand;
     int error = lookupCommand(abbrev, builtinCommand,
                               command->getCommandStart(), errorContext);
-    if (!error)
-        error = builtinCommand.func(evaledArgs, env);
+    if (!error) {
+        error = builtinCommand.func(evaledArgs, command->getCommand(),
+                                    command->getCommandStart(),
+                                    command->getCommandEnd(), env);
+    }
 
     return error;
 }

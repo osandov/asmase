@@ -44,7 +44,7 @@ $(BUILD)/%.o: src/%.cpp
 # Generated C++ compilation
 $(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp
 	$(dir_guard)
-	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
+	$(CXX) $(ALL_CXXFLAGS) -MMD -o $@ -c $<
 
 # flex scanner
 $(BUILD)/Builtins/Scanner.cpp: src/Builtins/Scanner.l
