@@ -93,3 +93,38 @@ int set_program_counter(pid_t pid, void *pc)
 
     return 0;
 }
+
+/* See tracing.h. */
+int get_register_value(pid_t pid, const char *reg_name,
+                       struct register_value *val_out)
+{
+#define INTEGER_REGISTER(name, member) \
+    if (strcmp(reg_name, (name)) == 0) { \
+        val_out->type = REGISTER_INTEGER; \
+        val_out->integer = regs.member; \
+        return 0; \
+    }
+
+    struct user_regs regs;
+
+    if (get_user_regs(pid, &regs))
+        return 1;
+
+    INTEGER_REGISTER("r0", ARM_r0); INTEGER_REGISTER("r1", ARM_r1);
+    INTEGER_REGISTER("r2", ARM_r2); INTEGER_REGISTER("r3", ARM_r3);
+    INTEGER_REGISTER("r4", ARM_r4); INTEGER_REGISTER("r5", ARM_r5);
+    INTEGER_REGISTER("r6", ARM_r6); INTEGER_REGISTER("r7", ARM_r7);
+    INTEGER_REGISTER("r8", ARM_r8); INTEGER_REGISTER("r9", ARM_r9);
+    INTEGER_REGISTER("r10", ARM_r10);
+
+    INTEGER_REGISTER("r11", ARM_fp); INTEGER_REGISTER("fp", ARM_fp);
+    INTEGER_REGISTER("r12", ARM_ip); INTEGER_REGISTER("ip", ARM_ip);
+    INTEGER_REGISTER("r13", ARM_sp); INTEGER_REGISTER("sp", ARM_sp);
+    INTEGER_REGISTER("r14", ARM_lr); INTEGER_REGISTER("lr", ARM_lr);
+    INTEGER_REGISTER("r15", ARM_pc); INTEGER_REGISTER("pc", ARM_pc);
+
+    INTEGER_REGISTER("cpsr", ARM_cpsr);
+
+    return 1;
+#undef INTEGER_REGISTER
+}

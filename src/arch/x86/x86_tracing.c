@@ -143,7 +143,6 @@ int set_program_counter(pid_t pid, void *pc)
     return 0;
 }
 
-
 /* See tracing.h. */
 int get_register_value(pid_t pid, const char *reg_name,
                        struct register_value *val_out)
@@ -162,8 +161,9 @@ int get_register_value(pid_t pid, const char *reg_name,
     }
 #define ST_REGISTER(name, i) \
     if (strcmp(reg_name, (name)) == 0) { \
+        unsigned char *st_space = (unsigned char *) fpxregs.st_space; \
         val_out->type = REGISTER_FLOATING; \
-        val_out->floating = *((long double *) &fpxregs.st_space[16 * (i)]); \
+        val_out->floating = *((long double *) &st_space[16 * (i)]); \
         return 0; \
     }
 
@@ -233,7 +233,6 @@ int get_register_value(pid_t pid, const char *reg_name,
 #endif
 
     return 1;
-#undef MMX_REGISTER
 #undef ST_REGISTER
 #undef FPX_INTEGER_REGISTER
 #undef INTEGER_REGISTER

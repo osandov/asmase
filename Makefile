@@ -1,5 +1,6 @@
 ARCH ?= $(shell ./getarch.sh)
 BUILD ?= build
+QUIET ?= @
 
 BUILTINS_SRCS := \
 	$(wildcard src/Builtins/*.cpp) \
@@ -29,44 +30,44 @@ dir_guard = @mkdir -p $(@D)
 # asmase linking
 $(BUILD)/asmase: $(OBJS)
 	$(dir_guard)
-	@$(CXX) $(ALL_CXXFLAGS) -o $@ $^ $(LIBS)
 	@echo LD $@
+	$(QUIET) $(CXX) $(ALL_CXXFLAGS) -o $@ $^ $(LIBS)
 
 # C files
 $(BUILD)/%.o: src/%.c
 	$(dir_guard)
-	@$(CC) $(ALL_CFLAGS) -MMD -o $@ -c $<
 	@echo CC $@
+	$(QUIET) $(CC) $(ALL_CFLAGS) -MMD -o $@ -c $<
 
 # C++ files
 $(BUILD)/%.o: src/%.cpp
 	$(dir_guard)
-	@$(CXX) $(ALL_CXXFLAGS) -MMD -o $@ -c $<
 	@echo CXX $@
+	$(QUIET) $(CXX) $(ALL_CXXFLAGS) -MMD -o $@ -c $<
 
 # Generated C++ compilation
 $(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp
 	$(dir_guard)
-	@$(CXX) $(ALL_CXXFLAGS) -MMD -o $@ -c $<
 	@echo CXX $@
+	$(QUIET) $(CXX) $(ALL_CXXFLAGS) -MMD -o $@ -c $<
 
 # flex scanner
 $(BUILD)/Builtins/Scanner.cpp: src/Builtins/Scanner.l
 	$(dir_guard)
-	flex -o $@ $<
 	@echo LEX $@
+	$(QUIET) flex -o $@ $<
 
 # AWK-generated AST header
 $(BUILD)/include/Builtins/ValueAST.inc: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc $(ops_table)
 	$(dir_guard)
-	@AWKPATH="$(<D)" gawk -f $< $(ops_table) src/Builtins/ValueAST.inc > $@
 	@echo AWK $@
+	$(QUIET) AWKPATH="$(<D)" gawk -f $< $(ops_table) src/Builtins/ValueAST.inc > $@
 
 # AWK-generated C++
 $(BUILD)/%.cpp: src/%.awk $(ops_table)
 	$(dir_guard)
-	@AWKPATH="$(<D)" gawk -f $< $(ops_table) > $@
 	@echo AWK $@
+	$(QUIET) AWKPATH="$(<D)" gawk -f $< $(ops_table) > $@
 
 DEPS := $(OBJS:.o=.d)
 
