@@ -1,13 +1,16 @@
 ARCH ?= $(shell ./getarch.sh)
 BUILD ?= build
 
-SRCS := $(wildcard src/*.c) \
-	$(wildcard src/*.cpp) \
-	$(wildcard src/arch/$(ARCH)/*.c) \
+BUILTINS_SRCS := \
 	$(wildcard src/Builtins/*.cpp) \
 	$(wildcard src/Builtins/Commands/*.cpp) \
 	$(patsubst src/%.awk, $(BUILD)/%.cpp, $(wildcard src/Builtins/*Expr.awk)) \
 	$(BUILD)/Builtins/Scanner.cpp
+
+SRCS := $(wildcard src/*.c) \
+	$(wildcard src/*.cpp) \
+	$(wildcard src/arch/$(ARCH)/*.c) \
+	$(BUILTINS_SRCS)
 
 OBJS1 := $(patsubst src/%.c, $(BUILD)/%.o, $(SRCS)) # C sources
 OBJS2 := $(patsubst src/%.cpp, $(BUILD)/%.o, $(OBJS1)) # C++ sources
@@ -31,32 +34,38 @@ $(BUILD)/asmase: $(OBJS)
 # C files
 $(BUILD)/%.o: src/%.c
 	$(dir_guard)
-	$(CC) $(ALL_CFLAGS) -o $@ -c $<
+	$(CC) $(ALL_CFLAGS) -MMD -o $@ -c $<
 
 # C++ files
-$(BUILD)/%.o: src/%.cpp $(BUILD)/include/Builtins/ValueAST.inc
+$(BUILD)/%.o: src/%.cpp
 	$(dir_guard)
-	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
+	$(CXX) $(ALL_CXXFLAGS) -MMD -o $@ -c $<
 
 # Generated C++ compilation
-$(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp $(BUILD)/include/Builtins/ValueAST.inc
+$(BUILD)/Builtins/%.o: $(BUILD)/Builtins/%.cpp
 	$(dir_guard)
 	$(CXX) $(ALL_CXXFLAGS) -o $@ -c $<
-
-# AWK-generated AST header
-$(BUILD)/include/Builtins/ValueAST.inc: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc $(ops_table)
-	$(dir_guard)
-	AWKPATH="$(<D)" gawk -f $< $(ops_table) src/Builtins/ValueAST.inc > $@
 
 # flex scanner
 $(BUILD)/Builtins/Scanner.cpp: src/Builtins/Scanner.l
 	$(dir_guard)
 	flex -o $@ $<
 
+# AWK-generated AST header
+$(BUILD)/include/Builtins/ValueAST.inc: src/Builtins/ValueAST.awk src/Builtins/ValueAST.inc $(ops_table)
+	$(dir_guard)
+	AWKPATH="$(<D)" gawk -f $< $(ops_table) src/Builtins/ValueAST.inc > $@
+
 # AWK-generated C++
 $(BUILD)/%.cpp: src/%.awk $(ops_table)
 	$(dir_guard)
 	AWKPATH="$(<D)" gawk -f $< $(ops_table) > $@
+
+DEPS := $(OBJS:.o=.d)
+
+-include $(DEPS)
+
+src/builtins.cpp $(BUILTINS_SRCS): $(BUILD)/include/Builtins/ValueAST.inc
 
 .PHONY: clean
 clean:
