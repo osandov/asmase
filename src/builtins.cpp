@@ -137,7 +137,7 @@ static BUILTIN_FUNC(help)
     for (auto &command : wantedCommands) {
         const char *commandName = command.first;
         const char *helpString = command.second;
-        printf("%-*s -- %s\n", (int) maxCommandLength, commandName, helpString);
+        printf("  %-*s -- %s\n", (int) maxCommandLength, commandName, helpString);
     }
 
     return 0;

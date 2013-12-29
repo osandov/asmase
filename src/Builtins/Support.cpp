@@ -14,4 +14,10 @@ bool checkValueType(const ValueAST &value, ValueType type,
         return false;
 }
 
+bool wantsHelp(const std::vector<std::unique_ptr<ValueAST>> &args)
+{
+    return args.size() >= 1 && args[0]->getType() == ValueType::IDENTIFIER &&
+           args[0]->getIdentifier() == "help";
+}
+
 }

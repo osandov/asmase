@@ -44,9 +44,35 @@ static std::unordered_map<std::string, register_printer> regPrinters = {
     {"s",       print_segment_registers},
 };
 
+static std::string getUsage(const std::string &commandName)
+{
+    std::stringstream ss;
+    ss << "usage: " << commandName << " [CATEGORY]";
+    return ss.str();
+}
+
 BUILTIN_FUNC(register)
 {
     register_printer regPrinter;
+
+    if (wantsHelp(args)) {
+        std::string usage = getUsage(commandName);
+        printf("%s\n", usage.c_str());
+        printf("Formats:\n"
+               "  d -- decimal\n"
+               "  u -- unsigned decimal\n"
+               "  o -- unsigned octal\n"
+               "  x -- unsigned hexadecimal\n"
+               "  t -- unsigned binary\n"
+               "  f -- floating point\n"
+               "  c -- character\n");
+        printf("Sizes:\n"
+               "  b -- byte (1 byte)\n"
+               "  h -- half word (2 bytes)\n"
+               "  w -- word (4 bytes)\n"
+               "  g -- giant (8 bytes)\n");
+        return 0;
+    }
 
     if (args.size() == 0) {
         regPrinter = regPrinters[""];
@@ -66,9 +92,8 @@ BUILTIN_FUNC(register)
             return 1;
         }
     } else {
-        std::stringstream ss;
-        ss << "usage: " << commandName << " [CATEGORY]";
-        env.errorContext.printMessage(ss.str().c_str(), commandStart);
+        std::string usage = getUsage(commandName);
+        env.errorContext.printMessage(usage.c_str(), commandStart);
         return 1;
     }
 

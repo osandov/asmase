@@ -31,6 +31,14 @@ static std::unordered_map<std::string, size_t> sizeMap = {
     {"g", SZ_GIANT},
 };
 
+static std::string getUsage(const std::string &commandName)
+{
+    std::stringstream ss;
+    ss << "usage: " << commandName << " ";
+    ss << "ADDR [REPEAT] [FORMAT] [SIZE]";
+    return ss.str();
+}
+
 BUILTIN_FUNC(memory)
 {
     static size_t repeat = 1;
@@ -39,11 +47,21 @@ BUILTIN_FUNC(memory)
 
     void *addr;
 
+    if (wantsHelp(args)) {
+        std::string usage = getUsage(commandName);
+        printf("%s\n", usage.c_str());
+        printf("Categories:\n"
+               "  gp  -- General purpose registers\n"
+               "  cc  -- Condition code/status flag registers\n"
+               "  fp  -- Floating point registers\n"
+               "  x   -- Extra registers\n"
+               "  seg -- Segment registers\n");
+        return 0;
+    }
+
     if (args.size() < 1 || args.size() > 4) {
-        std::stringstream ss;
-        ss << "usage: " << commandName << " ";
-        ss << "ADDR [REPEAT] [FORMAT] [SIZE]";
-        env.errorContext.printMessage(ss.str().c_str(), commandStart);
+        std::string usage = getUsage(commandName);
+        env.errorContext.printMessage(usage.c_str(), commandStart);
         return 1;
     }
 

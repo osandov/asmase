@@ -1,6 +1,9 @@
 #ifndef ASMASE_BUILTINS_SUPPORT_H
 #define ASMASE_BUILTINS_SUPPORT_H
 
+#include <memory>
+#include <vector>
+
 namespace Builtins {
 
 class ErrorContext;
@@ -28,6 +31,8 @@ typename Map::mapped_type findWithDefault(Map map, typename Map::key_type key, t
  */
 bool checkValueType(const ValueAST &value, ValueType type,
                     const char *errorMsg, ErrorContext &errorContext);
+
+bool wantsHelp(const std::vector<std::unique_ptr<ValueAST>> &args);
 
 }
 

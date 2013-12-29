@@ -8,12 +8,24 @@
 
 #include "input.h"
 
+static std::string getUsage(const std::string &commandName)
+{
+    std::stringstream ss;
+    ss << "usage: " << commandName << " FILE";
+    return ss.str();
+}
+
 BUILTIN_FUNC(source)
 {
+    if (wantsHelp(args)) {
+        std::string usage = getUsage(commandName);
+        printf("%s\n", usage.c_str());
+        return 0;
+    }
+
     if (args.size() != 1) {
-        std::stringstream ss;
-        ss << "usage: " << commandName << " FILE";
-        env.errorContext.printMessage(ss.str().c_str(), commandStart);
+        std::string usage = getUsage(commandName);
+        env.errorContext.printMessage(usage.c_str(), commandStart);
         return 1;
     }
 
