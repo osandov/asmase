@@ -48,18 +48,18 @@ static BUILTIN_FUNC(quit)
 static BUILTIN_FUNC(help);
 
 static std::map<std::string, BuiltinCommand> commands = {
-    {"test",     {builtin_test, "print evaluated arguments as a test"}},
+    {"test",      {builtin_test, "print evaluated arguments as a test"}},
 
-    {"quit",     {builtin_quit, "quit the program"}},
-    {"help",     {builtin_help, "print this help information"}},
+    {"quit",      {builtin_quit, "quit the program"}},
+    {"help",      {builtin_help, "print this help information"}},
 
-    {"source",   {builtin_source, "redirect input to a given file"}},
+    {"source",    {builtin_source, "redirect input to a given file"}},
 
-    {"memory",   {builtin_memory,   "dump memory contents"}},
-    {"register", {builtin_register, "dump register contents"}},
+    {"memory",    {builtin_memory,    "dump memory contents"}},
+    {"registers", {builtin_registers, "dump register contents"}},
 
-    {"warranty", {builtin_warranty, "show warranty information"}},
-    {"copying",  {builtin_copying,  "show copying information"}},
+    {"warranty",  {builtin_warranty, "show warranty information"}},
+    {"copying",   {builtin_copying,  "show copying information"}},
 };
 
 static int lookupCommand(const std::string &abbrev,

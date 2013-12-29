@@ -51,7 +51,7 @@ static std::string getUsage(const std::string &commandName)
     return ss.str();
 }
 
-BUILTIN_FUNC(register)
+BUILTIN_FUNC(registers)
 {
     register_printer regPrinter;
 

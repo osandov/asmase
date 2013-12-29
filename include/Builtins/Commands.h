@@ -23,7 +23,7 @@ typedef int (*BuiltinFunc)(const std::vector<std::unique_ptr<Builtins::ValueAST>
 
 BUILTIN_FUNC(source);
 BUILTIN_FUNC(memory);
-BUILTIN_FUNC(register);
+BUILTIN_FUNC(registers);
 BUILTIN_FUNC(warranty);
 BUILTIN_FUNC(copying);
 
