@@ -2,22 +2,27 @@ asmase
 ======
 
 `asmase` is a REPL for assembly language using an LLVM backend. It provides
-an accurate interactive environment on several platforms.
+an accurate interactive environment for several architectures.
 
-Supported Platforms
--------------------
+Supported Architectures
+-----------------------
  * `x86`
  * `x86-64`
  * `ARM`
 
 Compilation
 ----------
-`asmase` depends on LLVM and GNU readline. You can either compile LLVM from
-source (instructions [here](http://llvm.org/docs/GettingStarted.html)) or use
-your distribution's packages. Versions 3.3 and newer are supported; I haven't
-tried anything older, but it might work. Compilation works under both GCC and
-Clang (make sure you have a C++ compiler). If you meet these requirements, all
-it takes is a `make` in the top-level.
+`asmase` depends on LLVM, GNU readline, flex, and GNU awk. You can either
+compile LLVM from source
+(instructions [here](http://llvm.org/docs/GettingStarted.html)) or use your
+distribution's packages. Versions 3.3 and newer are supported; I haven't tried
+anything older, but it might work. Compilation works under both GCC and Clang
+(make sure you have a C++ compiler). If you meet these requirements, all it
+takes is a `make` in the top-level (parallel make with `-j` should work).
+
+`asmase` has only been tested on and probably only works on Linux due to the
+platform-specificness of `ptrace`, but it is probably possible to port it to
+other \*nix platforms.
 
 Implementation
 --------------
