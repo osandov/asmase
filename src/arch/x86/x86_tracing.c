@@ -166,12 +166,6 @@ int get_register_value(pid_t pid, const char *reg_name,
         val_out->floating = *((long double *) &fpxregs.st_space[16 * (i)]); \
         return 0; \
     }
-#define MMX_REGISTER(name, i) \
-    if (strcmp(reg_name, (name)) == 0) { \
-        val_out->type = REGISTER_INTEGER; \
-        val_out->integer = *((long long *) &fpxregs.st_space[16 * (i)]); \
-        return 0; \
-    }
 
     struct user_regs_struct regs;
     struct user_fpxregs_struct fpxregs;
@@ -193,10 +187,7 @@ int get_register_value(pid_t pid, const char *reg_name,
     ST_REGISTER("st(6)", 6); ST_REGISTER("st(7)", 7);
 
     /* MMX */
-    MMX_REGISTER("mm0", 0); MMX_REGISTER("mm1", 1);
-    MMX_REGISTER("mm2", 2); MMX_REGISTER("mm3", 3);
-    MMX_REGISTER("mm4", 4); MMX_REGISTER("mm5", 5);
-    MMX_REGISTER("mm6", 6); MMX_REGISTER("mm7", 7);
+    /* TODO: not sure what to do about 64-bit MMX registers. */
 
     /* SSE */
     FPX_INTEGER_REGISTER("mxcsr", mxcsr);

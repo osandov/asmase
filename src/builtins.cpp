@@ -26,7 +26,7 @@ static BUILTIN_FUNC(test)
                 printf("identifier: %s\n", arg->getIdentifier().c_str());
                 break;
             case Builtins::ValueType::INTEGER:
-                printf("integer: %1$lld (0x%1$llx)\n", arg->getInteger());
+                printf("integer: %1$ld (0x%1$lx)\n", arg->getInteger());
                 break;
             case Builtins::ValueType::FLOAT:
                 printf("floating: %F\n", arg->getFloat());

@@ -152,7 +152,7 @@ ExprAST *Parser::parseIdentifierExpr()
 ExprAST *Parser::parseIntegerExpr()
 {
     errno = 0;
-    long long value = strtoull(currentCStr(), nullptr, 0);
+    long value = strtoul(currentCStr(), nullptr, 0);
     if (errno == ERANGE)
         return error(*currentToken(), "integer constant out of range");
 

@@ -35,7 +35,7 @@ struct register_value {
     enum register_value_type type;
 
     union {
-        long long integer;
+        long integer;
         double floating;
     };
 };

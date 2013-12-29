@@ -42,7 +42,7 @@ public:
 
     // Get the stored value for different types.
     const std::string &getIdentifier() const;
-    long long getInteger() const;
+    long getInteger() const;
     double getFloat() const;
     const std::string &getString() const;
 };
@@ -66,16 +66,16 @@ public:
     OP_FUNCTIONS
 };
 
-/** Integer with a 64-bit capacity. */
+/** Integer with a long capacity. */
 class IntegerExpr : public ValueAST {
     /**
     * The stored integer. There is no concept of "signed" or "unsigned", we
     * just let arithmetic overflow regardless (XXX: how portable is this?).
     */
-    long long value;
+    long value;
 
 public:
-    IntegerExpr(int columnStart, int columnEnd, long long value)
+    IntegerExpr(int columnStart, int columnEnd, long value)
         : ValueAST(columnStart, columnEnd, ValueType::INTEGER), value(value) {}
 
     virtual ValueAST *eval(Environment &env) const
@@ -83,7 +83,7 @@ public:
         return new IntegerExpr(*this);
     }
 
-    long long getValue() const { return value; }
+    long getValue() const { return value; }
 
     OP_FUNCTIONS
 };
@@ -133,7 +133,7 @@ inline const std::string &ValueAST::getIdentifier() const
     return identifier->getName();
 }
 
-inline long long ValueAST::getInteger() const
+inline long ValueAST::getInteger() const
 {
     assert(type == ValueType::INTEGER);
     auto integer = static_cast<const Builtins::IntegerExpr *>(this);
