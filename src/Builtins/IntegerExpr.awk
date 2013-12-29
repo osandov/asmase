@@ -34,6 +34,8 @@ function float_integer(op) {
 
 END {
     print "#include \"Builtins/AST.h\""
+    print "#include \"Builtins/Environment.h\""
+    print "#include \"Builtins/ErrorContext.h\""
     print ""
     print "namespace Builtins {"
     print ""

@@ -1,6 +1,8 @@
 #include <map>
 
 #include "Builtins/AST.h"
+#include "Builtins/Environment.h"
+#include "Builtins/ErrorContext.h"
 #include "Builtins/Support.h"
 
 namespace Builtins {

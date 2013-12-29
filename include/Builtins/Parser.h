@@ -1,12 +1,13 @@
 #ifndef ASMASE_BUILTINS_PARSER_H
 #define ASMASE_BUILTINS_PARSER_H
 
-#include "Builtins/AST.h"
 #include "Builtins/Scanner.h"
 
-#include "ErrorContext.h"
-
 namespace Builtins {
+
+class ErrorContext;
+class ExprAST;
+class CommandAST;
 
 /** A parser for built-in commands. */
 class Parser {

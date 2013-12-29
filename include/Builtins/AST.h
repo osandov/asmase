@@ -4,11 +4,9 @@
 #include <memory>
 #include <vector>
 
-#include "Environment.h"
-#include "Builtins/ErrorContext.h"
-
 namespace Builtins {
 
+class Environment;
 class ValueAST;
 
 /** Base class AST for all expressions. */

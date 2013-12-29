@@ -3,7 +3,9 @@
 #include <map>
 #include <sstream>
 
+#include "Builtins/AST.h"
 #include "Builtins/Commands.h"
+#include "Builtins/Environment.h"
 #include "Builtins/ErrorContext.h"
 #include "Builtins/Parser.h"
 

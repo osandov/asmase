@@ -4,6 +4,8 @@
 
 #include "Builtins/AST.h"
 #include "Builtins/Commands.h"
+#include "Builtins/Environment.h"
+#include "Builtins/ErrorContext.h"
 #include "Builtins/Support.h"
 
 #include "memory.h"

@@ -1,4 +1,6 @@
 #include "Builtins/AST.h"
+#include "Builtins/Environment.h"
+#include "Builtins/ErrorContext.h"
 
 namespace Builtins {
 

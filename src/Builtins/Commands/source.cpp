@@ -1,6 +1,8 @@
 #include <sstream>
 
 #include "Builtins/AST.h"
+#include "Builtins/Environment.h"
+#include "Builtins/ErrorContext.h"
 #include "Builtins/Commands.h"
 
 #include "input.h"
