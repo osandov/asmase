@@ -8,19 +8,14 @@ BUILTINS_SRCS := \
 	$(patsubst src/%.awk, $(BUILD)/%.cpp, $(wildcard src/Builtins/*Expr.awk)) \
 	$(BUILD)/Builtins/Scanner.cpp
 
-SRCS := $(wildcard src/*.c) \
-	$(wildcard src/*.cpp) \
-	$(wildcard src/arch/$(ARCH)/*.c) \
-	$(BUILTINS_SRCS)
+SRCS := src/main.cpp src/Assembler.cpp src/Inputter.cpp src/Tracee.cpp $(wildcard src/Arch/X86/*.cpp)
 
-OBJS1 := $(patsubst src/%.c, $(BUILD)/%.o, $(SRCS)) # C sources
-OBJS2 := $(patsubst src/%.cpp, $(BUILD)/%.o, $(OBJS1)) # C++ sources
-OBJS := $(patsubst $(BUILD)/%.cpp, $(BUILD)/%.o, $(OBJS2)) # Generated C++ sources
+OBJS1 := $(patsubst src/%.cpp, $(BUILD)/%.o, $(SRCS)) # C++ sources
+OBJS := $(patsubst $(BUILD)/%.cpp, $(BUILD)/%.o, $(OBJS1)) # Generated C++ sources
 
 LLVM_CONFIG ?= llvm-config
 
 COMMON_FLAGS := -Wall -g -Iinclude -I$(BUILD)/include
-ALL_CFLAGS := $(COMMON_FLAGS) -std=c99 `$(LLVM_CONFIG) --cflags` $(CFLAGS)
 ALL_CXXFLAGS := $(COMMON_FLAGS) -std=c++11 `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
 LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
 
@@ -32,12 +27,6 @@ $(BUILD)/asmase: $(OBJS)
 	$(dir_guard)
 	@echo LD $@
 	$(QUIET) $(CXX) $(ALL_CXXFLAGS) -o $@ $^ $(LIBS)
-
-# C files
-$(BUILD)/%.o: src/%.c
-	$(dir_guard)
-	@echo CC $@
-	$(QUIET) $(CC) $(ALL_CFLAGS) -MMD -o $@ -c $<
 
 # C++ files
 $(BUILD)/%.o: src/%.cpp
