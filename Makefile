@@ -4,11 +4,15 @@ QUIET ?= @
 
 BUILTINS_SRCS := \
 	$(wildcard src/Builtins/*.cpp) \
-	$(wildcard src/Builtins/Commands/*.cpp) \
 	$(patsubst src/%.awk, $(BUILD)/%.cpp, $(wildcard src/Builtins/*Expr.awk)) \
-	$(BUILD)/Builtins/Scanner.cpp
+	$(BUILD)/Builtins/Scanner.cpp \
+	src/Builtins/Commands/copying.cpp \
+	src/Builtins/Commands/memory.cpp \
+	# $(wildcard src/Builtins/Commands/*.cpp) \
 
-SRCS := src/main.cpp src/Assembler.cpp src/Inputter.cpp src/Tracee.cpp $(wildcard src/Arch/X86/*.cpp)
+SRCS := $(wildcard src/*.cpp) \
+	$(wildcard src/Arch/$(ARCH)/*.cpp) \
+	$(BUILTINS_SRCS)
 
 OBJS1 := $(patsubst src/%.cpp, $(BUILD)/%.o, $(SRCS)) # C++ sources
 OBJS := $(patsubst $(BUILD)/%.cpp, $(BUILD)/%.o, $(OBJS1)) # Generated C++ sources
@@ -62,7 +66,7 @@ DEPS := $(OBJS:.o=.d)
 
 -include $(DEPS)
 
-src/builtins.cpp $(BUILTINS_SRCS): $(BUILD)/include/Builtins/ValueAST.inc
+src/Builtins.cpp $(BUILTINS_SRCS): $(BUILD)/include/Builtins/ValueAST.inc
 
 .PHONY: clean
 clean:

@@ -1,5 +1,6 @@
 #include <cinttypes>
 #include <cstddef>
+#include <cstring>
 
 #include <sys/ptrace.h>
 #include <sys/user.h>
@@ -9,92 +10,97 @@
 
 static const RegisterInfo X86Registers = {
     .generalPurpose = {
-        RegisterDT<uint64_t>{"%", "rax", offsetof(UserRegisters, rax)},
-        RegisterDT<uint64_t>{"%", "rcx", offsetof(UserRegisters, rcx)},
-        RegisterDT<uint64_t>{"%", "rdx", offsetof(UserRegisters, rdx)},
-        RegisterDT<uint64_t>{"%", "rbx", offsetof(UserRegisters, rbx)},
-        RegisterDT<uint64_t>{"%", "rsp", offsetof(UserRegisters, rbp)},
-        RegisterDT<uint64_t>{"%", "rsi", offsetof(UserRegisters, rdi)},
-        RegisterDT<uint64_t>{"%", "r8",  offsetof(UserRegisters, r8)},
-        RegisterDT<uint64_t>{"%", "r9",  offsetof(UserRegisters, r9)},
-        RegisterDT<uint64_t>{"%", "r10", offsetof(UserRegisters, r10)},
-        RegisterDT<uint64_t>{"%", "r11", offsetof(UserRegisters, r11)},
-        RegisterDT<uint64_t>{"%", "r12", offsetof(UserRegisters, r12)},
-        RegisterDT<uint64_t>{"%", "r13", offsetof(UserRegisters, r13)},
-        RegisterDT<uint64_t>{"%", "r14", offsetof(UserRegisters, r14)},
-        RegisterDT<uint64_t>{"%", "r15", offsetof(UserRegisters, r15)},
+        {RegisterType::INT64, "%", "rax", offsetof(UserRegisters, rax)},
+        {RegisterType::INT64, "%", "rcx", offsetof(UserRegisters, rcx)},
+        {RegisterType::INT64, "%", "rdx", offsetof(UserRegisters, rdx)},
+        {RegisterType::INT64, "%", "rbx", offsetof(UserRegisters, rbx)},
+        {RegisterType::INT64, "%", "rsp", offsetof(UserRegisters, rbp)},
+        {RegisterType::INT64, "%", "rsi", offsetof(UserRegisters, rdi)},
+        {RegisterType::INT64, "%", "r8",  offsetof(UserRegisters, r8)},
+        {RegisterType::INT64, "%", "r9",  offsetof(UserRegisters, r9)},
+        {RegisterType::INT64, "%", "r10", offsetof(UserRegisters, r10)},
+        {RegisterType::INT64, "%", "r11", offsetof(UserRegisters, r11)},
+        {RegisterType::INT64, "%", "r12", offsetof(UserRegisters, r12)},
+        {RegisterType::INT64, "%", "r13", offsetof(UserRegisters, r13)},
+        {RegisterType::INT64, "%", "r14", offsetof(UserRegisters, r14)},
+        {RegisterType::INT64, "%", "r15", offsetof(UserRegisters, r15)},
     },
 
-    .conditionCodes = {RegisterDT<uint32_t>{"eflags", offsetof(UserRegisters, eflags)}},
+    .conditionCodes = {
+        {RegisterType::INT32, "eflags", offsetof(UserRegisters, eflags)},
+    },
 
-    .programCounter = RegisterDT<uint64_t>{"%", "rip", offsetof(UserRegisters, rip)},
+    .programCounter = {RegisterType::INT64, "%", "rip", offsetof(UserRegisters, rip)},
 
     .segmentation = {
-        RegisterDT<uint16_t>{"%", "cs", offsetof(UserRegisters, cs)},
-        RegisterDT<uint16_t>{"%", "ss", offsetof(UserRegisters, ss)},
-        RegisterDT<uint16_t>{"%", "ds", offsetof(UserRegisters, ds)},
-        RegisterDT<uint16_t>{"%", "es", offsetof(UserRegisters, es)},
-        RegisterDT<uint16_t>{"%", "fs", offsetof(UserRegisters, fs)},
-        RegisterDT<uint16_t>{"%", "gs", offsetof(UserRegisters, gs)},
-        RegisterDT<uint64_t>{"%", "fs.base", offsetof(UserRegisters, fs_base)},
-        RegisterDT<uint64_t>{"%", "gs.base", offsetof(UserRegisters, gs_base)},
+        {RegisterType::INT16, "%", "cs", offsetof(UserRegisters, cs)},
+        {RegisterType::INT16, "%", "ss", offsetof(UserRegisters, ss)},
+        {RegisterType::INT16, "%", "ds", offsetof(UserRegisters, ds)},
+        {RegisterType::INT16, "%", "es", offsetof(UserRegisters, es)},
+        {RegisterType::INT16, "%", "fs", offsetof(UserRegisters, fs)},
+        {RegisterType::INT16, "%", "gs", offsetof(UserRegisters, gs)},
+        {RegisterType::INT64, "%", "fs.base", offsetof(UserRegisters, fsBase)},
+        {RegisterType::INT64, "%", "gs.base", offsetof(UserRegisters, gsBase)},
     },
 
     .floatingPoint = {
-        RegisterDT<long double>{"%", "st(0)", offsetof(UserRegisters, st[0])},
-        RegisterDT<long double>{"%", "st(1)", offsetof(UserRegisters, st[1])},
-        RegisterDT<long double>{"%", "st(2)", offsetof(UserRegisters, st[2])},
-        RegisterDT<long double>{"%", "st(3)", offsetof(UserRegisters, st[3])},
-        RegisterDT<long double>{"%", "st(4)", offsetof(UserRegisters, st[4])},
-        RegisterDT<long double>{"%", "st(5)", offsetof(UserRegisters, st[5])},
-        RegisterDT<long double>{"%", "st(6)", offsetof(UserRegisters, st[6])},
-        RegisterDT<long double>{"%", "st(7)", offsetof(UserRegisters, st[7])},
+        {RegisterType::LONG_DOUBLE, "%", "st(0)", offsetof(UserRegisters, st[0])},
+        {RegisterType::LONG_DOUBLE, "%", "st(1)", offsetof(UserRegisters, st[1])},
+        {RegisterType::LONG_DOUBLE, "%", "st(2)", offsetof(UserRegisters, st[2])},
+        {RegisterType::LONG_DOUBLE, "%", "st(3)", offsetof(UserRegisters, st[3])},
+        {RegisterType::LONG_DOUBLE, "%", "st(4)", offsetof(UserRegisters, st[4])},
+        {RegisterType::LONG_DOUBLE, "%", "st(5)", offsetof(UserRegisters, st[5])},
+        {RegisterType::LONG_DOUBLE, "%", "st(6)", offsetof(UserRegisters, st[6])},
+        {RegisterType::LONG_DOUBLE, "%", "st(7)", offsetof(UserRegisters, st[7])},
     },
 
     .floatingPointStatus = {
-        RegisterDT<uint16_t>{"fcw", offsetof(UserRegisters, fcw)},
-        RegisterDT<uint16_t>{"fsw", offsetof(UserRegisters, fsw)},
-        RegisterDT<uint16_t>{"ftw", offsetof(UserRegisters, ftw)},
-        RegisterDT<uint16_t>{"fop", offsetof(UserRegisters, fop)},
-        RegisterDT<uint64_t>{"fip", offsetof(UserRegisters, fip)},
-        RegisterDT<uint64_t>{"fdp", offsetof(UserRegisters, fdp)},
+        {RegisterType::INT16, "fcw", offsetof(UserRegisters, fcw)},
+        {RegisterType::INT16, "fsw", offsetof(UserRegisters, fsw)},
+        {RegisterType::INT16, "ftw", offsetof(UserRegisters, ftw)},
+        {RegisterType::INT16, "fop", offsetof(UserRegisters, fop)},
+        {RegisterType::INT64, "fip", offsetof(UserRegisters, fip)},
+        {RegisterType::INT64, "fdp", offsetof(UserRegisters, fdp)},
     },
 
     .extra = {
-        RegisterDT<uint64_t>{"%", "mm0", offsetof(UserRegisters, st[0])},
-        RegisterDT<uint64_t>{"%", "mm1", offsetof(UserRegisters, st[1])},
-        RegisterDT<uint64_t>{"%", "mm2", offsetof(UserRegisters, st[2])},
-        RegisterDT<uint64_t>{"%", "mm3", offsetof(UserRegisters, st[3])},
-        RegisterDT<uint64_t>{"%", "mm4", offsetof(UserRegisters, st[4])},
-        RegisterDT<uint64_t>{"%", "mm5", offsetof(UserRegisters, st[5])},
-        RegisterDT<uint64_t>{"%", "mm6", offsetof(UserRegisters, st[6])},
-        RegisterDT<uint64_t>{"%", "mm7", offsetof(UserRegisters, st[7])},
+        {RegisterType::INT64, "%", "mm0", offsetof(UserRegisters, st[0])},
+        {RegisterType::INT64, "%", "mm1", offsetof(UserRegisters, st[1])},
+        {RegisterType::INT64, "%", "mm2", offsetof(UserRegisters, st[2])},
+        {RegisterType::INT64, "%", "mm3", offsetof(UserRegisters, st[3])},
+        {RegisterType::INT64, "%", "mm4", offsetof(UserRegisters, st[4])},
+        {RegisterType::INT64, "%", "mm5", offsetof(UserRegisters, st[5])},
+        {RegisterType::INT64, "%", "mm6", offsetof(UserRegisters, st[6])},
+        {RegisterType::INT64, "%", "mm7", offsetof(UserRegisters, st[7])},
 
-        RegisterDT<xmm_t>{"%", "xmm0", offsetof(UserRegisters, xmm[0])},
-        RegisterDT<xmm_t>{"%", "xmm1", offsetof(UserRegisters, xmm[1])},
-        RegisterDT<xmm_t>{"%", "xmm2", offsetof(UserRegisters, xmm[2])},
-        RegisterDT<xmm_t>{"%", "xmm3", offsetof(UserRegisters, xmm[3])},
-        RegisterDT<xmm_t>{"%", "xmm4", offsetof(UserRegisters, xmm[4])},
-        RegisterDT<xmm_t>{"%", "xmm5", offsetof(UserRegisters, xmm[5])},
-        RegisterDT<xmm_t>{"%", "xmm6", offsetof(UserRegisters, xmm[6])},
-        RegisterDT<xmm_t>{"%", "xmm7", offsetof(UserRegisters, xmm[7])},
-        RegisterDT<xmm_t>{"%", "xmm8", offsetof(UserRegisters, xmm[8])},
-        RegisterDT<xmm_t>{"%", "xmm9", offsetof(UserRegisters, xmm[9])},
-        RegisterDT<xmm_t>{"%", "xmm10", offsetof(UserRegisters, xmm[10])},
-        RegisterDT<xmm_t>{"%", "xmm11", offsetof(UserRegisters, xmm[11])},
-        RegisterDT<xmm_t>{"%", "xmm12", offsetof(UserRegisters, xmm[12])},
-        RegisterDT<xmm_t>{"%", "xmm13", offsetof(UserRegisters, xmm[13])},
-        RegisterDT<xmm_t>{"%", "xmm14", offsetof(UserRegisters, xmm[14])},
-        RegisterDT<xmm_t>{"%", "xmm15", offsetof(UserRegisters, xmm[15])},
+        {RegisterType::INT128, "%", "xmm0",  offsetof(UserRegisters, xmm[0])},
+        {RegisterType::INT128, "%", "xmm1",  offsetof(UserRegisters, xmm[1])},
+        {RegisterType::INT128, "%", "xmm2",  offsetof(UserRegisters, xmm[2])},
+        {RegisterType::INT128, "%", "xmm3",  offsetof(UserRegisters, xmm[3])},
+        {RegisterType::INT128, "%", "xmm4",  offsetof(UserRegisters, xmm[4])},
+        {RegisterType::INT128, "%", "xmm5",  offsetof(UserRegisters, xmm[5])},
+        {RegisterType::INT128, "%", "xmm6",  offsetof(UserRegisters, xmm[6])},
+        {RegisterType::INT128, "%", "xmm7",  offsetof(UserRegisters, xmm[7])},
+        {RegisterType::INT128, "%", "xmm8",  offsetof(UserRegisters, xmm[8])},
+        {RegisterType::INT128, "%", "xmm9",  offsetof(UserRegisters, xmm[9])},
+        {RegisterType::INT128, "%", "xmm10", offsetof(UserRegisters, xmm[10])},
+        {RegisterType::INT128, "%", "xmm11", offsetof(UserRegisters, xmm[11])},
+        {RegisterType::INT128, "%", "xmm12", offsetof(UserRegisters, xmm[12])},
+        {RegisterType::INT128, "%", "xmm13", offsetof(UserRegisters, xmm[13])},
+        {RegisterType::INT128, "%", "xmm14", offsetof(UserRegisters, xmm[14])},
+        {RegisterType::INT128, "%", "xmm15", offsetof(UserRegisters, xmm[15])},
     },
 
-    .extraStatus = {RegisterDT<uint32_t>{"mxcsr", offsetof(UserRegisters, mxcsr)}},
+    .extraStatus = {
+        {RegisterType::INT32, "mxcsr", offsetof(UserRegisters, mxcsr)},
+    },
 };
 
 static const std::string X86TrapInstruction = "\xcc";
 
 X86Tracee::X86Tracee(pid_t pid, void *sharedMemory, size_t sharedSize)
-    : Tracee(X86Registers, X86TrapInstruction, pid, sharedMemory, sharedSize) {}
+    : Tracee(X86Registers, X86TrapInstruction, new UserRegisters,
+             pid, sharedMemory, sharedSize) {}
 
 int X86Tracee::setProgramCounter(void *pc)
 {
@@ -117,7 +123,73 @@ int X86Tracee::setProgramCounter(void *pc)
     return 0;
 }
 
+template <typename T>
+void copyRegister(T *dest, void *src)
+{
+    memcpy(dest, src, sizeof(T));
+}
+
+int X86Tracee::updateRegisters()
+{
+    struct user_regs_struct regs;
+    struct user_fpregs_struct fpregs;
+
+    if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1 ||
+        ptrace(PTRACE_GETFPREGS, pid, NULL, &fpregs) == -1) {
+        perror("ptrace");
+        fprintf(stderr, "could not get registers\n");
+        return 1;
+    }
+
+    copyRegister(&registers->rax, &regs.rax);
+    copyRegister(&registers->rcx, &regs.rcx);
+    copyRegister(&registers->rdx, &regs.rdx);
+    copyRegister(&registers->rbx, &regs.rbx);
+    copyRegister(&registers->rsp, &regs.rsp);
+    copyRegister(&registers->rbp, &regs.rbp);
+    copyRegister(&registers->rsi, &regs.rsi);
+    copyRegister(&registers->rdi, &regs.rdi);
+    copyRegister(&registers->r8,  &regs.r8);
+    copyRegister(&registers->r9,  &regs.r9);
+    copyRegister(&registers->r10, &regs.r10);
+    copyRegister(&registers->r11, &regs.r11);
+    copyRegister(&registers->r12, &regs.r12);
+    copyRegister(&registers->r13, &regs.r13);
+    copyRegister(&registers->r14, &regs.r14);
+    copyRegister(&registers->r15, &regs.r15);
+
+    copyRegister(&registers->eflags, &regs.eflags);
+    copyRegister(&registers->rip, &regs.rip);
+
+    copyRegister(&registers->cs, &regs.cs);
+    copyRegister(&registers->ss, &regs.ss);
+    copyRegister(&registers->ds, &regs.ds);
+    copyRegister(&registers->es, &regs.es);
+    copyRegister(&registers->fs, &regs.fs);
+    copyRegister(&registers->gs, &regs.gs);
+
+    copyRegister(&registers->fsBase, &regs.fs_base);
+    copyRegister(&registers->gsBase, &regs.gs_base);
+
+    for (int i = 0; i < 8; ++i)
+        copyRegister(&registers->st[i], &fpregs.st_space[4 * i]);
+    copyRegister(&registers->fcw, &fpregs.cwd);
+    copyRegister(&registers->fsw, &fpregs.swd);
+    copyRegister(&registers->ftw, &fpregs.ftw);
+    copyRegister(&registers->fop, &fpregs.fop);
+    copyRegister(&registers->fip, &fpregs.rip);
+    copyRegister(&registers->fdp, &fpregs.rdp);
+
+    for (int i = 0; i < 16; ++i)
+        copyRegister(&registers->xmm[i], &fpregs.xmm_space[4 * i]);
+    copyRegister(&registers->mxcsr, &fpregs.mxcsr);
+
+    return 0;
+}
+
 Tracee *createPlatformTracee(pid_t pid, void *sharedMemory, size_t sharedSize)
 {
     return new X86Tracee(pid, sharedMemory, sharedSize);
 }
+
+#include "Tracee.inc"

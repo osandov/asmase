@@ -4,47 +4,20 @@
 #include <string>
 #include <vector>
 
-struct UserRegisters;
-
-/** Register descriptor. */
-struct RegisterD {
-    std::string name;
-    size_t offset;
-    std::string prefix;
-
-#if 0
-    template <typename T>
-    T getUnsafe(const UserRegisters &regs);
-#endif
-};
-
-/** Registor descriptor with a type. */
-template <typename T>
-struct RegisterDT : RegisterD {
-    RegisterDT(const std::string &name, size_t offset)
-        : RegisterD{name, offset} {}
-    RegisterDT(const std::string &prefix, const std::string &name, size_t offset)
-        : RegisterD{name, offset, prefix} {}
-
-    T get(const UserRegisters &regs)
-    {
-        auto reg = reinterpret_cast<const unsigned char *>(&regs) + offset;
-        return *reinterpret_cast<const T *>(reg);
-    }
-};
+#include "RegisterDesc.h"
 
 struct RegisterInfo {
-    std::vector<RegisterD> generalPurpose;
-    std::vector<RegisterD> conditionCodes;
-    RegisterD programCounter;
+    std::vector<RegisterDesc> generalPurpose;
+    std::vector<RegisterDesc> conditionCodes;
+    RegisterDesc programCounter;
 
-    std::vector<RegisterD> segmentation;
+    std::vector<RegisterDesc> segmentation;
 
-    std::vector<RegisterD> floatingPoint;
-    std::vector<RegisterD> floatingPointStatus;
+    std::vector<RegisterDesc> floatingPoint;
+    std::vector<RegisterDesc> floatingPointStatus;
 
-    std::vector<RegisterD> extra;
-    std::vector<RegisterD> extraStatus;
+    std::vector<RegisterDesc> extra;
+    std::vector<RegisterDesc> extraStatus;
 };
 
 enum class RegisterCategory {

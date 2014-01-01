@@ -3,15 +3,8 @@
 
 #include "Tracee.h"
 
-class X86Tracee : public Tracee {
-    int setProgramCounter(void *pc);
-
-public:
-    X86Tracee(pid_t pid, void *sharedMemory, size_t sharedSize);
-};
-
 struct xmm_t {
-    uint64_t lo, hi;
+    uint64_t lo, hi; // Little-endian, low goes first
 };
 
 struct UserRegisters {
@@ -29,7 +22,7 @@ struct UserRegisters {
 
     // Segment registers
     uint16_t cs, ss, ds, es, fs, gs;
-    uint64_t fs_base, gs_base;
+    uint64_t fsBase, gsBase;
 
 
     // Floating-point
@@ -40,6 +33,14 @@ struct UserRegisters {
     // SSE
     xmm_t xmm[16];
     uint32_t mxcsr;
+};
+
+class X86Tracee : public Tracee {
+    int setProgramCounter(void *pc);
+    int updateRegisters();
+
+public:
+    X86Tracee(pid_t pid, void *sharedMemory, size_t sharedSize);
 };
 
 #endif /* ASMASE_ARCH_X86_TRACEE_H */

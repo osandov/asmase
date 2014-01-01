@@ -1,20 +1,3 @@
-/*
- * Copyright (C) 2013 Omar Sandoval
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 #include <cassert>
 #include <cstdio>
 #include <map>
@@ -27,8 +10,8 @@
 #include "Builtins/Parser.h"
 #include "Builtins/Support.h"
 
-#include "builtins.h"
-#include "input.h"
+#include "Builtins.h"
+#include "Inputter.h"
 
 struct BuiltinCommand {
     BuiltinFunc func;
@@ -70,10 +53,10 @@ static std::map<std::string, BuiltinCommand> commands = {
     {"quit",      {builtin_quit, "quit the program"}},
     {"help",      {builtin_help, "print this help information"}},
 
-    {"source",    {builtin_source, "redirect input to a given file"}},
+    // {"source",    {builtin_source, "redirect input to a given file"}},
 
     {"memory",    {builtin_memory,    "dump memory contents"}},
-    {"registers", {builtin_registers, "dump register contents"}},
+    // {"registers", {builtin_registers, "dump register contents"}},
 
     {"warranty",  {builtin_warranty, "show warranty information"}},
     {"copying",   {builtin_copying,  "show copying information"}},
@@ -160,39 +143,39 @@ static BUILTIN_FUNC(help)
     return 0;
 }
 
-extern "C" {
-
 /* See builtins.h. */
-int is_builtin(const char *str)
+bool isBuiltin(const std::string &str)
 {
-    while (*str && isspace(*str))
-        ++str;
-    return str[0] == ':';
+    size_t i = 0;
+    while (isspace(str[i]))
+        ++i;
+    return str[i] == ':';
 }
 
 /* See builtins.h. */
-int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
+int runBuiltin(const std::string &str, Tracee &tracee, const Inputter &inputter)
 {
-    struct source_file *current_file = get_current_file();
+    std::string line = str.substr(0, str.size() - 1); // Don't want the newline
 
     // Make sure we were really given a built-in and trim the leading colon
-    const char *line = str;
+    const char *builtin = line.c_str();
     int offset = 0;
-    while (*str && *str != ':') {
-        ++str;
+    while (*builtin && *builtin != ':') {
+        ++builtin;
         ++offset;
     }
-    assert(*str == ':');
-    ++str;
+    assert(*builtin == ':');
+    ++builtin;
     ++offset;
 
     // Set up the environment to work in
-    Builtins::ErrorContext errorContext(current_file->filename,
-                                        current_file->line, line, offset);
-    Builtins::Environment env(asmb, tracee, errorContext);
+    Builtins::ErrorContext errorContext(inputter.currentFilename().c_str(),
+                                        inputter.currentLineno(),
+                                        line.c_str(), offset);
+    Builtins::Environment env(tracee, errorContext);
 
     // Lex and parse the input
-    Builtins::Scanner scanner(str);
+    Builtins::Scanner scanner(builtin);
     Builtins::Parser parser(scanner, errorContext);
     std::unique_ptr<Builtins::CommandAST> command(parser.parseCommand());
     if (!command)
@@ -224,6 +207,4 @@ int run_builtin(struct assembler *asmb, struct tracee_info *tracee, char *str)
     }
 
     return error;
-}
-
 }

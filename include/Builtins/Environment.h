@@ -4,8 +4,7 @@
 #include <string>
 #include <sys/types.h>
 
-struct assembler;
-struct tracee_info;
+class Tracee;
 
 namespace Builtins {
 
@@ -15,20 +14,13 @@ class ValueAST;
 /** The environement in which to evaluate and run built-in commands. */
 class Environment {
 public:
-    /** Assembler context. */
-    struct assembler *asmb;
-
-    /** Tracee PID. */
-    pid_t pid;
-
-    /** Page shared with the tracee. */
-    void *shared_page;
+    Tracee &tracee;
 
     /** Error context for the input being run. */
     ErrorContext &errorContext;
 
-    Environment(struct assembler *asmb, struct tracee_info *tracee,
-                ErrorContext &errorContext);
+    Environment(Tracee &tracee, ErrorContext &errorContext)
+        : tracee(tracee), errorContext(errorContext) {}
 
     /**
      * Look up a variable in the environment.

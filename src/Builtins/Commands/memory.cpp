@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if 0
 #include <cassert>
 #include <sstream>
 #include <unordered_map>
@@ -170,4 +171,29 @@ BUILTIN_FUNC(memory)
     }
 
     return 0;
+}
+#endif
+
+#include "Builtins/Commands.h"
+#include "Builtins/Environment.h"
+
+#include "MemoryStreamer.h"
+#include "Tracee.h"
+
+struct Poop {
+    long lo, hi;
+};
+
+BUILTIN_FUNC(memory)
+{
+    MemoryStreamer memStr{env.tracee.getPid(), (void *) 0xba60c0};
+
+    for (int i = 0; i < 10; ++i) {
+        int l;
+        if (memStr.next(l))
+            break;
+        printf("0x%08x\n", l);
+    }
+
+    return 1;
 }

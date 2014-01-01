@@ -20,35 +20,46 @@
 #include "Builtins/AST.h"
 #include "Builtins/Environment.h"
 
-#include "assembler.h"
-#include "tracing.h"
+#include "Tracee.h"
+#include "RegisterValue.h"
 
 namespace Builtins {
-
-Environment::Environment(struct assembler *asmb, struct tracee_info *tracee,
-                         ErrorContext &errorContext)
-    : asmb(asmb), pid(tracee->pid), shared_page(tracee->shared_page),
-        errorContext(errorContext) {}
 
 // Currently, the only variables are registers.
 ValueAST *Environment::lookupVariable(const std::string &var,
                                       std::string &errorMsg)
 {
-    struct register_value regval;
-    if (get_register_value(pid, var.c_str() + 1, &regval)) {
+    std::string regName = var.substr(1);
+    std::shared_ptr<RegisterValue> value = tracee.getRegisterValue(regName);
+    if (value) {
+        switch (value->type) {
+            case RegisterType::INT8:
+                return new IntegerExpr(0, 0, value->getInt8());
+            case RegisterType::INT16:
+                return new IntegerExpr(0, 0, value->getInt16());
+            case RegisterType::INT32:
+                return new IntegerExpr(0, 0, value->getInt32());
+            case RegisterType::INT64:
+                if (sizeof(long) >= 8)
+                    return new IntegerExpr(0, 0, value->getInt64());
+                else {
+                    errorMsg = "register too big";
+                    return nullptr;
+                }
+            case RegisterType::INT128:
+                errorMsg = "register too big";
+                return nullptr;
+            case RegisterType::FLOAT:
+                return new FloatExpr(0, 0, value->getFloat());
+            case RegisterType::DOUBLE:
+                return new FloatExpr(0, 0, value->getDouble());
+            case RegisterType::LONG_DOUBLE:
+                return new FloatExpr(0, 0, value->getLongDouble());
+        }
+    } else {
         errorMsg = "unknown variable";
         return nullptr;
     }
-
-    switch (regval.type) {
-        case REGISTER_INTEGER:
-            return new IntegerExpr(0, 0, regval.integer);
-        case REGISTER_FLOATING:
-            return new FloatExpr(0, 0, regval.integer);
-    }
-
-    assert(false);
-    return nullptr;
 }
 
 }
