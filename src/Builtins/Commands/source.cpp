@@ -23,7 +23,7 @@
 #include "Builtins/ErrorContext.h"
 #include "Builtins/Support.h"
 
-#include "input.h"
+#include "Inputter.h"
 
 static std::string getUsage(const std::string &commandName)
 {
@@ -52,7 +52,7 @@ BUILTIN_FUNC(source)
 
     const std::string &filename = args[0]->getString();
 
-    if (redirect_input(filename.c_str()))
+    if (env.inputter.redirectInput(filename))
         return 1;
 
     return 0;

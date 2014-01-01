@@ -8,6 +8,7 @@ BUILTINS_SRCS := \
 	$(BUILD)/Builtins/Scanner.cpp \
 	src/Builtins/Commands/copying.cpp \
 	src/Builtins/Commands/memory.cpp \
+	src/Builtins/Commands/source.cpp \
 	# $(wildcard src/Builtins/Commands/*.cpp) \
 
 SRCS := $(wildcard src/*.cpp) \

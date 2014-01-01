@@ -5,6 +5,7 @@
 #include <sys/types.h>
 
 class Tracee;
+class Inputter;
 
 namespace Builtins {
 
@@ -15,12 +16,13 @@ class ValueAST;
 class Environment {
 public:
     Tracee &tracee;
+    Inputter &inputter;
 
     /** Error context for the input being run. */
     ErrorContext &errorContext;
 
-    Environment(Tracee &tracee, ErrorContext &errorContext)
-        : tracee(tracee), errorContext(errorContext) {}
+    Environment(Tracee &tracee, Inputter &inputter, ErrorContext &errorContext)
+        : tracee{tracee}, inputter{inputter}, errorContext{errorContext} {}
 
     /**
      * Look up a variable in the environment.

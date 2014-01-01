@@ -53,7 +53,7 @@ static std::map<std::string, BuiltinCommand> commands = {
     {"quit",      {builtin_quit, "quit the program"}},
     {"help",      {builtin_help, "print this help information"}},
 
-    // {"source",    {builtin_source, "redirect input to a given file"}},
+    {"source",    {builtin_source, "redirect input to a given file"}},
 
     {"memory",    {builtin_memory,    "dump memory contents"}},
     // {"registers", {builtin_registers, "dump register contents"}},
@@ -143,7 +143,7 @@ static BUILTIN_FUNC(help)
     return 0;
 }
 
-/* See builtins.h. */
+/* See Builtins.h. */
 bool isBuiltin(const std::string &str)
 {
     size_t i = 0;
@@ -152,8 +152,8 @@ bool isBuiltin(const std::string &str)
     return str[i] == ':';
 }
 
-/* See builtins.h. */
-int runBuiltin(const std::string &str, Tracee &tracee, const Inputter &inputter)
+/* See Builtins.h. */
+int runBuiltin(const std::string &str, Tracee &tracee, Inputter &inputter)
 {
     std::string line = str.substr(0, str.size() - 1); // Don't want the newline
 
@@ -172,7 +172,7 @@ int runBuiltin(const std::string &str, Tracee &tracee, const Inputter &inputter)
     Builtins::ErrorContext errorContext(inputter.currentFilename().c_str(),
                                         inputter.currentLineno(),
                                         line.c_str(), offset);
-    Builtins::Environment env(tracee, errorContext);
+    Builtins::Environment env(tracee, inputter, errorContext);
 
     // Lex and parse the input
     Builtins::Scanner scanner(builtin);
