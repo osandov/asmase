@@ -1,5 +1,6 @@
 #include <cassert>
-#include <cstdio>
+#include <iomanip>
+#include <iostream>
 #include <map>
 #include <sstream>
 
@@ -23,16 +24,22 @@ static BUILTIN_FUNC(test)
     for (auto &arg : args) {
         switch (arg->getType()) {
             case Builtins::ValueType::IDENTIFIER:
-                printf("identifier: %s\n", arg->getIdentifier().c_str());
+                std::cout << "identifier: " << arg->getIdentifier() << '\n';
                 break;
             case Builtins::ValueType::INTEGER:
-                printf("integer: %1$ld (0x%1$lx)\n", arg->getInteger());
+            {
+                std::cout << "integer: 0x"
+                          << std::hex << std::setw(16) << std::setfill('0')
+                          << arg->getInteger();
+
+                std::cout << std::dec << " (" << arg->getInteger() << ")\n";
                 break;
+            }
             case Builtins::ValueType::FLOAT:
-                printf("floating: %F\n", arg->getFloat());
+                // printf("floating: %F\n", arg->getFloat());
                 break;
             case Builtins::ValueType::STRING:
-                printf("string: \"%s\"\n", arg->getString().c_str());
+                // printf("string: \"%s\"\n", arg->getString().c_str());
                 break;
         }
     }

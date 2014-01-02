@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include <iostream>
 #include <fstream>
 
 #include <readline/readline.h>
@@ -20,14 +20,14 @@ Inputter::~Inputter()
 int Inputter::redirectInput(const std::string &filename)
 {
     if (files.size() > Inputter::MAX_FILES) {
-        fprintf(stderr, "redirection stack too deep\n");
+        std::cerr << "redirection stack too deep\n";
         return 1;
     }
 
     std::unique_ptr<std::istream> file{new std::ifstream{filename}};
 
     if (!file->good()) {
-        fprintf(stderr, "could not open file\n");
+        std::cerr << "could not open file\n";
         return 1;
     }
 

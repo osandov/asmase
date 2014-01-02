@@ -1,6 +1,7 @@
 #include <cinttypes>
 #include <cstddef>
 #include <cstring>
+#include <iostream>
 
 #include <sys/ptrace.h>
 #include <sys/user.h>
@@ -14,8 +15,10 @@ static const RegisterInfo X86Registers = {
         {RegisterType::INT64, "%", "rcx", offsetof(UserRegisters, rcx)},
         {RegisterType::INT64, "%", "rdx", offsetof(UserRegisters, rdx)},
         {RegisterType::INT64, "%", "rbx", offsetof(UserRegisters, rbx)},
-        {RegisterType::INT64, "%", "rsp", offsetof(UserRegisters, rbp)},
-        {RegisterType::INT64, "%", "rsi", offsetof(UserRegisters, rdi)},
+        {RegisterType::INT64, "%", "rsp", offsetof(UserRegisters, rsp)},
+        {RegisterType::INT64, "%", "rbp", offsetof(UserRegisters, rbp)},
+        {RegisterType::INT64, "%", "rsi", offsetof(UserRegisters, rsi)},
+        {RegisterType::INT64, "%", "rdi", offsetof(UserRegisters, rdi)},
         {RegisterType::INT64, "%", "r8",  offsetof(UserRegisters, r8)},
         {RegisterType::INT64, "%", "r9",  offsetof(UserRegisters, r9)},
         {RegisterType::INT64, "%", "r10", offsetof(UserRegisters, r10)},
@@ -108,7 +111,7 @@ int X86Tracee::setProgramCounter(void *pc)
 
     if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
         perror("ptrace");
-        fprintf(stderr, "could not get program counter\n");
+        std::cerr << "could not get program counter\n";
         return 1;
     }
 
@@ -116,7 +119,7 @@ int X86Tracee::setProgramCounter(void *pc)
 
     if (ptrace(PTRACE_SETREGS, pid, NULL, &regs) == -1) {
         perror("ptrace");
-        fprintf(stderr, "could not set program counter\n");
+        std::cerr << "could not set program counter\n";
         return 1;
     }
 
@@ -137,7 +140,7 @@ int X86Tracee::updateRegisters()
     if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1 ||
         ptrace(PTRACE_GETFPREGS, pid, NULL, &fpregs) == -1) {
         perror("ptrace");
-        fprintf(stderr, "could not get registers\n");
+        std::cerr << "could not get registers\n";
         return 1;
     }
 

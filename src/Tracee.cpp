@@ -1,6 +1,6 @@
 #include <algorithm>
-#include <cstdio>
 #include <cstring>
+#include <iostream>
 
 #include <signal.h>
 #include <unistd.h>
@@ -15,7 +15,7 @@ int Tracee::executeInstruction(const std::string &instruction)
 {
     unsigned char *shared = (unsigned char *) sharedMemory;
     if (instruction.size() + trapInstruction.size() >= sharedSize) {
-        fprintf(stderr, "instruction too long\n");
+        std::cerr << "instruction too long\n";
         return 1;
     }
 
@@ -31,23 +31,23 @@ int Tracee::executeInstruction(const std::string &instruction)
 retry:
     if (ptrace(PTRACE_CONT, pid, NULL, 0) == -1) {
         perror("ptrace");
-        fprintf(stderr, "could not continue tracee");
+        std::cerr << "could not continue tracee\n";
         return 1;
     }
 
     if (waitpid(pid, &wait_status, 0) == -1) {
         perror("waitpid");
-        fprintf(stderr, "could not wait for tracee");
+        std::cerr << "could not wait for tracee\n";
         return 1;
     }
 
     if (WIFEXITED(wait_status)) {
-        fprintf(stderr, "tracee exited with status %d\n",
-                WEXITSTATUS(wait_status));
+        std::cerr << "tracee exited with status "
+                  << WEXITSTATUS(wait_status) << '\n';
         return 1;
     } else if (WIFSIGNALED(wait_status)) {
-        fprintf(stderr, "tracee was terminated (%s)\n",
-                strsignal(WTERMSIG(wait_status)));
+        std::cerr << "tracee was terminated ("
+                  << strsignal(WTERMSIG(wait_status)) << ")\n";
         return 1;
     } else if (WIFSTOPPED(wait_status)) {
         int signal = WSTOPSIG(wait_status);
@@ -59,15 +59,15 @@ retry:
                 // so continue the process and keep waiting
                 goto retry;
             default:
-                printf("tracee was stopped (%s)\n",
-                       strsignal(WSTOPSIG(wait_status)));
+                std::cout << "tracee was stopped ("
+                          << strsignal(WSTOPSIG(wait_status)) << ")\n";
                 return 0;
         }
     } else if (WIFCONTINUED(wait_status)) {
-        fprintf(stderr, "tracee continued\n");
+        std::cerr << "tracee continued\n";
         return 1;
     } else {
-        fprintf(stderr, "tracee disappeared\n");
+        std::cerr << "tracee disappeared\n";
         return 1;
     }
 
@@ -92,6 +92,7 @@ static const RegisterDesc *findRegister(const std::string &name,
                                         const RegisterInfo &regInfo)
 {
     const RegisterDesc *reg;
+    std::cout << name << '\n';
 
     if ((reg = findRegisterInCategory(name, regInfo.generalPurpose)))
         return reg;
@@ -139,13 +140,13 @@ std::shared_ptr<Tracee> createTracee()
 
     if (!sharedPage) {
         perror("mmap");
-        fprintf(stderr, "could not create shared memory\n");
+        std::cerr << "could not create shared memory\n";
         return {nullptr};
     }
 
     if ((pid = fork()) == -1) {
         perror("fork");
-        fprintf(stderr, "could not fork tracee\n");
+        std::cerr << "could not fork tracee\n";
         return {nullptr};
     }
 

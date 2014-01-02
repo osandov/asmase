@@ -20,6 +20,8 @@ public:
           buffer{reinterpret_cast<unsigned char *>(&_buffer)},
           address{reinterpret_cast<unsigned char *>(address)}, offset{0} {}
 
+    void *getAddress() const { return reinterpret_cast<void *>(address); }
+
     template <typename T>
     int next(T &out)
     {
