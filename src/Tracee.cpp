@@ -74,55 +74,21 @@ retry:
     return 0;
 }
 
-static const RegisterDesc *findRegisterInCategory(
-        const std::string &regName, const std::vector<RegisterDesc> &category)
+std::shared_ptr<RegisterValue> Tracee::getRegisterValue(const std::string &regName)
 {
     auto registerHasName =
         [regName](const RegisterDesc &reg) { return reg.name == regName; };
-    
-    auto it = std::find_if(std::begin(category), std::end(category),
-                           registerHasName);
-    if (it == std::end(category))
-        return nullptr;
-    else
-        return &*it;
-}
 
-static const RegisterDesc *findRegister(const std::string &name,
-                                        const RegisterInfo &regInfo)
-{
-    const RegisterDesc *reg;
-    std::cout << name << '\n';
+    auto reg = std::find_if(std::begin(regInfo.registers),
+                            std::end(regInfo.registers),
+                            registerHasName);
 
-    if ((reg = findRegisterInCategory(name, regInfo.generalPurpose)))
-        return reg;
-    if ((reg = findRegisterInCategory(name, regInfo.conditionCodes)))
-        return reg;
-    if (name == regInfo.programCounter.name)
-        return &regInfo.programCounter;
-    if ((reg = findRegisterInCategory(name, regInfo.segmentation)))
-        return reg;
-    if ((reg = findRegisterInCategory(name, regInfo.floatingPoint)))
-        return reg;
-    if ((reg = findRegisterInCategory(name, regInfo.floatingPointStatus)))
-        return reg;
-    if ((reg = findRegisterInCategory(name, regInfo.extra)))
-        return reg;
-    if ((reg = findRegisterInCategory(name, regInfo.extraStatus)))
-        return reg;
-
-    return nullptr;
-}
-
-std::shared_ptr<RegisterValue> Tracee::getRegisterValue(const std::string &regName)
-{
-    const RegisterDesc *reg = findRegister(regName, regInfo);
-
-    if (reg) {
+    if (reg == std::end(regInfo.registers))
+        return {nullptr};
+    else {
         updateRegisters();
         return std::shared_ptr<RegisterValue>{reg->getValue(*registers)};
-    } else
-        return {nullptr};
+    }
 }
 
 static void traceeProcess() __attribute__((noreturn));

@@ -1,6 +1,7 @@
 #ifndef ASMASE_REGISTER_DESC_H
 #define ASMASE_REGISTER_DESC_H
 
+#include "RegisterCategory.h"
 #include "RegisterValue.h"
 
 struct UserRegisters;
@@ -8,16 +9,20 @@ struct UserRegisters;
 /** Register descriptor. */
 struct RegisterDesc {
     RegisterType type;
+    RegisterCategory categories;
     std::string prefix;
     std::string name;
     size_t offset;
 
-    RegisterDesc(RegisterType type, const std::string &prefix,
-              const std::string &name, size_t offset)
-        : type{type}, prefix{prefix}, name{name}, offset{offset} {}
+    RegisterDesc(RegisterType type, RegisterCategory categories,
+                 const std::string &prefix, const std::string &name,
+                 size_t offset)
+        : type{type}, categories{categories}, prefix{prefix}, name{name},
+          offset{offset} {}
 
-    RegisterDesc(RegisterType type, const std::string &name, size_t offset)
-        : type{type}, name{name}, offset{offset} {}
+    RegisterDesc(RegisterType type, RegisterCategory categories,
+                 const std::string &name, size_t offset)
+        : RegisterDesc{type, categories, "", name, offset} {}
 
     RegisterValue *getValue(const UserRegisters &regs) const
     {
@@ -42,7 +47,6 @@ struct RegisterDesc {
     }
 
 private:
-
     template <typename T>
     T getRaw(const UserRegisters &regs) const
     {
