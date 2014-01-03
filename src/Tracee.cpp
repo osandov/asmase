@@ -29,7 +29,7 @@ int Tracee::executeInstruction(const std::string &instruction)
         return 1;
 
 retry:
-    if (ptrace(PTRACE_CONT, pid, NULL, 0) == -1) {
+    if (ptrace(PTRACE_CONT, pid, nullptr, 0) == -1) {
         perror("ptrace");
         std::cerr << "could not continue tracee\n";
         return 1;
@@ -101,7 +101,7 @@ std::shared_ptr<Tracee> createTracee()
     void *sharedPage;
     size_t pageSize = sysconf(_SC_PAGESIZE);
 
-    sharedPage = mmap(NULL, pageSize, PROT_READ | PROT_WRITE | PROT_EXEC,
+    sharedPage = mmap(nullptr, pageSize, PROT_READ | PROT_WRITE | PROT_EXEC,
                       MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
     if (!sharedPage) {
@@ -126,7 +126,7 @@ std::shared_ptr<Tracee> createTracee()
 
 static void traceeProcess()
 {
-    if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1) {
+    if (ptrace(PTRACE_TRACEME, -1, nullptr, nullptr) == -1) {
         perror("ptrace");
         abort();
     }
@@ -149,5 +149,5 @@ static void installTracerSignalHandlers()
     sigemptyset(&act.sa_mask);
 
     // Ignore SIGINT so the user can break out of the tracee
-    sigaction(SIGINT, &act, NULL);
+    sigaction(SIGINT, &act, nullptr);
 }

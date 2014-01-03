@@ -19,7 +19,7 @@ function check_for_zero_division() {
     printf \
 "    if (value == 0) {\n" \
 "        env.errorContext.printMessage(\"division by zero\");\n" \
-"        return NULL;\n" \
+"        return nullptr;\n" \
 "    }\n"
 }
 

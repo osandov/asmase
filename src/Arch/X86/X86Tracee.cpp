@@ -109,7 +109,7 @@ int X86Tracee::setProgramCounter(void *pc)
 {
     struct user_regs_struct regs;
 
-    if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1) {
+    if (ptrace(PTRACE_GETREGS, pid, nullptr, &regs) == -1) {
         perror("ptrace");
         std::cerr << "could not get program counter\n";
         return 1;
@@ -117,7 +117,7 @@ int X86Tracee::setProgramCounter(void *pc)
 
     regs.rip = (unsigned long long) pc;
 
-    if (ptrace(PTRACE_SETREGS, pid, NULL, &regs) == -1) {
+    if (ptrace(PTRACE_SETREGS, pid, nullptr, &regs) == -1) {
         perror("ptrace");
         std::cerr << "could not set program counter\n";
         return 1;
