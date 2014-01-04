@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
 
     Inputter inputter;
 
-    std::shared_ptr<AssemblerContext> assemblerContext{createAssemblerContext()};
+    std::shared_ptr<AssemblerContext>
+        assemblerContext{Assembler::createAssemblerContext()};
     if (!assemblerContext)
         return 1;
     Assembler assembler{assemblerContext};

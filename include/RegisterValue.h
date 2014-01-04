@@ -21,6 +21,7 @@ struct my_uint128 {
 
 static_assert(sizeof(my_uint128) == 16, "my_uint128 is not packed");
 
+/** Value of a register with a runtime type. */
 class RegisterValue {
 public:
     RegisterType type;
@@ -29,6 +30,7 @@ protected:
     RegisterValue(RegisterType type) : type{type} {}
 
 public:
+    // Cast to the runtime type and get the value.
     uint8_t getInt8() const;
     uint16_t getInt16() const;
     uint32_t getInt32() const;

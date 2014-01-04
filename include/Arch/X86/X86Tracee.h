@@ -14,6 +14,11 @@ class X86Tracee : public Tracee {
     int printFloatingPointRegisters();
     int printExtraRegisters();
 
+    /**
+     * ptrace returns the floating point tag word as a simple bitmap of valid
+     * or not; this reconstructs the processor's actual tag word from the
+     * floating point stack itself.
+     */
     void reconstructTagWord();
 
 public:

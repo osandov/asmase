@@ -36,21 +36,28 @@ public:
     uint32_t mxcsr;
 };
 
+/** Top physical register in x87 register stack. */
 inline uint16_t x87_st_top(uint16_t fsw)
 {
     return (fsw & 0x3800) >> 11;
 }
 
+/**
+ * Convert a physical x87 register number to logical (i.e., %st(x)) register
+ * number.
+ */
 inline uint16_t x87_phys_to_log(uint16_t index, uint16_t top)
 {
     return (index - top + 8) % 8;
 }
 
+/** Convert a logical x87 register number to the physical register number. */
 inline uint16_t x87_log_to_phys(uint16_t index, uint16_t top)
 {
     return (index + top) % 8;
 }
 
+/** Determine the proper tag for a given x87 register value. */
 inline uint16_t x87_tag(long double st)
 {
     struct x87_float {

@@ -14,9 +14,13 @@
 #include "Builtins.h"
 #include "Inputter.h"
 
+/** Entry for a built-in command. */
 class BuiltinCommand {
 public:
+    /** The function to run for the built-in. */
     BuiltinFunc func;
+
+    /** Help string documentation. */
     std::string helpString;
 };
 
@@ -53,6 +57,7 @@ static BUILTIN_FUNC(quit)
 
 static BUILTIN_FUNC(help);
 
+/** Lookup table from full command name to built-in entry. */
 static std::map<std::string, BuiltinCommand> commands = {
     {"test",      {builtin_test, "print evaluated arguments as a test"}},
 
@@ -68,6 +73,10 @@ static std::map<std::string, BuiltinCommand> commands = {
     {"copying",   {builtin_copying,  "show copying information"}},
 };
 
+/**
+ * Look up the abbreviation for a built-in command.
+ * @return Zero on success, nonzero on failure (e.g., ambigious abbreviation).
+ */
 static int lookupCommand(const std::string &abbrev,
                          BuiltinCommand &commandOut,
                          int commandStart,
@@ -86,7 +95,7 @@ static int lookupCommand(const std::string &abbrev,
         }
     }
 
-    if (potentialMatches.size() == 0) {
+    if (potentialMatches.empty()) {
         errorContext.printMessage("unknown command", commandStart);
         return 1;
     } else if (potentialMatches.size() > 1) {
@@ -109,7 +118,7 @@ static BUILTIN_FUNC(help)
 
     int maxCommandLength = 0;
     if (args.size() == 0) {
-        for (auto command : commands) {
+        for (auto &command : commands) {
             const char *commandName = command.first.c_str();
             const char *helpString = command.second.helpString.c_str();
 
@@ -175,15 +184,15 @@ int runBuiltin(const std::string &str, Tracee &tracee, Inputter &inputter)
     ++offset;
 
     // Set up the environment to work in
-    Builtins::ErrorContext errorContext(inputter.currentFilename().c_str(),
+    Builtins::ErrorContext errorContext{inputter.currentFilename().c_str(),
                                         inputter.currentLineno(),
-                                        line.c_str(), offset);
-    Builtins::Environment env(tracee, inputter, errorContext);
+                                        line.c_str(), offset};
+    Builtins::Environment env{tracee, inputter, errorContext};
 
     // Lex and parse the input
-    Builtins::Scanner scanner(builtin);
-    Builtins::Parser parser(scanner, errorContext);
-    std::unique_ptr<Builtins::CommandAST> command(parser.parseCommand());
+    Builtins::Scanner scanner{builtin};
+    Builtins::Parser parser{scanner, errorContext};
+    std::unique_ptr<Builtins::CommandAST> command{parser.parseCommand()};
     if (!command)
         return 1;
 
@@ -206,11 +215,10 @@ int runBuiltin(const std::string &str, Tracee &tracee, Inputter &inputter)
     BuiltinCommand builtinCommand;
     int error = lookupCommand(abbrev, builtinCommand,
                               command->getCommandStart(), errorContext);
-    if (!error) {
+    if (!error)
         error = builtinCommand.func(evaledArgs, command->getCommand(),
                                     command->getCommandStart(),
                                     command->getCommandEnd(), env);
-    }
 
     return error;
 }

@@ -309,6 +309,8 @@ static int doDump(pid_t pid, Builtins::ErrorContext &errorContext,
             }
         case Format::STRING:
             return dumpStrings(memStr, repeat);
+        default:
+            return 1;
     }
 }
 

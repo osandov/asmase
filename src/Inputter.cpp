@@ -17,9 +17,10 @@ Inputter::~Inputter()
     clear_history();
 }
 
+/* See Inputter.h. */
 int Inputter::redirectInput(const std::string &filename)
 {
-    if (files.size() > Inputter::MAX_FILES) {
+    if (files.size() >= Inputter::MAX_FILES) {
         std::cerr << "redirection stack too deep\n";
         return 1;
     }
@@ -36,6 +37,7 @@ int Inputter::redirectInput(const std::string &filename)
     return 0;
 }
 
+/* See Inputter.h. */
 std::string Inputter::readLine(const std::string &prompt)
 {
     std::string line;
@@ -45,7 +47,7 @@ std::string Inputter::readLine(const std::string &prompt)
         if (files.size() > 1) {
             std::istream &file = *files.back().stream;
             std::getline(file, line);
-            if (file.eof())
+            if (file.eof()) // No more input, pop the stack and retry
                 files.pop_back();
             else {
                 line += '\n';
@@ -54,7 +56,7 @@ std::string Inputter::readLine(const std::string &prompt)
         } else {
             char *cline;
             if ((cline = readline(prompt.c_str()))) {
-                if (*cline) // If line isn't empty, add it to the history
+                if (*cline) // If the line isn't empty, add it to the history
                     add_history(cline);
                 line = cline;
                 line += '\n';
@@ -68,11 +70,13 @@ std::string Inputter::readLine(const std::string &prompt)
     return line;
 }
 
+/* See Inputter.h. */
 const std::string &Inputter::currentFilename() const
 {
     return files.back().filename;
 }
 
+/* See Inputter.h. */
 int Inputter::currentLineno() const
 {
     return files.back().lineno;

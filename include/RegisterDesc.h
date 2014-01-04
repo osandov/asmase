@@ -9,10 +9,22 @@ class UserRegisters;
 /** Register descriptor. */
 class RegisterDesc {
 public:
+    /** The type of the register value. */
     RegisterType type;
+
+    /** Category to which the register belongs. */
     RegisterCategory category;
+
+    /**
+     * Optional prefix for the register name for displaying. Ignored when
+     * searching.
+     */
     std::string prefix;
+
+    /** Name of the register. */
     std::string name;
+
+    /** Offset of the register value in the UserRegisters structure. */
     size_t offset;
 
     RegisterDesc(RegisterType type, RegisterCategory category,
@@ -21,10 +33,12 @@ public:
         : type{type}, category{category}, prefix{prefix}, name{name},
           offset{offset} {}
 
+    /** Empty prefix constructor. */
     RegisterDesc(RegisterType type, RegisterCategory category,
                  const std::string &name, size_t offset)
         : RegisterDesc{type, category, "", name, offset} {}
 
+    /** Get the value of the register from the UserRegisters structure. */
     RegisterValue *getValue(const UserRegisters &regs) const
     {
         switch (type) {
@@ -44,6 +58,8 @@ public:
                 return new DoubleRegisterValue{getRaw<double>(regs)};
             case RegisterType::LONG_DOUBLE:
                 return new LongDoubleRegisterValue{getRaw<long double>(regs)};
+            default:
+                return nullptr;
         }
     }
 

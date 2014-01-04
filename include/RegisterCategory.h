@@ -1,6 +1,7 @@
 #ifndef ASMASE_REGISTER_CATEGORY_H
 #define ASMASE_REGISTER_CATEGORY_H
 
+/** Bitmask-able register categories. */
 enum class RegisterCategory : int {
     NONE            = 0x0,
     GENERAL_PURPOSE = 0x1,
@@ -26,6 +27,7 @@ inline RegisterCategory operator~(RegisterCategory x)
     return (RegisterCategory) (~(int) x);
 }
 
+/** Return whether any bit in the category set is set. */
 inline bool any(RegisterCategory x)
 {
     return x != RegisterCategory::NONE;

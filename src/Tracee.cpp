@@ -23,9 +23,10 @@ Tracee::categoryPrinters = {
     {RegisterCategory::SEGMENTATION,    &Tracee::printSegmentationRegisters},
 };
 
+/* See Tracee.h. */
 int Tracee::executeInstruction(const std::string &instruction)
 {
-    unsigned char *shared = (unsigned char *) sharedMemory;
+    unsigned char *shared = reinterpret_cast<unsigned char *>(sharedMemory);
     if (instruction.size() + trapInstruction.size() >= sharedSize) {
         std::cerr << "instruction too long\n";
         return 1;
@@ -86,6 +87,7 @@ retry:
     return 0;
 }
 
+/* See Tracee.h. */
 std::shared_ptr<RegisterValue> Tracee::getRegisterValue(const std::string &regName)
 {
     auto registerHasName =
@@ -103,42 +105,49 @@ std::shared_ptr<RegisterValue> Tracee::getRegisterValue(const std::string &regNa
     }
 }
 
+/* See Tracee.h. */
 int Tracee::printGeneralPurposeRegisters()
 {
     std::cerr << "no general-purpose registers on this architecture\n";
     return 1;
 }
 
+/* See Tracee.h. */
 int Tracee::printConditionCodeRegisters()
 {
     std::cerr << "no condition code registers on this architecture\n";
     return 1;
 }
 
+/* See Tracee.h. */
 int Tracee::printProgramCounterRegisters()
 {
     std::cerr << "no program counter registers on this architecture\n";
     return 1;
 }
 
+/* See Tracee.h. */
 int Tracee::printSegmentationRegisters()
 {
     std::cerr << "no segmentation registers on this architecture\n";
     return 1;
 }
 
+/* See Tracee.h. */
 int Tracee::printFloatingPointRegisters()
 {
     std::cerr << "no floating point registers on this architecture\n";
     return 1;
 }
 
+/* See Tracee.h. */
 int Tracee::printExtraRegisters()
 {
     std::cerr << "no extra registers on this architecture\n";
     return 1;
 }
 
+/* See Tracee.h. */
 int Tracee::printRegisters(RegisterCategory categories)
 {
     bool firstPrinted = true;
@@ -162,9 +171,13 @@ int Tracee::printRegisters(RegisterCategory categories)
     return all_error;
 }
 
+/** Entry point for the tracee. Request to be ptraced and trap immediately. */
 static void traceeProcess() __attribute__((noreturn));
+
+/** Set up an signal handlers needed by the tracer. */
 static void installTracerSignalHandlers();
 
+/* See Tracee.h. */
 std::shared_ptr<Tracee> Tracee::createTracee()
 {
     pid_t pid;
@@ -195,6 +208,7 @@ std::shared_ptr<Tracee> Tracee::createTracee()
     return std::shared_ptr<Tracee>{platformTracee};
 }
 
+/* See above. */
 static void traceeProcess()
 {
     if (ptrace(PTRACE_TRACEME, -1, nullptr, nullptr) == -1) {
@@ -211,6 +225,7 @@ static void traceeProcess()
     abort();
 }
 
+/* See above. */
 static void installTracerSignalHandlers()
 {
     struct sigaction act;

@@ -37,7 +37,7 @@ int X86Tracee::setProgramCounter(void *pc)
 }
 
 template <typename T>
-void copyRegister(T *dest, void *src)
+inline void copyRegister(T *dest, void *src)
 {
     memcpy(dest, src, sizeof(T));
 }
@@ -102,6 +102,7 @@ int X86Tracee::updateRegisters()
     return 0;
 }
 
+/* See X86Tracee.h. */
 void X86Tracee::reconstructTagWord()
 {
     uint16_t top = x87_st_top(registers->fsw);
@@ -122,6 +123,7 @@ void X86Tracee::reconstructTagWord()
     registers->ftw = ftw;
 }
 
+/* See Tracee.h. */
 Tracee *Tracee::createPlatformTracee(pid_t pid, void *sharedMemory,
                                      size_t sharedSize)
 {

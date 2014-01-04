@@ -1,3 +1,7 @@
+// This file should be included by the architecture implementation of a tracee.
+// This is necessary because the unique_ptr has to know how the UserRegisters
+// structure is defined.
+
 Tracee::Tracee(const RegisterInfo &regInfo, const std::string &trapInstruction,
                UserRegisters *registers,
                pid_t pid, void *sharedMemory, size_t sharedSize)

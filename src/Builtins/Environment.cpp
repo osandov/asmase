@@ -55,6 +55,8 @@ ValueAST *Environment::lookupVariable(const std::string &var,
                 return new FloatExpr(0, 0, value->getDouble());
             case RegisterType::LONG_DOUBLE:
                 return new FloatExpr(0, 0, value->getLongDouble());
+            default:
+                return nullptr;
         }
     } else {
         errorMsg = "unknown variable";

@@ -24,7 +24,7 @@ using namespace llvm;
 #include "Assembler.h"
 #include "Inputter.h"
 
-/** The size of the output SmallString. */
+/** The reserved size of the output SmallString. */
 static const int OUTPUT_BUFFER_SIZE = 4096;
 
 /** Return the text section (i.e., machine code) for an object file. */
@@ -33,11 +33,12 @@ static error_code getTextSection(object::ObjectFile &objFile,
 
 /**
  * Diagnostic callback. We need this because we read input line by line so we
- * have to keep track of diagnostic information on our own in C-land (filename
- * and line number).
+ * keep track of diagnostic information (filename and line number) on our own.
+ * @param arg Pointer to the Inputter instance being used.
  */
 static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg);
 
+/** Context storing LLVM state that can be reused. */
 class AssemblerContext {
     static bool llvmIsInit;
 
@@ -79,11 +80,13 @@ public:
 
 bool AssemblerContext::llvmIsInit = false;
 
-std::shared_ptr<AssemblerContext> createAssemblerContext()
+/* See Assembler.h. */
+std::shared_ptr<AssemblerContext> Assembler::createAssemblerContext()
 {
     return std::shared_ptr<AssemblerContext>{new AssemblerContext};
 }
 
+/* See Assembler.h. */
 int Assembler::assembleInstruction(const std::string &instruction,
                                    std::string &machineCodeOut,
                                    const Inputter &inputter)

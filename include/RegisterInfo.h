@@ -6,8 +6,10 @@
 
 #include "RegisterDesc.h"
 
+/** Information on the registers for an architecture. */
 class RegisterInfo {
 public:
+    /** List of registers. */
     std::vector<RegisterDesc> registers;
 };
 
