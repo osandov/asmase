@@ -25,7 +25,11 @@ int X86Tracee::setProgramCounter(void *pc)
         return 1;
     }
 
+#ifdef __x86_64__
     regs.rip = (unsigned long long) pc;
+#else
+    regs.eip = (long) pc;
+#endif
 
     if (ptrace(PTRACE_SETREGS, pid, nullptr, &regs) == -1) {
         perror("ptrace");
@@ -44,16 +48,21 @@ inline void copyRegister(T *dest, void *src)
 
 int X86Tracee::updateRegisters()
 {
+#ifdef __x86_64
+#define user_fpxregs_struct user_fpregs_struct
+#define PTRACE_GETFPXREGS PTRACE_GETFPREGS
+#endif
     struct user_regs_struct regs;
-    struct user_fpregs_struct fpregs;
+    struct user_fpxregs_struct fpxregs;
 
     if (ptrace(PTRACE_GETREGS, pid, nullptr, &regs) == -1 ||
-        ptrace(PTRACE_GETFPREGS, pid, nullptr, &fpregs) == -1) {
+        ptrace(PTRACE_GETFPXREGS, pid, nullptr, &fpxregs) == -1) {
         perror("ptrace");
         std::cerr << "could not get registers\n";
         return 1;
     }
 
+#ifdef __x86_64__
     copyRegister(&registers->rax, &regs.rax);
     copyRegister(&registers->rcx, &regs.rcx);
     copyRegister(&registers->rdx, &regs.rdx);
@@ -70,32 +79,69 @@ int X86Tracee::updateRegisters()
     copyRegister(&registers->r13, &regs.r13);
     copyRegister(&registers->r14, &regs.r14);
     copyRegister(&registers->r15, &regs.r15);
+#else
+    copyRegister(&registers->eax, &regs.eax);
+    copyRegister(&registers->ecx, &regs.ecx);
+    copyRegister(&registers->edx, &regs.edx);
+    copyRegister(&registers->ebx, &regs.ebx);
+    copyRegister(&registers->esp, &regs.esp);
+    copyRegister(&registers->ebp, &regs.ebp);
+    copyRegister(&registers->esi, &regs.esi);
+    copyRegister(&registers->edi, &regs.edi);
+#endif
 
     copyRegister(&registers->eflags, &regs.eflags);
-    copyRegister(&registers->rip, &regs.rip);
 
+#ifdef __x86_64__
+    copyRegister(&registers->rip, &regs.rip);
+#else
+    copyRegister(&registers->eip, &regs.eip);
+#endif
+
+#ifdef __x86_64
     copyRegister(&registers->cs, &regs.cs);
     copyRegister(&registers->ss, &regs.ss);
     copyRegister(&registers->ds, &regs.ds);
     copyRegister(&registers->es, &regs.es);
     copyRegister(&registers->fs, &regs.fs);
     copyRegister(&registers->gs, &regs.gs);
+#else
+    copyRegister(&registers->cs, &regs.xcs);
+    copyRegister(&registers->ss, &regs.xss);
+    copyRegister(&registers->ds, &regs.xds);
+    copyRegister(&registers->es, &regs.xes);
+    copyRegister(&registers->fs, &regs.xfs);
+    copyRegister(&registers->gs, &regs.xgs);
+#endif
 
+#ifdef __x86_64__
     copyRegister(&registers->fsBase, &regs.fs_base);
     copyRegister(&registers->gsBase, &regs.gs_base);
+#endif
 
     for (int i = 0; i < 8; ++i)
-        copyRegister(&registers->st[i], &fpregs.st_space[4 * i]);
-    copyRegister(&registers->fcw, &fpregs.cwd);
-    copyRegister(&registers->fsw, &fpregs.swd);
-    copyRegister(&registers->ftw, &fpregs.ftw);
-    copyRegister(&registers->fop, &fpregs.fop);
-    copyRegister(&registers->fip, &fpregs.rip);
-    copyRegister(&registers->fdp, &fpregs.rdp);
+        copyRegister(&registers->st[i], &fpxregs.st_space[4 * i]);
+    copyRegister(&registers->fcw, &fpxregs.cwd);
+    copyRegister(&registers->fsw, &fpxregs.swd);
+#ifdef __x86_64__
+    copyRegister(&registers->ftw, &fpxregs.ftw);
+#else
+    copyRegister(&registers->ftw, &fpxregs.twd);
+#endif
+    copyRegister(&registers->fop, &fpxregs.fop);
+#ifdef __x86_64__
+    copyRegister(&registers->fip, &fpxregs.rip);
+    copyRegister(&registers->fdp, &fpxregs.rdp);
+#else
+    copyRegister(&registers->fip, &fpxregs.fip);
+    copyRegister(&registers->fcs, &fpxregs.fcs);
+    copyRegister(&registers->fdp, &fpxregs.foo);
+    copyRegister(&registers->fds, &fpxregs.fos);
+#endif
 
-    for (int i = 0; i < 16; ++i)
-        copyRegister(&registers->xmm[i], &fpregs.xmm_space[4 * i]);
-    copyRegister(&registers->mxcsr, &fpregs.mxcsr);
+    for (int i = 0; i < UserRegisters::NUM_SSE_REGS; ++i)
+        copyRegister(&registers->xmm[i], &fpxregs.xmm_space[4 * i]);
+    copyRegister(&registers->mxcsr, &fpxregs.mxcsr);
 
     reconstructTagWord();
 

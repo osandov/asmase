@@ -24,7 +24,7 @@ class Inputter {
 
 public:
     /** The maximum depth of the redirection stack. */
-    static const int MAX_FILES = 128;
+    static const size_t MAX_FILES = 128;
 
     Inputter();
     ~Inputter();

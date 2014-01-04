@@ -9,30 +9,55 @@ struct xmm_t {
 
 class UserRegisters {
 public:
+#ifdef __x86_64__
+    static const int NUM_SSE_REGS = 16;
+#else
+    static const int NUM_SSE_REGS = 8;
+#endif
+
     // General-purpose registers
+#ifdef __x86_64__
     uint64_t rax, rcx, rdx, rbx;
     uint64_t rsp, rbp;
     uint64_t rsi, rdi;
     uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+#else
+    uint32_t eax, ecx, edx, ebx;
+    uint32_t esp, ebp;
+    uint32_t esi, edi;
+#endif
 
     // Condition codes
     uint32_t eflags;
 
     // Program counter
+#ifdef __x86_64__
     uint64_t rip;
+#else
+    uint32_t eip;
+#endif
 
     // Segment registers
     uint16_t cs, ss, ds, es, fs, gs;
+#ifdef __x86_64__
     uint64_t fsBase, gsBase;
+#endif
 
 
     // Floating-point
     long double st[8];
     uint16_t fcw, fsw, ftw, fop;
+#ifdef __x86_64__
     uint64_t fip, fdp;
+#else
+    uint32_t fip;
+    uint16_t fcs;
+    uint32_t fdp;
+    uint16_t fds;
+#endif
 
     // SSE
-    xmm_t xmm[16];
+    xmm_t xmm[NUM_SSE_REGS];
     uint32_t mxcsr;
 };
 

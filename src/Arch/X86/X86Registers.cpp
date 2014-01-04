@@ -16,6 +16,7 @@ using RC = RegisterCategory;
 extern const RegisterInfo X86Registers = {
     .registers = {
         // General-purpose
+#ifdef __x86_64__
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "rax", USER_REGISTER(rax)},
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "rcx", USER_REGISTER(rcx)},
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "rdx", USER_REGISTER(rdx)},
@@ -32,12 +33,26 @@ extern const RegisterInfo X86Registers = {
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "r13", USER_REGISTER(r13)},
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "r14", USER_REGISTER(r14)},
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "r15", USER_REGISTER(r15)},
+#else
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "eax", USER_REGISTER(eax)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "ecx", USER_REGISTER(ecx)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "edx", USER_REGISTER(edx)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "ebx", USER_REGISTER(ebx)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "esp", USER_REGISTER(esp)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "ebp", USER_REGISTER(ebp)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "esi", USER_REGISTER(esi)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "%", "edi", USER_REGISTER(edi)},
+#endif
 
         // Condition codes
         {RT::INT32, RC::CONDITION_CODE, "eflags", USER_REGISTER(eflags)},
 
         // Program counter
+#ifdef __x86_64__
         {RT::INT64, RC::PROGRAM_COUNTER, "%", "rip", USER_REGISTER(rip)},
+#else
+        {RT::INT32, RC::PROGRAM_COUNTER, "%", "eip", USER_REGISTER(eip)},
+#endif
 
         // Segmentation
         {RT::INT16, RC::SEGMENTATION, "%", "cs", USER_REGISTER(cs)},
@@ -46,8 +61,10 @@ extern const RegisterInfo X86Registers = {
         {RT::INT16, RC::SEGMENTATION, "%", "es", USER_REGISTER(es)},
         {RT::INT16, RC::SEGMENTATION, "%", "fs", USER_REGISTER(fs)},
         {RT::INT16, RC::SEGMENTATION, "%", "gs", USER_REGISTER(gs)},
+#ifdef __x86_64__
         {RT::INT64, RC::SEGMENTATION, "%", "fs.base", USER_REGISTER(fsBase)},
         {RT::INT64, RC::SEGMENTATION, "%", "gs.base", USER_REGISTER(gsBase)},
+#endif
 
         // Floating-point
         {RT::LONG_DOUBLE, RC::FLOATING_POINT, "%", "st(0)", USER_REGISTER(st[0])},
@@ -64,8 +81,13 @@ extern const RegisterInfo X86Registers = {
         {RT::INT16, RC::FLOATING_POINT, "fsw", USER_REGISTER(fsw)},
         {RT::INT16, RC::FLOATING_POINT, "ftw", USER_REGISTER(ftw)},
         {RT::INT16, RC::FLOATING_POINT, "fop", USER_REGISTER(fop)},
+#ifdef __x86_64__
         {RT::INT64, RC::FLOATING_POINT, "fip", USER_REGISTER(fip)},
         {RT::INT64, RC::FLOATING_POINT, "fdp", USER_REGISTER(fdp)},
+#else
+        {RT::INT32, RC::FLOATING_POINT, "fip", USER_REGISTER(fip)},
+        {RT::INT32, RC::FLOATING_POINT, "fdp", USER_REGISTER(fdp)},
+#endif
 
         // Extra (MMX and SSE)
         {RT::INT64, RC::EXTRA, "%", "mm0", USER_REGISTER(st[0])},
@@ -85,6 +107,7 @@ extern const RegisterInfo X86Registers = {
         {RT::INT128, RC::EXTRA, "%", "xmm5",  USER_REGISTER(xmm[5])},
         {RT::INT128, RC::EXTRA, "%", "xmm6",  USER_REGISTER(xmm[6])},
         {RT::INT128, RC::EXTRA, "%", "xmm7",  USER_REGISTER(xmm[7])},
+#ifdef __x86_64__
         {RT::INT128, RC::EXTRA, "%", "xmm8",  USER_REGISTER(xmm[8])},
         {RT::INT128, RC::EXTRA, "%", "xmm9",  USER_REGISTER(xmm[9])},
         {RT::INT128, RC::EXTRA, "%", "xmm10", USER_REGISTER(xmm[10])},
@@ -93,6 +116,7 @@ extern const RegisterInfo X86Registers = {
         {RT::INT128, RC::EXTRA, "%", "xmm13", USER_REGISTER(xmm[13])},
         {RT::INT128, RC::EXTRA, "%", "xmm14", USER_REGISTER(xmm[14])},
         {RT::INT128, RC::EXTRA, "%", "xmm15", USER_REGISTER(xmm[15])},
+#endif
 
         // Extra status (SSE)
         {RT::INT32, RC::EXTRA, "mxcsr", USER_REGISTER(mxcsr)},
@@ -198,6 +222,7 @@ static ProcessorFlags<decltype(UserRegisters::mxcsr)> mxcsrFlags = {
 
 int X86Tracee::printGeneralPurposeRegisters()
 {
+#ifdef __x86_64__
     printf("%%rax = 0x%016" PRIx64 "    %%rcx = 0x%016" PRIx64 "\n"
            "%%rdx = 0x%016" PRIx64 "    %%rbx = 0x%016" PRIx64 "\n"
            "%%rsp = 0x%016" PRIx64 "    %%rbp = 0x%016" PRIx64 "\n"
@@ -210,6 +235,14 @@ int X86Tracee::printGeneralPurposeRegisters()
            registers->rsp, registers->rbp, registers->rsi, registers->rdi,
            registers->r8,  registers->r9,  registers->r10, registers->r11,
            registers->r12, registers->r13, registers->r14, registers->r15);
+#else
+    printf("%%eax = 0x%08" PRIx32 "    %%ecx = 0x%08" PRIx32 "\n"
+           "%%edx = 0x%08" PRIx32 "    %%ebx = 0x%08" PRIx32 "\n"
+           "%%esp = 0x%08" PRIx32 "    %%ebp = 0x%08" PRIx32 "\n"
+           "%%esi = 0x%08" PRIx32 "    %%edi = 0x%08" PRIx32 "\n",
+           registers->eax, registers->ecx, registers->edx, registers->ebx,
+           registers->esp, registers->ebp, registers->esi, registers->edi);
+#endif
     return 0;
 }
 
@@ -223,7 +256,11 @@ int X86Tracee::printConditionCodeRegisters()
 
 int X86Tracee::printProgramCounterRegisters()
 {
+#ifdef __x86_64__
     printf("%%rip = 0x%016" PRIx64 "\n", registers->rip);
+#else
+    printf("%%eip = 0x%08" PRIx32 "\n", registers->eip);
+#endif
     return 0;
 }
 
@@ -231,11 +268,16 @@ int X86Tracee::printSegmentationRegisters()
 {
     printf("%%ss = 0x%04" PRIx16 "    %%cs = 0x%04" PRIx16 "\n"
            "%%ds = 0x%04" PRIx16 "    %%es = 0x%04" PRIx16 "\n"
-           "%%fs = 0x%04" PRIx16 "    %%gs = 0x%04" PRIx16 "\n"
-           "fs.base = 0x%016" PRIx64 "\n"
-           "gs.base = 0x%016" PRIx64 "\n",
+           "%%fs = 0x%04" PRIx16 "    %%gs = 0x%04" PRIx16 "\n",
            registers->ss, registers->cs, registers->ds, registers->es,
-           registers->fs, registers->gs, registers->fsBase, registers->gsBase);
+           registers->fs, registers->gs);
+
+#ifdef __x86_64__
+    printf("fs.base = 0x%016" PRIx64 "\n"
+           "gs.base = 0x%016" PRIx64 "\n",
+           registers->fsBase, registers->gsBase);
+#endif
+
     return 0;
 }
 
@@ -281,8 +323,14 @@ int X86Tracee::printFloatingPointRegisters()
     }
     std::cout << '\n';
 
+#ifdef __x86_64__
     printf("fip = 0x%016" PRIx64 "    fdp = 0x%016" PRIx64 "\n",
            registers->fip, registers->fdp);
+#else
+    printf("fip = 0x%04" PRIx16 ":0x%08" PRIx32 "    "
+           "fdp = 0x%04" PRIx16 ":0x%08" PRIx32 "\n",
+           registers->fcs, registers->fip, registers->fds, registers->fdp);
+#endif
     printf("fop = 0x%04" PRIx16 "\n", registers->fop);
 
     return 0;
@@ -305,7 +353,7 @@ int X86Tracee::printExtraRegisters()
     std::cout << '\n';
 
     std::cout << '\n';
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < UserRegisters::NUM_SSE_REGS; ++i)
         printf("%%xmm%-2d = 0x%016" PRIx64 "%016" PRIx64 "\n",
                i, registers->xmm[i].hi, registers->xmm[i].lo);
 

@@ -121,7 +121,7 @@ static int dumpMemoryWith(MemoryStreamer &memStr, size_t repeat,
 
     int column = numColumns;
     bool firstRow = true;
-    for (int i = 0; i < repeat; ++i, ++column) {
+    for (size_t i = 0; i < repeat; ++i, ++column) {
         if (column >= numColumns) {
             if (!firstRow)
                 std::cout << '\n';
