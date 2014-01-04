@@ -7,7 +7,8 @@
 #include <vector>
 
 class Inputter {
-    struct InputFile {
+    class InputFile {
+    public:
         std::string filename;
         int lineno;
         std::unique_ptr<std::istream> stream;

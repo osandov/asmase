@@ -7,11 +7,11 @@
 
 #include <sys/types.h>
 
-struct RegisterDesc;
-struct RegisterInfo;
-struct RegisterValue;
+class RegisterDesc;
+class RegisterInfo;
+class RegisterValue;
 enum class RegisterCategory;
-struct UserRegisters;
+class UserRegisters;
 
 class Tracee {
     typedef int (Tracee::*RegisterCategoryPrinter)();

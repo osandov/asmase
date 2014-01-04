@@ -6,7 +6,8 @@
 
 #include "RegisterDesc.h"
 
-struct RegisterInfo {
+class RegisterInfo {
+public:
     std::vector<RegisterDesc> registers;
 };
 

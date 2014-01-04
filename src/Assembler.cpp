@@ -38,8 +38,7 @@ static error_code getTextSection(object::ObjectFile &objFile,
  */
 static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg);
 
-struct AssemblerContext {
-private:
+class AssemblerContext {
     static bool llvmIsInit;
 
 public:

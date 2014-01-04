@@ -18,7 +18,8 @@ enum class TokenType {
 };
 
 /** A token in a built-in command. */
-struct Token {
+class Token {
+public:
     /** The type of token. */
     TokenType type;
 

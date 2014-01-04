@@ -7,7 +7,8 @@ struct xmm_t {
     uint64_t lo, hi; // Little-endian, low goes first
 };
 
-struct UserRegisters {
+class UserRegisters {
+public:
     // General-purpose registers
     uint64_t rax, rcx, rdx, rbx;
     uint64_t rsp, rbp;

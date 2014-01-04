@@ -21,7 +21,8 @@ struct my_uint128 {
 
 static_assert(sizeof(my_uint128) == 16, "my_uint128 is not packed");
 
-struct RegisterValue {
+class RegisterValue {
+public:
     RegisterType type;
 
 protected:
@@ -38,56 +39,64 @@ public:
     long double getLongDouble() const;
 };
 
-struct Int8RegisterValue : public RegisterValue {
+class Int8RegisterValue : public RegisterValue {
+public:
     uint8_t value;
 
     Int8RegisterValue(uint8_t value)
         : RegisterValue{RegisterType::INT8}, value{value} {}
 };
 
-struct Int16RegisterValue : public RegisterValue {
+class Int16RegisterValue : public RegisterValue {
+public:
     uint16_t value;
 
     Int16RegisterValue(uint16_t value)
         : RegisterValue{RegisterType::INT16}, value{value} {}
 };
 
-struct Int32RegisterValue : public RegisterValue {
+class Int32RegisterValue : public RegisterValue {
+public:
     uint32_t value;
 
     Int32RegisterValue(uint32_t value)
         : RegisterValue{RegisterType::INT32}, value{value} {}
 };
 
-struct Int64RegisterValue : public RegisterValue {
+class Int64RegisterValue : public RegisterValue {
+public:
     uint64_t value;
 
     Int64RegisterValue(uint64_t value)
         : RegisterValue{RegisterType::INT64}, value{value} {}
 };
 
-struct Int128RegisterValue : public RegisterValue {
+class Int128RegisterValue : public RegisterValue {
+public:
     my_uint128 value;
 
     Int128RegisterValue(my_uint128 value)
         : RegisterValue{RegisterType::INT128}, value{value.lo, value.hi} {}
 };
 
-struct FloatRegisterValue : public RegisterValue {
+class FloatRegisterValue : public RegisterValue {
+public:
     float value;
 
     FloatRegisterValue(float value)
         : RegisterValue{RegisterType::FLOAT}, value{value} {}
 };
 
-struct DoubleRegisterValue : public RegisterValue {
+class DoubleRegisterValue : public RegisterValue {
+public:
     double value;
 
     DoubleRegisterValue(double value)
         : RegisterValue{RegisterType::DOUBLE}, value{value} {}
 };
 
-struct LongDoubleRegisterValue : public RegisterValue {
+class LongDoubleRegisterValue : public RegisterValue {
+public:
     long double value;
 
     LongDoubleRegisterValue(long double value)

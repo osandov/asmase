@@ -14,7 +14,8 @@
 #include "Builtins.h"
 #include "Inputter.h"
 
-struct BuiltinCommand {
+class BuiltinCommand {
+public:
     BuiltinFunc func;
     std::string helpString;
 };

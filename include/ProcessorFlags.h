@@ -7,7 +7,8 @@
 #include <vector>
 
 template <typename T>
-struct ProcessorFlag {
+class ProcessorFlag {
+public:
     std::string name;
     T shiftedMask, shift;
     T expected;

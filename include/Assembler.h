@@ -6,7 +6,7 @@
 
 class Inputter;
 
-struct AssemblerContext;
+class AssemblerContext;
 
 std::shared_ptr<AssemblerContext> createAssemblerContext();
 

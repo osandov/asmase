@@ -4,10 +4,11 @@
 #include "RegisterCategory.h"
 #include "RegisterValue.h"
 
-struct UserRegisters;
+class UserRegisters;
 
 /** Register descriptor. */
-struct RegisterDesc {
+class RegisterDesc {
+public:
     RegisterType type;
     RegisterCategory category;
     std::string prefix;
