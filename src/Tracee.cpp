@@ -1,6 +1,8 @@
 #include <algorithm>
+#include <csignal>
 #include <cstring>
 #include <iostream>
+#include <utility>
 
 #include <signal.h>
 #include <unistd.h>
@@ -10,6 +12,16 @@
 
 #include "RegisterInfo.h"
 #include "Tracee.h"
+
+std::vector<std::pair<RegisterCategory, Tracee::RegisterCategoryPrinter>>
+Tracee::categoryPrinters = {
+    {RegisterCategory::GENERAL_PURPOSE, &Tracee::printGeneralPurposeRegisters},
+    {RegisterCategory::PROGRAM_COUNTER, &Tracee::printProgramCounterRegisters},
+    {RegisterCategory::CONDITION_CODE,  &Tracee::printConditionCodeRegisters},
+    {RegisterCategory::FLOATING_POINT,  &Tracee::printFloatingPointRegisters},
+    {RegisterCategory::EXTRA,           &Tracee::printExtraRegisters},
+    {RegisterCategory::SEGMENTATION,    &Tracee::printSegmentationRegisters},
+};
 
 int Tracee::executeInstruction(const std::string &instruction)
 {
@@ -91,11 +103,69 @@ std::shared_ptr<RegisterValue> Tracee::getRegisterValue(const std::string &regNa
     }
 }
 
+int Tracee::printGeneralPurposeRegisters()
+{
+    std::cerr << "no general-purpose registers on this architecture\n";
+    return 1;
+}
+
+int Tracee::printConditionCodeRegisters()
+{
+    std::cerr << "no condition code registers on this architecture\n";
+    return 1;
+}
+
+int Tracee::printProgramCounterRegisters()
+{
+    std::cerr << "no program counter registers on this architecture\n";
+    return 1;
+}
+
+int Tracee::printSegmentationRegisters()
+{
+    std::cerr << "no segmentation registers on this architecture\n";
+    return 1;
+}
+
+int Tracee::printFloatingPointRegisters()
+{
+    std::cerr << "no floating point registers on this architecture\n";
+    return 1;
+}
+
+int Tracee::printExtraRegisters()
+{
+    std::cerr << "no extra registers on this architecture\n";
+    return 1;
+}
+
+int Tracee::printRegisters(RegisterCategory categories)
+{
+    bool firstPrinted = true;
+    int all_error = 0;
+    int error;
+
+    if (any(categories))
+        updateRegisters();
+
+    for (auto &categoryPrinter : categoryPrinters) {
+        if (any(categories & categoryPrinter.first)) {
+            if (!firstPrinted)
+                std::cout << '\n';
+            firstPrinted = false;
+
+            if ((error = (this->*categoryPrinter.second)()))
+                all_error = error;
+        }
+    }
+
+    return all_error;
+}
+
 static void traceeProcess() __attribute__((noreturn));
 static void installTracerSignalHandlers();
-Tracee *createPlatformTracee(pid_t pid, void *sharedMemory, size_t sharedSize);
 
-std::shared_ptr<Tracee> createTracee()
+std::shared_ptr<Tracee> Tracee::createTracee()
 {
     pid_t pid;
     void *sharedPage;
@@ -121,7 +191,8 @@ std::shared_ptr<Tracee> createTracee()
 
     installTracerSignalHandlers();
 
-    return std::shared_ptr<Tracee>{createPlatformTracee(pid, sharedPage, pageSize)};
+    Tracee *platformTracee = createPlatformTracee(pid, sharedPage, pageSize);
+    return std::shared_ptr<Tracee>{platformTracee};
 }
 
 static void traceeProcess()
@@ -142,10 +213,9 @@ static void traceeProcess()
 
 static void installTracerSignalHandlers()
 {
-    struct sigaction act = {
-        .sa_handler = SIG_IGN,
-        .sa_flags = 0
-    };
+    struct sigaction act;
+    act.sa_handler = SIG_IGN;
+    act.sa_flags = 0;
     sigemptyset(&act.sa_mask);
 
     // Ignore SIGINT so the user can break out of the tracee

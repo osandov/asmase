@@ -3,7 +3,7 @@
 #include "Assembler.h"
 #include "Builtins.h"
 #include "Inputter.h"
-#include "Arch/X86Tracee.h"
+#include "Tracee.h"
 
 int main(int argc, char *argv[])
 {
@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
         "This is free software, and you are welcome to redistribute it\n"
         "under certain conditions; type `:copying' for details.\n";
 
-    std::shared_ptr<Tracee> tracee{createTracee()};
+    std::shared_ptr<Tracee> tracee{Tracee::createTracee()};
     if (!tracee)
         return 1;
 

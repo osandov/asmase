@@ -6,10 +6,7 @@ BUILTINS_SRCS := \
 	$(wildcard src/Builtins/*.cpp) \
 	$(patsubst src/%.awk, $(BUILD)/%.cpp, $(wildcard src/Builtins/*Expr.awk)) \
 	$(BUILD)/Builtins/Scanner.cpp \
-	src/Builtins/Commands/copying.cpp \
-	src/Builtins/Commands/memory.cpp \
-	src/Builtins/Commands/source.cpp \
-	# $(wildcard src/Builtins/Commands/*.cpp) \
+	$(wildcard src/Builtins/Commands/*.cpp)
 
 SRCS := $(wildcard src/*.cpp) \
 	$(wildcard src/Arch/$(ARCH)/*.cpp) \
@@ -20,8 +17,7 @@ OBJS := $(patsubst $(BUILD)/%.cpp, $(BUILD)/%.o, $(OBJS1)) # Generated C++ sourc
 
 LLVM_CONFIG ?= llvm-config
 
-COMMON_FLAGS := -Wall -g -Iinclude -I$(BUILD)/include
-ALL_CXXFLAGS := $(COMMON_FLAGS) -std=c++11 `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
+ALL_CXXFLAGS := -Wall -g -Iinclude -I$(BUILD)/include -std=c++11 `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
 LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
 
 ops_table := src/Builtins/ops_table.txt

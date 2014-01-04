@@ -27,19 +27,17 @@ static BUILTIN_FUNC(test)
                 std::cout << "identifier: " << arg->getIdentifier() << '\n';
                 break;
             case Builtins::ValueType::INTEGER:
-            {
                 std::cout << "integer: 0x"
                           << std::hex << std::setw(16) << std::setfill('0')
                           << arg->getInteger();
 
                 std::cout << std::dec << " (" << arg->getInteger() << ")\n";
                 break;
-            }
             case Builtins::ValueType::FLOAT:
-                // printf("floating: %F\n", arg->getFloat());
+                std::cout << "floating: " << arg->getFloat() << '\n';
                 break;
             case Builtins::ValueType::STRING:
-                // printf("string: \"%s\"\n", arg->getString().c_str());
+                std::cout << "string: " << arg->getString() << '\n';
                 break;
         }
     }
@@ -63,7 +61,7 @@ static std::map<std::string, BuiltinCommand> commands = {
     {"source",    {builtin_source, "redirect input to a given file"}},
 
     {"memory",    {builtin_memory,    "dump memory contents"}},
-    // {"registers", {builtin_registers, "dump register contents"}},
+    {"registers", {builtin_registers, "dump register contents"}},
 
     {"warranty",  {builtin_warranty, "show warranty information"}},
     {"copying",   {builtin_copying,  "show copying information"}},

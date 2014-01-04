@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cassert>
+#include <iostream>
 #include <sstream>
 #include <unordered_map>
 
@@ -25,97 +25,87 @@
 #include "Builtins/ErrorContext.h"
 #include "Builtins/Support.h"
 
-#include "tracing.h"
+#include "RegisterCategory.h"
+#include "Tracee.h"
 
 using Builtins::findWithDefault;
 
-/** Register printer function type. */
-typedef int (*register_printer)(pid_t);
+/** Lookup table for register categories. */
+static std::unordered_map<std::string, RegisterCategory> categoryMap = {
+    {"general-purpose", RegisterCategory::GENERAL_PURPOSE},
+    {"general",         RegisterCategory::GENERAL_PURPOSE},
+    {"gp",              RegisterCategory::GENERAL_PURPOSE},
+    {"g",               RegisterCategory::GENERAL_PURPOSE},
 
-/** Lookup table from register category to register printer. */
-static std::unordered_map<std::string, register_printer> regPrinters = {
-    {"", &print_registers},
+    {"condition-codes", RegisterCategory::CONDITION_CODE},
+    {"condition",       RegisterCategory::CONDITION_CODE},
+    {"status",          RegisterCategory::CONDITION_CODE},
+    {"flags",           RegisterCategory::CONDITION_CODE},
+    {"cc",              RegisterCategory::CONDITION_CODE},
 
-    {"general-purpose", print_general_purpose_registers},
-    {"general",         print_general_purpose_registers},
-    {"gp",              print_general_purpose_registers},
-    {"g",               print_general_purpose_registers},
+    {"floating-point", RegisterCategory::FLOATING_POINT},
+    {"floating",       RegisterCategory::FLOATING_POINT},
+    {"fp",             RegisterCategory::FLOATING_POINT},
+    {"f",              RegisterCategory::FLOATING_POINT},
 
-    {"condition-codes", print_condition_code_registers},
-    {"condition",       print_condition_code_registers},
-    {"status",          print_condition_code_registers},
-    {"flags",           print_condition_code_registers},
-    {"cc",              print_condition_code_registers},
+    {"extra", RegisterCategory::EXTRA},
+    {"xr",    RegisterCategory::EXTRA},
+    {"x",     RegisterCategory::EXTRA},
 
-    {"floating-point", print_floating_point_registers},
-    {"floating",       print_floating_point_registers},
-    {"fp",             print_floating_point_registers},
-    {"f",              print_floating_point_registers},
-
-    {"extra", print_extra_registers},
-    {"xr",    print_extra_registers},
-    {"x",     print_extra_registers},
-
-    {"segment", print_segment_registers},
-    {"seg",     print_segment_registers},
-    {"s",       print_segment_registers},
+    {"segment", RegisterCategory::SEGMENTATION},
+    {"seg",     RegisterCategory::SEGMENTATION},
+    {"s",       RegisterCategory::SEGMENTATION},
 };
 
 static std::string getUsage(const std::string &commandName)
 {
     std::stringstream ss;
-    ss << "usage: " << commandName << " [CATEGORY]";
+    ss << "usage: " << commandName << " [CATEGORY...]";
     return ss.str();
 }
 
 BUILTIN_FUNC(registers)
 {
-    register_printer regPrinter;
+    static RegisterCategory defaultCategories = 
+        RegisterCategory::GENERAL_PURPOSE | RegisterCategory::PROGRAM_COUNTER |
+        RegisterCategory::CONDITION_CODE;
+
+    RegisterCategory categories = RegisterCategory::NONE;
 
     if (wantsHelp(args)) {
-        std::string usage = getUsage(commandName);
-        printf("%s\n", usage.c_str());
-        printf("Formats:\n"
-               "  d -- decimal\n"
-               "  u -- unsigned decimal\n"
-               "  o -- unsigned octal\n"
-               "  x -- unsigned hexadecimal\n"
-               "  t -- unsigned binary\n"
-               "  f -- floating point\n"
-               "  c -- character\n");
-        printf("Sizes:\n"
-               "  b -- byte (1 byte)\n"
-               "  h -- half word (2 bytes)\n"
-               "  w -- word (4 bytes)\n"
-               "  g -- giant (8 bytes)\n");
+        std::cout << getUsage(commandName) << '\n';
+        std::cout <<
+            "Categories:\n"
+            "  gp  -- General purpose registers\n"
+            "  cc  -- Condition code/status flag registers\n"
+            "  fp  -- Floating point registers\n"
+            "  x   -- Extra registers\n"
+            "  seg -- Segment registers\n";
         return 0;
     }
 
-    if (args.size() == 0) {
-        regPrinter = regPrinters[""];
-        assert(regPrinter);
-    } else if (args.size() == 1) {
-        if (checkValueType(*args[0], Builtins::ValueType::IDENTIFIER,
-                           "expected register category", env.errorContext))
+    for (auto &arg : args) {
+        if (checkValueType(*arg, Builtins::ValueType::IDENTIFIER,
+                    "expected register category", env.errorContext))
             return 1;
 
-        const std::string &category = args[0]->getIdentifier();
+        const std::string &category = arg->getIdentifier();
 
-        regPrinter = findWithDefault(regPrinters, category, nullptr);
+        RegisterCategory regCat =
+            findWithDefault(categoryMap, category, RegisterCategory::NONE);
 
-        if (!regPrinter) {
+        if (!any(regCat)) {
             env.errorContext.printMessage("unknown register category",
-                                          args[0]->getStart());
+                                          arg->getStart());
             return 1;
-        }
-    } else {
-        std::string usage = getUsage(commandName);
-        env.errorContext.printMessage(usage.c_str(), commandStart);
-        return 1;
+        } else
+            categories = categories | regCat;
     }
 
-    if (regPrinter(env.pid))
-        return 1;
+    if (!any(categories)) // This will be the case if there weren't any args
+        categories = defaultCategories;
+
+    env.tracee.printRegisters(categories);
 
     return 0;
 }

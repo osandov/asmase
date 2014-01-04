@@ -3,6 +3,7 @@
 
 #include <string>
 #include <memory>
+#include <utility>
 
 #include <sys/types.h>
 
@@ -13,6 +14,13 @@ enum class RegisterCategory;
 struct UserRegisters;
 
 class Tracee {
+    typedef int (Tracee::*RegisterCategoryPrinter)();
+    static std::vector<std::pair<RegisterCategory, RegisterCategoryPrinter>>
+        categoryPrinters;
+
+    static Tracee *createPlatformTracee(pid_t pid, void *sharedMemory,
+                                        size_t sharedSize);
+
 protected:
     // Architecture-dependent information
     const RegisterInfo &regInfo;
@@ -26,21 +34,28 @@ protected:
     virtual int setProgramCounter(void *pc) = 0;
     virtual int updateRegisters() = 0;
 
+    virtual int printGeneralPurposeRegisters();
+    virtual int printConditionCodeRegisters();
+    virtual int printProgramCounterRegisters();
+    virtual int printSegmentationRegisters();
+    virtual int printFloatingPointRegisters();
+    virtual int printExtraRegisters();
+
 public:
     Tracee(const RegisterInfo &regInfo, const std::string &trapInstruction,
-            UserRegisters *registers, pid_t pid,
-            void *sharedMemory, size_t sharedSize);
+           UserRegisters *registers,
+           pid_t pid, void *sharedMemory, size_t sharedSize);
     ~Tracee();
 
     int executeInstruction(const std::string &instruction);
 
-    int printRegisters(RegisterCategory category);
+    int printRegisters(RegisterCategory categories);
 
     std::shared_ptr<RegisterValue> getRegisterValue(const std::string &regName);
 
     pid_t getPid() const { return pid; }
-};
 
-std::shared_ptr<Tracee> createTracee();
+    static std::shared_ptr<Tracee> createTracee();
+};
 
 #endif /* ASMASE_TRACEE_H */

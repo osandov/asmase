@@ -9,20 +9,20 @@ struct UserRegisters;
 /** Register descriptor. */
 struct RegisterDesc {
     RegisterType type;
-    RegisterCategory categories;
+    RegisterCategory category;
     std::string prefix;
     std::string name;
     size_t offset;
 
-    RegisterDesc(RegisterType type, RegisterCategory categories,
+    RegisterDesc(RegisterType type, RegisterCategory category,
                  const std::string &prefix, const std::string &name,
                  size_t offset)
-        : type{type}, categories{categories}, prefix{prefix}, name{name},
+        : type{type}, category{category}, prefix{prefix}, name{name},
           offset{offset} {}
 
-    RegisterDesc(RegisterType type, RegisterCategory categories,
+    RegisterDesc(RegisterType type, RegisterCategory category,
                  const std::string &name, size_t offset)
-        : RegisterDesc{type, categories, "", name, offset} {}
+        : RegisterDesc{type, category, "", name, offset} {}
 
     RegisterValue *getValue(const UserRegisters &regs) const
     {

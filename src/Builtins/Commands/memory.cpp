@@ -321,14 +321,22 @@ BUILTIN_FUNC(memory)
     void *address;
 
     if (wantsHelp(args)) {
-        std::string usage = getUsage(commandName);
-        printf("%s\n", usage.c_str());
-        printf("Categories:\n"
-               "  gp  -- General purpose registers\n"
-               "  cc  -- Condition code/status flag registers\n"
-               "  fp  -- Floating point registers\n"
-               "  x   -- Extra registers\n"
-               "  seg -- Segment registers\n");
+        std::cout << getUsage(commandName) << '\n';
+        std::cout <<
+            "Formats:\n"
+            "  d -- decimal\n"
+            "  u -- unsigned decimal\n"
+            "  o -- unsigned octal\n"
+            "  x -- unsigned hexadecimal\n"
+            "  t -- unsigned binary\n"
+            "  f -- floating point\n"
+            "  c -- character\n";
+        std::cout <<
+            "Sizes:\n"
+            "  b -- byte (1 byte)\n"
+            "  h -- half word (2 bytes)\n"
+            "  w -- word (4 bytes)\n"
+            "  g -- giant (8 bytes)\n";
         return 0;
     }
 

@@ -22,7 +22,7 @@ public:
     ErrorContext &errorContext;
 
     Environment(Tracee &tracee, Inputter &inputter, ErrorContext &errorContext)
-        : tracee{tracee}, inputter{inputter}, errorContext{errorContext} {}
+        : tracee(tracee), inputter(inputter), errorContext(errorContext) {}
 
     /**
      * Look up a variable in the environment.
