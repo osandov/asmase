@@ -4,15 +4,15 @@
 #include "Tracee.h"
 
 class X86Tracee : public Tracee {
-    int setProgramCounter(void *pc);
-    int updateRegisters();
+    virtual int setProgramCounter(void *pc);
+    virtual int updateRegisters();
 
-    int printGeneralPurposeRegisters();
-    int printConditionCodeRegisters();
-    int printProgramCounterRegisters();
-    int printSegmentationRegisters();
-    int printFloatingPointRegisters();
-    int printExtraRegisters();
+    virtual int printGeneralPurposeRegisters();
+    virtual int printConditionCodeRegisters();
+    virtual int printProgramCounterRegisters();
+    virtual int printSegmentationRegisters();
+    virtual int printFloatingPointRegisters();
+    virtual int printExtraRegisters();
 
     /**
      * ptrace returns the floating point tag word as a simple bitmap of valid
