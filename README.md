@@ -17,8 +17,9 @@ compile LLVM from source
 (instructions [here](http://llvm.org/docs/GettingStarted.html)) or use your
 distribution's packages. Versions 3.3 and newer are supported; I haven't tried
 anything older, but it might work. Compilation works under both GCC and Clang
-(make sure you have a C++ compiler). If you meet these requirements, all it
-takes is a `make` in the top-level (parallel make with `-j` should work).
+(make sure it's new enough to support C++11). If you meet these requirements,
+all it takes is a `make` in the top level (parallel make with `-j` should
+work).
 
 `asmase` has only been tested on and probably only works on Linux due to the
 platform-specificness of `ptrace`, but it is probably possible to port it to

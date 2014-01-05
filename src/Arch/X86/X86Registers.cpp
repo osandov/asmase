@@ -242,7 +242,7 @@ int X86Tracee::printGeneralPurposeRegisters()
     printf("%%eax = " PRINTFx32 "    %%ecx = " PRINTFx32 "\n"
            "%%edx = " PRINTFx32 "    %%ebx = " PRINTFx32 "\n"
            "%%esp = " PRINTFx32 "    %%ebp = " PRINTFx32 "\n"
-           "%%esi = " PRINTFx32 "    %%edi = " PRINTFx32 "\n",
+           "%%esi = " PRINTFx32 "    %%edi = " PRINTFx32 "\n"
            "%%eip = " PRINTFx32 "\n",
            registers->eax, registers->ecx, registers->edx, registers->ebx,
            registers->esp, registers->ebp, registers->esi, registers->edi,

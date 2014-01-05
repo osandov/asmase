@@ -17,7 +17,7 @@ OBJS := $(patsubst $(BUILD)/%.cpp, $(BUILD)/%.o, $(OBJS1)) # Generated C++ sourc
 
 LLVM_CONFIG ?= llvm-config
 
-ALL_CXXFLAGS := -Wall -g -Iinclude -I$(BUILD)/include -std=c++11 `$(LLVM_CONFIG) --cxxflags` $(CXXFLAGS)
+ALL_CXXFLAGS := -Wall -g -Iinclude -I$(BUILD)/include -std=c++11 `$(LLVM_CONFIG) --cxxflags` -fno-strict-aliasing $(CXXFLAGS)
 LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
 
 ops_table := src/Builtins/ops_table.txt
