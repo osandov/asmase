@@ -7,6 +7,7 @@
 
 #include "ProcessorFlags.h"
 #include "RegisterInfo.h"
+#include "Support.h"
 #include "Arch/X86/UserRegisters.h"
 #include "Arch/X86/X86Tracee.h"
 
@@ -223,58 +224,52 @@ static ProcessorFlags<decltype(UserRegisters::mxcsr)> mxcsrFlags = {
 int X86Tracee::printGeneralPurposeRegisters()
 {
 #ifdef __x86_64__
-    printf("%%rax = 0x%016" PRIx64 "    %%rcx = 0x%016" PRIx64 "\n"
-           "%%rdx = 0x%016" PRIx64 "    %%rbx = 0x%016" PRIx64 "\n"
-           "%%rsp = 0x%016" PRIx64 "    %%rbp = 0x%016" PRIx64 "\n"
-           "%%rsi = 0x%016" PRIx64 "    %%rdi = 0x%016" PRIx64 "\n"
-           "%%r8  = 0x%016" PRIx64 "    %%r9  = 0x%016" PRIx64 "\n"
-           "%%r10 = 0x%016" PRIx64 "    %%r11 = 0x%016" PRIx64 "\n"
-           "%%r12 = 0x%016" PRIx64 "    %%r13 = 0x%016" PRIx64 "\n"
-           "%%r14 = 0x%016" PRIx64 "    %%r15 = 0x%016" PRIx64 "\n",
+    printf("%%rax = " PRINTFx64 "    %%rcx = " PRINTFx64 "\n"
+           "%%rdx = " PRINTFx64 "    %%rbx = " PRINTFx64 "\n"
+           "%%rsp = " PRINTFx64 "    %%rbp = " PRINTFx64 "\n"
+           "%%rsi = " PRINTFx64 "    %%rdi = " PRINTFx64 "\n"
+           "%%r8  = " PRINTFx64 "    %%r9  = " PRINTFx64 "\n"
+           "%%r10 = " PRINTFx64 "    %%r11 = " PRINTFx64 "\n"
+           "%%r12 = " PRINTFx64 "    %%r13 = " PRINTFx64 "\n"
+           "%%r14 = " PRINTFx64 "    %%r15 = " PRINTFx64 "\n"
+           "%%rip = " PRINTFx64 "\n",
            registers->rax, registers->rcx, registers->rdx, registers->rbx,
            registers->rsp, registers->rbp, registers->rsi, registers->rdi,
            registers->r8,  registers->r9,  registers->r10, registers->r11,
-           registers->r12, registers->r13, registers->r14, registers->r15);
+           registers->r12, registers->r13, registers->r14, registers->r15,
+           registers->rip);
 #else
-    printf("%%eax = 0x%08" PRIx32 "    %%ecx = 0x%08" PRIx32 "\n"
-           "%%edx = 0x%08" PRIx32 "    %%ebx = 0x%08" PRIx32 "\n"
-           "%%esp = 0x%08" PRIx32 "    %%ebp = 0x%08" PRIx32 "\n"
-           "%%esi = 0x%08" PRIx32 "    %%edi = 0x%08" PRIx32 "\n",
+    printf("%%eax = " PRINTFx32 "    %%ecx = " PRINTFx32 "\n"
+           "%%edx = " PRINTFx32 "    %%ebx = " PRINTFx32 "\n"
+           "%%esp = " PRINTFx32 "    %%ebp = " PRINTFx32 "\n"
+           "%%esi = " PRINTFx32 "    %%edi = " PRINTFx32 "\n",
+           "%%eip = " PRINTFx32 "\n",
            registers->eax, registers->ecx, registers->edx, registers->ebx,
-           registers->esp, registers->ebp, registers->esi, registers->edi);
+           registers->esp, registers->ebp, registers->esi, registers->edi,
+           registers->eip);
 #endif
     return 0;
 }
 
 int X86Tracee::printConditionCodeRegisters()
 {
-    printf("eflags = 0x%08" PRIx32 " = ", registers->eflags);
+    printf("eflags = " PRINTFx32 " = ", registers->eflags);
     eflagsFlags.printFlags(registers->eflags);
     std::cout << '\n';
     return 0;
 }
 
-int X86Tracee::printProgramCounterRegisters()
-{
-#ifdef __x86_64__
-    printf("%%rip = 0x%016" PRIx64 "\n", registers->rip);
-#else
-    printf("%%eip = 0x%08" PRIx32 "\n", registers->eip);
-#endif
-    return 0;
-}
-
 int X86Tracee::printSegmentationRegisters()
 {
-    printf("%%ss = 0x%04" PRIx16 "    %%cs = 0x%04" PRIx16 "\n"
-           "%%ds = 0x%04" PRIx16 "    %%es = 0x%04" PRIx16 "\n"
-           "%%fs = 0x%04" PRIx16 "    %%gs = 0x%04" PRIx16 "\n",
+    printf("%%ss = " PRINTFx16 "    %%cs = " PRINTFx16 "\n"
+           "%%ds = " PRINTFx16 "    %%es = " PRINTFx16 "\n"
+           "%%fs = " PRINTFx16 "    %%gs = " PRINTFx16 "\n",
            registers->ss, registers->cs, registers->ds, registers->es,
            registers->fs, registers->gs);
 
 #ifdef __x86_64__
-    printf("fs.base = 0x%016" PRIx64 "\n"
-           "gs.base = 0x%016" PRIx64 "\n",
+    printf("fs.base = " PRINTFx64 "\n"
+           "gs.base = " PRINTFx64 "\n",
            registers->fsBase, registers->gsBase);
 #endif
 
@@ -283,15 +278,15 @@ int X86Tracee::printSegmentationRegisters()
 
 int X86Tracee::printFloatingPointRegisters()
 {
-    printf("fcw = 0x%04" PRIx16 " = ", registers->fcw);
+    printf("fcw = " PRINTFx16 " = ", registers->fcw);
     fcwFlags.printFlags(registers->fcw);
     std::cout << '\n';
 
-    printf("fsw = 0x%04" PRIx16 " = ", registers->fsw);
+    printf("fsw = " PRINTFx16 " = ", registers->fsw);
     fswFlags.printFlags(registers->fsw);
     std::cout << '\n';
 
-    printf("ftw = 0x%04" PRIx16 "\n", registers->ftw);
+    printf("ftw = " PRINTFx16 "\n", registers->ftw);
     std::cout << '\n';
 
     uint16_t top = x87_st_top(registers->fsw);
@@ -324,21 +319,21 @@ int X86Tracee::printFloatingPointRegisters()
     std::cout << '\n';
 
 #ifdef __x86_64__
-    printf("fip = 0x%016" PRIx64 "    fdp = 0x%016" PRIx64 "\n",
+    printf("fip = " PRINTFx64 "    fdp = " PRINTFx64 "\n",
            registers->fip, registers->fdp);
 #else
-    printf("fip = 0x%04" PRIx16 ":0x%08" PRIx32 "    "
-           "fdp = 0x%04" PRIx16 ":0x%08" PRIx32 "\n",
+    printf("fip = " PRINTFx16 ":" PRINTFx32 "    "
+           "fdp = " PRINTFx16 ":" PRINTFx32 "\n",
            registers->fcs, registers->fip, registers->fds, registers->fdp);
 #endif
-    printf("fop = 0x%04" PRIx16 "\n", registers->fop);
+    printf("fop = " PRINTFx16 "\n", registers->fop);
 
     return 0;
 }
 
 int X86Tracee::printExtraRegisters()
 {
-    printf("mxcsr = 0x%08" PRIx32 " = ", registers->mxcsr);
+    printf("mxcsr = " PRINTFx32 " = ", registers->mxcsr);
     mxcsrFlags.printFlags(registers->mxcsr);
     std::cout << '\n';
 
@@ -348,7 +343,7 @@ int X86Tracee::printExtraRegisters()
         else
             printf(" ");
         uint64_t mm = *reinterpret_cast<uint64_t *>(&registers->st[i]);
-        printf("%%mm%d = 0x%016" PRIx64, i, mm);
+        printf("%%mm%d = " PRINTFx64, i, mm);
     }
     std::cout << '\n';
 

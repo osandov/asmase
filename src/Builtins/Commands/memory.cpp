@@ -29,6 +29,7 @@
 #include "Builtins/Support.h"
 
 #include "MemoryStreamer.h"
+#include "Support.h"
 #include "Tracee.h"
 
 enum class Format {
@@ -259,16 +260,16 @@ static int doDump(pid_t pid, Builtins::ErrorContext &errorContext,
             switch (size) {
                 case Size::BYTE:
                     return printfMemory<uint8_t>(
-                        memStr, repeat, "0x%02" PRIx8 "    ", 8);
+                        memStr, repeat, PRINTFx8 "    ", 8);
                 case Size::HALFWORD:
                     return printfMemory<uint16_t>(
-                        memStr, repeat, "0x%04" PRIx16 "  ", 8);
+                        memStr, repeat, PRINTFx16 "  ", 8);
                 case Size::WORD:
                     return printfMemory<uint32_t>(
-                        memStr, repeat, "0x%08" PRIx32 "    ", 4);
+                        memStr, repeat, PRINTFx32 "    ", 4);
                 case Size::GIANT:
                     return printfMemory<uint64_t>(
-                        memStr, repeat, "0x%016" PRIx64 "      ", 2);
+                        memStr, repeat, PRINTFx64 "      ", 2);
             }
         case Format::BINARY:
             switch (size) {

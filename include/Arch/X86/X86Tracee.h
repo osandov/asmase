@@ -9,7 +9,6 @@ class X86Tracee : public Tracee {
 
     virtual int printGeneralPurposeRegisters();
     virtual int printConditionCodeRegisters();
-    virtual int printProgramCounterRegisters();
     virtual int printSegmentationRegisters();
     virtual int printFloatingPointRegisters();
     virtual int printExtraRegisters();

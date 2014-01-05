@@ -16,7 +16,6 @@
 std::vector<std::pair<RegisterCategory, Tracee::RegisterCategoryPrinter>>
 Tracee::categoryPrinters = {
     {RegisterCategory::GENERAL_PURPOSE, &Tracee::printGeneralPurposeRegisters},
-    {RegisterCategory::PROGRAM_COUNTER, &Tracee::printProgramCounterRegisters},
     {RegisterCategory::CONDITION_CODE,  &Tracee::printConditionCodeRegisters},
     {RegisterCategory::FLOATING_POINT,  &Tracee::printFloatingPointRegisters},
     {RegisterCategory::EXTRA,           &Tracee::printExtraRegisters},
@@ -116,13 +115,6 @@ int Tracee::printGeneralPurposeRegisters()
 int Tracee::printConditionCodeRegisters()
 {
     std::cerr << "no condition code registers on this architecture\n";
-    return 1;
-}
-
-/* See Tracee.h. */
-int Tracee::printProgramCounterRegisters()
-{
-    std::cerr << "no program counter registers on this architecture\n";
     return 1;
 }
 

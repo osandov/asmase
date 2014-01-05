@@ -65,7 +65,6 @@ protected:
     // architecture does not have registers of that category.
     virtual int printGeneralPurposeRegisters();
     virtual int printConditionCodeRegisters();
-    virtual int printProgramCounterRegisters();
     virtual int printSegmentationRegisters();
     virtual int printFloatingPointRegisters();
     virtual int printExtraRegisters();

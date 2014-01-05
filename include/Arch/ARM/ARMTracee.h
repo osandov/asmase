@@ -9,7 +9,6 @@ class ARMTracee : public Tracee {
 
     virtual int printGeneralPurposeRegisters();
     virtual int printConditionCodeRegisters();
-    virtual int printProgramCounterRegisters();
 
 public:
     ARMTracee(pid_t pid, void *sharedMemory, size_t sharedSize);

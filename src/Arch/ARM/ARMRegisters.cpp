@@ -3,6 +3,7 @@
 
 #include "ProcessorFlags.h"
 #include "RegisterInfo.h"
+#include "Support.h"
 #include "Arch/ARM/UserRegisters.h"
 #include "Arch/ARM/ARMTracee.h"
 
@@ -79,31 +80,25 @@ static ProcessorFlags<decltype(UserRegisters::cpsr)> cpsrFlags = {
 
 int ARMTracee::printGeneralPurposeRegisters()
 {
-    printf("r0  = 0x%08" PRIx32 "    r1 = 0x%08" PRIx32 "\n"
-           "r2  = 0x%08" PRIx32 "    r3 = 0x%08" PRIx32 "\n"
-           "r4  = 0x%08" PRIx32 "    r5 = 0x%08" PRIx32 "\n"
-           "r6  = 0x%08" PRIx32 "    r7 = 0x%08" PRIx32 "\n"
-           "r8  = 0x%08" PRIx32 "    r9 = 0x%08" PRIx32 "\n"
-           "r10 = 0x%08" PRIx32 "    fp = 0x%08" PRIx32 "\n"
-           "ip  = 0x%08" PRIx32 "    sp = 0x%08" PRIx32 "\n"
-           "lr  = 0x%08" PRIx32 "\n",
+    printf("r0  = " PRINTFx32 "    r1 = " PRINTFx32 "\n"
+           "r2  = " PRINTFx32 "    r3 = " PRINTFx32 "\n"
+           "r4  = " PRINTFx32 "    r5 = " PRINTFx32 "\n"
+           "r6  = " PRINTFx32 "    r7 = " PRINTFx32 "\n"
+           "r8  = " PRINTFx32 "    r9 = " PRINTFx32 "\n"
+           "r10 = " PRINTFx32 "    fp = " PRINTFx32 "\n"
+           "ip  = " PRINTFx32 "    sp = " PRINTFx32 "\n"
+           "lr  = " PRINTFx32 "    pc = " PRINTFx32 "\n",
            registers->r0, registers->r1, registers->r2,  registers->r3,
            registers->r4, registers->r5, registers->r6,  registers->r7,
            registers->r8, registers->r9, registers->r10, registers->fp,
-           registers->ip, registers->sp, registers->lr);
+           registers->ip, registers->sp, registers->lr, registers->pc);
     return 0;
 };
 
 int ARMTracee::printConditionCodeRegisters()
 {
-    printf("cpsr = 0x%08" PRIx32 " = ", registers->cpsr);
+    printf("cpsr = " PRINTFx32 " = ", registers->cpsr);
     cpsrFlags.printFlags(registers->cpsr);
     std::cout << '\n';
-    return 0;
-}
-
-int ARMTracee::printProgramCounterRegisters()
-{
-    printf("pc = 0x%08" PRIx32 "\n", registers->pc);
     return 0;
 }
