@@ -37,6 +37,8 @@ class ValueAST;
 class Environment {
 public:
     Tracee &tracee;
+
+    /** Inputter which gave us the input being run. */
     Inputter &inputter;
 
     /** Error context for the input being run. */

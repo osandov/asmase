@@ -62,8 +62,8 @@ static std::map<BinaryOpcode, BinaryOpFunction> binaryFunctionMap = {
 // operator to them.
 ValueAST *BinaryOp::eval(Environment &env) const
 {
-    std::unique_ptr<ValueAST> left(lhs->eval(env));
-    std::unique_ptr<ValueAST> right(rhs->eval(env));
+    std::unique_ptr<ValueAST> left{lhs->eval(env)};
+    std::unique_ptr<ValueAST> right{rhs->eval(env)};
     if (!left || !right)
         return nullptr;
 

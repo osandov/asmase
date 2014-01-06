@@ -32,19 +32,19 @@ function integer_integer(op) {
     # between two integers.
     if (op == "/")
         check_for_zero_division()
-    printf "    return new IntegerExpr(lhs->getStart(), getEnd(), lhs->getValue() %s value);\n", op
+    printf "    return new IntegerExpr{lhs->getStart(), getEnd(), lhs->getValue() %s value};\n", op
 }
 
 function float_integer(op) {
     if (op == "+" || op == "-" || op == "*" || op == "/") {
         # To apply an arithmetic binary operator to a floating-point LHS and
         # integer RHS, cast the RHS to a double and use the C operator.
-        printf "    return new FloatExpr(lhs->getStart(), getEnd(), lhs->getValue() %s (double) value);\n", op
+        printf "    return new FloatExpr{lhs->getStart(), getEnd(), lhs->getValue() %s (double) value};\n", op
     } else if (op == "==" || op == "!=" || op == ">" || op == "<" ||
                op == ">=" || op == "<=" || op == "&&" || op == "||") {
         # To apply a comparison binary operator, do the same, but the result is
         # an integer.
-        printf "    return new IntegerExpr(lhs->getStart(), getEnd(), lhs->getValue() %s (double) value);\n", op
+        printf "    return new IntegerExpr{lhs->getStart(), getEnd(), lhs->getValue() %s (double) value};\n", op
     } else {
         # Any other operator doesn't make sense.
         print "    return (ValueAST *) -1;"
@@ -63,7 +63,7 @@ END {
         # Just apply the C operator.
         printf "ValueAST *IntegerExpr::%s(Environment &env) const\n", unary_ops[op]
         print "{"
-        printf "    return new IntegerExpr(getStart(), getEnd(), %svalue);\n", op
+        printf "    return new IntegerExpr{getStart(), getEnd(), %svalue};\n", op
         print "}\n"
     }
 

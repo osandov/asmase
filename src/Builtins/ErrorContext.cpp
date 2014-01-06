@@ -29,7 +29,7 @@ namespace Builtins {
 /* See Builtins/ErrorContext.h. */
 void ErrorContext::printMessage(const char *msg)
 {
-    SMDiagnostic diagnostic("<stdin>", SourceMgr::DK_Error, msg);
+    SMDiagnostic diagnostic{"<stdin>", SourceMgr::DK_Error, msg};
     diagnostic.print(nullptr, errs());
 }
 
@@ -37,7 +37,7 @@ void ErrorContext::printMessage(const char *msg)
 void ErrorContext::printMessage(const char *msg, int column)
 {
     column += offset;
-    SMDiagnostic diagnostic(
+    SMDiagnostic diagnostic{
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),
         filename,
@@ -46,7 +46,7 @@ void ErrorContext::printMessage(const char *msg, int column)
         SourceMgr::DK_Error,
         msg,
         line,
-        None);
+        None};
     diagnostic.print(nullptr, errs());
 }
 
@@ -57,10 +57,10 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
     start += offset;
     end += offset;
 
-    ArrayRef<std::pair<unsigned, unsigned>> ranges(
-        std::pair<unsigned, unsigned>(start, end));
+    ArrayRef<std::pair<unsigned, unsigned>> ranges{
+        std::pair<unsigned, unsigned>{start, end}};
 
-    SMDiagnostic diagnostic(
+    SMDiagnostic diagnostic{
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),
         filename,
@@ -69,7 +69,7 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
         SourceMgr::DK_Error,
         msg,
         line,
-        ranges);
+        ranges};
     diagnostic.print(nullptr, errs());
 }
 
@@ -86,7 +86,7 @@ void ErrorContext::printMessage(const char *msg, int column,
 
     ranges.emplace_back(start1, end1);
     ranges.emplace_back(start2, end2);
-    SMDiagnostic diagnostic(
+    SMDiagnostic diagnostic{
         dummySourceMgr,
         SMLoc::getFromPointer(line + column),
         filename,
@@ -95,7 +95,7 @@ void ErrorContext::printMessage(const char *msg, int column,
         SourceMgr::DK_Error,
         msg,
         line,
-        ArrayRef<std::pair<unsigned, unsigned>>(ranges));
+        ArrayRef<std::pair<unsigned, unsigned>>{ranges}};
     diagnostic.print(nullptr, errs());
 }
 

@@ -152,7 +152,7 @@ static std::string parseString(const char *str)
 
 /* See BuiltinScanner.h. */
 Scanner::Scanner(const char *line)
-    : currentColumn(0)
+    : currentColumn{0}
 {
     yylex_init(&yyscanner);
     yy_scan_string(line, yyscanner);

@@ -23,12 +23,12 @@ function integer_float(op) {
     if (op == "+" || op == "-" || op == "*" || op == "/") {
         # To apply an arithmetic binary operator to an integer LHS and
         # floating-point RHS, cast the LHS to a double and use the C operator.
-        printf "    return new FloatExpr(lhs->getStart(), getEnd(), (double) lhs->getValue() %s value);\n", op
+        printf "    return new FloatExpr{lhs->getStart(), getEnd(), (double) lhs->getValue() %s value};\n", op
     } else if (op == "==" || op == "!=" || op == ">" || op == "<" ||
                op == ">=" || op == "<=" || op == "&&" || op == "||") {
         # To apply a comparison binary operator, do the same, but the result is
         # an integer.
-        printf "    return new IntegerExpr(lhs->getStart(), getEnd(), (double) lhs->getValue() %s value);\n", op
+        printf "    return new IntegerExpr{lhs->getStart(), getEnd(), (double) lhs->getValue() %s value};\n", op
     } else {
         # Any other operator doesn't make sense.
         print "    return (ValueAST *) -1;"
@@ -39,12 +39,12 @@ function float_float(op) {
     if (op == "+" || op == "-" || op == "*" || op == "/") {
         # To apply an arithmetic binary operator to a floating-point LHS and
         # RHS, use the C operator.
-        printf "    return new FloatExpr(lhs->getStart(), getEnd(), lhs->getValue() %s value);\n", op
+        printf "    return new FloatExpr{lhs->getStart(), getEnd(), lhs->getValue() %s value};\n", op
     } else if (op == "==" || op == "!=" || op == ">" || op == "<" ||
                op == ">=" || op == "<=" || op == "&&" || op == "||") {
         # To apply a comparison binary operator, do the same, but the result is
         # an integer.
-        printf "    return new IntegerExpr(lhs->getStart(), getEnd(), lhs->getValue() %s value);\n", op
+        printf "    return new IntegerExpr{lhs->getStart(), getEnd(), lhs->getValue() %s value};\n", op
     } else {
         # Any other operator doesn't make sense.
         print "    return (ValueAST *) -1;"
@@ -62,10 +62,10 @@ END {
         print "{"
         if (op == "+" || op == "-") {
             # Just apply plus or minus.
-            printf "    return new FloatExpr(getStart(), getEnd(), %svalue);\n", op
+            printf "    return new FloatExpr{getStart(), getEnd(), %svalue};\n", op
         } else if (op == "!") {
             # Logical negation returns an integer.
-            printf "    return new IntegerExpr(getStart(), getEnd(), %svalue);\n", op
+            printf "    return new IntegerExpr{getStart(), getEnd(), %svalue};\n", op
         } else {
             # Any other operator doesn't make sense.
             print "    return (ValueAST *) -1;"

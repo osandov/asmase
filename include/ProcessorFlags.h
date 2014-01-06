@@ -61,7 +61,7 @@ public:
 
     ProcessorFlag(const std::string &name, T mask, T expected,
                   bool alwaysPrint = false)
-        : name(name), expected(expected), alwaysPrint(alwaysPrint)
+        : name{name}, expected{expected}, alwaysPrint{alwaysPrint}
     {
         // Assert that the mask isn't zero, because if it is, we will keep
         // shifting forever
@@ -98,7 +98,7 @@ class ProcessorFlags {
 
 public:
     ProcessorFlags(std::initializer_list<ProcessorFlag<T>> flags)
-        : flags(flags) {}
+        : flags{flags} {}
 
     /** Pretty-print the set of flags for the given register value. */
     void printFlags(T reg)

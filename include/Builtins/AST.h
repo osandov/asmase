@@ -38,7 +38,7 @@ class ExprAST {
 
 public:
     ExprAST(int columnStart, int columnEnd)
-        : columnStart(columnStart), columnEnd(columnEnd) {}
+        : columnStart{columnStart}, columnEnd{columnEnd} {}
     virtual ~ExprAST() {}
 
     /** Evaluate an expression to a value in the given environment. */
@@ -60,7 +60,7 @@ class ParenExpr : public ExprAST {
 
 public:
     ParenExpr(int columnStart, int columnEnd, ExprAST *expr)
-        : ExprAST(columnStart, columnEnd), expr(expr) {}
+        : ExprAST{columnStart, columnEnd}, expr{expr} {}
 
     /** Evaluate the expression in parentheses and adjust its bounds. */
     virtual ValueAST *eval(Environment &env) const;
@@ -73,7 +73,7 @@ class VariableExpr : public ExprAST {
 
 public:
     VariableExpr(int columnStart, int columnEnd, const std::string &name)
-        : ExprAST(columnStart, columnEnd), name(name) {}
+        : ExprAST{columnStart, columnEnd}, name{name} {}
 
     /**
      * Evaluate the value of the variable by looking it up in the environment.
@@ -97,7 +97,7 @@ class UnaryOp : public ExprAST {
 
 public:
     UnaryOp(int columnStart, int columnEnd, UnaryOpcode op, ExprAST *operand)
-        : ExprAST(columnStart, columnEnd), op(op), operand(operand) {}
+        : ExprAST{columnStart, columnEnd}, op{op}, operand{operand} {}
 
     /**
      * Evaluate the unary operation by applying the operator to the operand.
@@ -128,7 +128,7 @@ public:
      */
     BinaryOp(int columnStart, int columnEnd, BinaryOpcode op,
              ExprAST *lhs, ExprAST *rhs)
-        : ExprAST(columnStart, columnEnd), op(op), lhs(lhs), rhs(rhs) {}
+        : ExprAST{columnStart, columnEnd}, op{op}, lhs{lhs}, rhs{rhs} {}
 
     /**
      * Evaluate the binary operation by applying the operator to the two
@@ -150,7 +150,7 @@ class CommandAST {
 
 public:
     CommandAST(const std::string &command, int commandStart, int commandEnd)
-        : command(command), commandStart(commandStart), commandEnd(commandEnd) {}
+        : command{command}, commandStart{commandStart}, commandEnd{commandEnd} {}
 
     const std::string &getCommand() const { return command; }
     int getCommandStart() const { return commandStart; }

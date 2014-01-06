@@ -165,7 +165,7 @@ ExprAST *Parser::parsePrimaryExpr()
 ExprAST *Parser::parseIdentifierExpr()
 {
     ExprAST *result =
-        new IdentifierExpr(currentStart(), currentEnd(), currentStr());
+        new IdentifierExpr{currentStart(), currentEnd(), currentStr()};
     consumeToken();
     return result;
 }
@@ -178,7 +178,7 @@ ExprAST *Parser::parseIntegerExpr()
     if (errno == ERANGE)
         return error(*currentToken(), "integer constant out of range");
 
-    ExprAST *result = new IntegerExpr(currentStart(), currentEnd(), value);
+    ExprAST *result = new IntegerExpr{currentStart(), currentEnd(), value};
     consumeToken();
     return result;
 }
@@ -191,7 +191,7 @@ ExprAST *Parser::parseFloatExpr()
     if (errno == ERANGE)
         return error(*currentToken(), "floating-point constant out of range");
 
-    ExprAST *result = new FloatExpr(currentStart(), currentEnd(), value);
+    ExprAST *result = new FloatExpr{currentStart(), currentEnd(), value};
     consumeToken();
     return result;
 }
@@ -200,7 +200,7 @@ ExprAST *Parser::parseFloatExpr()
 ExprAST *Parser::parseStringExpr()
 {
     ExprAST *result =
-        new StringExpr(currentStart(), currentEnd(), currentStr());
+        new StringExpr{currentStart(), currentEnd(), currentStr()};
     consumeToken();
     return result;
 }
@@ -209,7 +209,7 @@ ExprAST *Parser::parseStringExpr()
 ExprAST *Parser::parseVariableExpr()
 {
     ExprAST *result =
-        new VariableExpr(currentStart(), currentEnd(), currentStr());
+        new VariableExpr{currentStart(), currentEnd(), currentStr()};
     consumeToken();
     return result;
 }
@@ -221,7 +221,7 @@ ExprAST *Parser::parseParenExpr()
     int parenStart = currentStart();
     consumeToken();
 
-    std::unique_ptr<ExprAST> expr(parseExpression());
+    std::unique_ptr<ExprAST> expr{parseExpression()};
     if (!expr)
         return nullptr;
 
@@ -230,7 +230,7 @@ ExprAST *Parser::parseParenExpr()
 
     int parenEnd = currentEnd();
     consumeToken();
-    return new ParenExpr(parenStart, parenEnd, expr.release());
+    return new ParenExpr{parenStart, parenEnd, expr.release()};
 }
 
 /* See Builtins/Parser.h. */
@@ -247,7 +247,7 @@ ExprAST *Parser::parseUnaryOpExpr()
     if (!operand)
         return nullptr;
 
-    return new UnaryOp(opStart, opEnd, op, operand);
+    return new UnaryOp{opStart, opEnd, op, operand};
 }
 
 /*
@@ -257,7 +257,7 @@ ExprAST *Parser::parseUnaryOpExpr()
  */
 ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *_lhs)
 {
-    std::unique_ptr<ExprAST> lhs(_lhs);
+    std::unique_ptr<ExprAST> lhs{_lhs};
     for (;;) {
         BinaryOpcode op = tokenTypeToBinaryOpcode(currentType());
         int opStart = currentStart(), opEnd = currentEnd();
@@ -272,7 +272,7 @@ ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *_lhs)
 
         consumeToken();
 
-        std::unique_ptr<ExprAST> rhs(parseUnaryOpExpr());
+        std::unique_ptr<ExprAST> rhs{parseUnaryOpExpr()};
         if (!rhs)
             return nullptr;
 
@@ -288,7 +288,7 @@ ExprAST *Parser::parseBinaryOpRHS(int exprPrecedence, ExprAST *_lhs)
         }
 
         // Combine the left and right expressions
-        lhs.reset(new BinaryOp(opStart, opEnd, op, lhs.release(), rhs.release()));
+        lhs.reset(new BinaryOp{opStart, opEnd, op, lhs.release(), rhs.release()});
     }
 }
 
@@ -307,8 +307,8 @@ CommandAST *Parser::parseCommand()
     int commandEnd = currentEnd();
     consumeToken();
 
-    std::unique_ptr<CommandAST> commandAST(
-        new CommandAST(command, commandStart, commandEnd));
+    std::unique_ptr<CommandAST> commandAST{
+        new CommandAST{command, commandStart, commandEnd}};
 
     std::vector<std::unique_ptr<ExprAST>> &args = commandAST->getArgs();
     bool hadError = false;

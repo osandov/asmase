@@ -46,7 +46,7 @@ class ValueAST : public ExprAST {
 
 public:
     ValueAST(int columnStart, int columnEnd, ValueType type)
-        : ExprAST(columnStart, columnEnd), type(type) {}
+        : ExprAST{columnStart, columnEnd}, type{type} {}
 
     ValueType getType() const { return type; }
 
@@ -76,7 +76,7 @@ class IdentifierExpr : public ValueAST {
 
 public:
     IdentifierExpr(int columnStart, int columnEnd, const std::string &name)
-        : ValueAST(columnStart, columnEnd, ValueType::IDENTIFIER), name(name) {}
+        : ValueAST{columnStart, columnEnd, ValueType::IDENTIFIER}, name{name} {}
 
     virtual ValueAST *eval(Environment &env) const
     {
@@ -98,7 +98,7 @@ class IntegerExpr : public ValueAST {
 
 public:
     IntegerExpr(int columnStart, int columnEnd, long value)
-        : ValueAST(columnStart, columnEnd, ValueType::INTEGER), value(value) {}
+        : ValueAST{columnStart, columnEnd, ValueType::INTEGER}, value{value} {}
 
     virtual ValueAST *eval(Environment &env) const
     {
@@ -117,7 +117,7 @@ class FloatExpr : public ValueAST {
 
 public:
     FloatExpr(int columnStart, int columnEnd, double value)
-        : ValueAST(columnStart, columnEnd, ValueType::FLOAT), value(value) {}
+        : ValueAST{columnStart, columnEnd, ValueType::FLOAT}, value{value} {}
 
     virtual ValueAST *eval(Environment &env) const
     {
@@ -136,7 +136,7 @@ class StringExpr : public ValueAST {
 
 public:
     StringExpr(int columnStart, int columnEnd, const std::string &str)
-        : ValueAST(columnStart, columnEnd, ValueType::STRING), str(str) {}
+        : ValueAST{columnStart, columnEnd, ValueType::STRING}, str{str} {}
 
     virtual ValueAST *eval(Environment &env) const
     {

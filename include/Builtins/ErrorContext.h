@@ -55,7 +55,7 @@ public:
      * added to the column number every time.
      */
     ErrorContext(const char *filename, int lineno, const char *line, int offset = 0)
-        : filename(filename), lineno(lineno), line(line), offset(offset) {}
+        : filename{filename}, lineno{lineno}, line{line}, offset{offset} {}
 
     /** Print an error message. */
     void printMessage(const char *msg);

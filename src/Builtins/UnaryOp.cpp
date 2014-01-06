@@ -46,7 +46,7 @@ static std::map<UnaryOpcode, UnaryOpFunction> unaryFunctionMap = {
 // operator to it.
 ValueAST *UnaryOp::eval(Environment &env) const
 {
-    std::unique_ptr<ValueAST> value(operand->eval(env));
+    std::unique_ptr<ValueAST> value{operand->eval(env)};
     if (!value)
         return nullptr;
 

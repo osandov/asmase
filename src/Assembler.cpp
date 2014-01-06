@@ -124,20 +124,20 @@ int Assembler::assembleInstruction(const std::string &instruction,
         MemoryBuffer::getMemBufferCopy(instruction, "assembly");
 
     SourceMgr srcMgr;
-    srcMgr.AddNewSourceBuffer(inputBuffer, SMLoc());
+    srcMgr.AddNewSourceBuffer(inputBuffer, SMLoc{});
     srcMgr.setDiagHandler(asmaseDiagHandler,
                           const_cast<void *>((const void *) &inputter));
 
     // Set up the output
     SmallString<OUTPUT_BUFFER_SIZE> outputString;
-    raw_svector_ostream outputStream(outputString);
+    raw_svector_ostream outputStream{outputString};
 
     // Set up the context
-    OwningPtr<MCObjectFileInfo> objectFileInfo(new MCObjectFileInfo());
+    OwningPtr<MCObjectFileInfo> objectFileInfo{new MCObjectFileInfo()};
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
-    MCContext mcCtx(asmInfo, registerInfo, objectFileInfo.get(), &srcMgr);
+    MCContext mcCtx{asmInfo, registerInfo, objectFileInfo.get(), &srcMgr};
 #else
-    MCContext mcCtx(*asmInfo, *registerInfo, objectFileInfo.get(), &srcMgr);
+    MCContext mcCtx{*asmInfo, *registerInfo, objectFileInfo.get(), &srcMgr};
 #endif
     objectFileInfo->InitMCObjectFileInfo(tripleName, Reloc::Default,
                                          CodeModel::Default, mcCtx);
@@ -160,19 +160,19 @@ int Assembler::assembleInstruction(const std::string &instruction,
         target->createMCAsmBackend(tripleName, mcpu);
 #endif
 
-    OwningPtr<MCStreamer> streamer(
-        createPureStreamer(mcCtx, *MAB, outputStream, codeEmitter));
+    OwningPtr<MCStreamer> streamer{
+        createPureStreamer(mcCtx, *MAB, outputStream, codeEmitter)};
 
     // Set up the parser
-    OwningPtr<MCAsmParser> parser(
-        createMCAsmParser(srcMgr, mcCtx, *streamer, *asmInfo));
+    OwningPtr<MCAsmParser> parser{
+        createMCAsmParser(srcMgr, mcCtx, *streamer, *asmInfo)};
 
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
-    OwningPtr<MCTargetAsmParser> TAP(
-        target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo));
+    OwningPtr<MCTargetAsmParser> TAP{
+        target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo)};
 #else
-    OwningPtr<MCTargetAsmParser> TAP(
-        target->createMCAsmParser(*subtargetInfo, *parser));
+    OwningPtr<MCTargetAsmParser> TAP{
+        target->createMCAsmParser(*subtargetInfo, *parser)};
 #endif
     assert(TAP && "This target does not support assembly parsing");
     parser->setTargetParser(*TAP);
@@ -182,7 +182,7 @@ int Assembler::assembleInstruction(const std::string &instruction,
         MemoryBuffer *outputBuffer =
             MemoryBuffer::getMemBuffer(outputString, "machine code", false);
         OwningPtr<object::ObjectFile>
-            objFile(object::ObjectFile::createELFObjectFile(outputBuffer));
+            objFile{object::ObjectFile::createELFObjectFile(outputBuffer)};
 
         StringRef textSection;
         error_code err;
