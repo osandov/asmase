@@ -23,7 +23,8 @@
 #define ASMASE_ASSEMBLER_H
 
 #include <memory>
-#include <string>
+
+#include "Support.h"
 
 class Inputter;
 
@@ -45,7 +46,7 @@ public:
      * @return Zero on success, nonzero on failure.
      */
     int assembleInstruction(const std::string &instruction,
-                            std::string &machineCodeOut,
+                            bytestring &machineCodeOut,
                             const Inputter &inputter);
 
     /**

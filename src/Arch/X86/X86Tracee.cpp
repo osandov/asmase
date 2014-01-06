@@ -30,7 +30,7 @@
 #include "Arch/X86/UserRegisters.h"
 
 extern const RegisterInfo X86Registers;
-static const std::string X86TrapInstruction = "\xcc";
+static const bytestring X86TrapInstruction = {0xcc};
 
 X86Tracee::X86Tracee(pid_t pid, void *sharedMemory, size_t sharedSize)
     : Tracee{X86Registers, X86TrapInstruction, new UserRegisters,

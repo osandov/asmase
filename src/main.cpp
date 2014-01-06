@@ -19,6 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iomanip>
 #include <iostream>
 
 #include "Assembler.h"
@@ -53,14 +54,26 @@ int main(int argc, char *argv[])
             break;
         }
 
+        line.resize(line.size() - 1); // Trim off the newline
+
         if (isBuiltin(line)) {
             if (runBuiltin(line, *tracee, inputter) < 0)
                 break;
         } else {
-            std::string machineCode;
+            bytestring machineCode;
             int error = assembler.assembleInstruction(line, machineCode, inputter);
             if (error)
                 continue;
+
+            std::cout << line << " = [";
+            for (size_t i = 0; i < machineCode.size(); ++i) {
+                if (i > 0)
+                    std::cout << ", ";
+                std::cout << "0x" << std::hex << std::setw(2)
+                          << std::setfill('0') << (int) machineCode[i];
+            }
+            std::cout << "]\n";
+
             tracee->executeInstruction(machineCode);
         }
     }

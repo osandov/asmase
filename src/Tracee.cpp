@@ -45,16 +45,16 @@ Tracee::categoryPrinters = {
 };
 
 /* See Tracee.h. */
-int Tracee::executeInstruction(const std::string &instruction)
+int Tracee::executeInstruction(const bytestring &machineCode)
 {
     unsigned char *shared = reinterpret_cast<unsigned char *>(sharedMemory);
-    if (instruction.size() + trapInstruction.size() >= sharedSize) {
+    if (machineCode.size() + trapInstruction.size() >= sharedSize) {
         std::cerr << "instruction too long\n";
         return 1;
     }
 
-    memcpy(shared, instruction.c_str(), instruction.size());
-    shared += instruction.size();
+    memcpy(shared, machineCode.c_str(), machineCode.size());
+    shared += machineCode.size();
     memcpy(shared, trapInstruction.c_str(), trapInstruction.size());
 
     int wait_status;

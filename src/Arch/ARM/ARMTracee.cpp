@@ -30,7 +30,7 @@
 #include "Arch/ARM/UserRegisters.h"
 
 extern const RegisterInfo ARMRegisters;
-static const std::string ARMTrapInstruction = "\xf0\x01\xf0\xe7";
+static const bytestring ARMTrapInstruction = {0xf0, 0x01, 0xf0, 0xe7};
 
 ARMTracee::ARMTracee(pid_t pid, void *sharedMemory, size_t sharedSize)
     : Tracee{ARMRegisters, ARMTrapInstruction, new UserRegisters,

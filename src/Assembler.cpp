@@ -109,7 +109,7 @@ std::shared_ptr<AssemblerContext> Assembler::createAssemblerContext()
 
 /* See Assembler.h. */
 int Assembler::assembleInstruction(const std::string &instruction,
-                                   std::string &machineCodeOut,
+                                   bytestring &machineCodeOut,
                                    const Inputter &inputter)
 {
     const std::string &tripleName = context->tripleName;
@@ -188,7 +188,8 @@ int Assembler::assembleInstruction(const std::string &instruction,
         error_code err;
         err = getTextSection(*objFile, textSection);
         if (!err) {
-            machineCodeOut = textSection;
+            auto *buffer = reinterpret_cast<const unsigned char *>(textSection.data());
+            machineCodeOut = bytestring{buffer, textSection.size()};
             return 0;
         }
     }

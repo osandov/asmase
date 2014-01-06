@@ -189,10 +189,8 @@ bool isBuiltin(const std::string &str)
 }
 
 /* See Builtins.h. */
-int runBuiltin(const std::string &str, Tracee &tracee, Inputter &inputter)
+int runBuiltin(const std::string &line, Tracee &tracee, Inputter &inputter)
 {
-    std::string line = str.substr(0, str.size() - 1); // Don't want the newline
-
     // Make sure we were really given a built-in and trim the leading colon
     const char *builtin = line.c_str();
     int offset = 0;

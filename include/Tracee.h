@@ -22,11 +22,12 @@
 #ifndef ASMASE_TRACEE_H
 #define ASMASE_TRACEE_H
 
-#include <string>
 #include <memory>
 #include <utility>
 
 #include <sys/types.h>
+
+#include "Support.h"
 
 enum class RegisterCategory;
 class RegisterDesc;
@@ -60,7 +61,7 @@ protected:
     const RegisterInfo &regInfo;
 
     /** Instruction to use to trigger a software trap (i.e., breakpoint). */
-    const std::string &trapInstruction;
+    const bytestring &trapInstruction;
 
     /**
      * Actual values of the tracee's registers. This is updated lazily for
@@ -98,9 +99,9 @@ protected:
     virtual int printExtraRegisters();
 
 public:
-    Tracee(const RegisterInfo &regInfo, const std::string &trapInstruction,
-           UserRegisters *registers,
-           pid_t pid, void *sharedMemory, size_t sharedSize);
+    Tracee(const RegisterInfo &regInfo, const bytestring &trapInstruction,
+           UserRegisters *registers, pid_t pid, void *sharedMemory,
+           size_t sharedSize);
     ~Tracee();
 
     pid_t getPid() const { return pid; }
@@ -109,7 +110,7 @@ public:
      * Execute the given instruction on the tracee.
      * @return Zero on success, nonzero on failure.
      */
-    int executeInstruction(const std::string &machineCode);
+    int executeInstruction(const bytestring &machineCode);
 
     /**
      * Print the registers in the given categories (which may be a bitwise OR
