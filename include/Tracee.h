@@ -108,7 +108,7 @@ public:
 
     /**
      * Execute the given instruction on the tracee.
-     * @return Zero on success, nonzero on failure.
+     * @return Zero on success, positive on error, negative on fatal error.
      */
     int executeInstruction(const bytestring &machineCode);
 

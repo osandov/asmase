@@ -75,7 +75,9 @@ int main(int argc, char *argv[])
             }
             std::cout << "]\n";
 
-            tracee->executeInstruction(machineCode);
+            error = tracee->executeInstruction(machineCode);
+            if (error < 0)
+                break;
         }
     }
 

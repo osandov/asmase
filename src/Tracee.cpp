@@ -60,29 +60,29 @@ int Tracee::executeInstruction(const bytestring &machineCode)
     int wait_status;
 
     if (setProgramCounter(sharedMemory))
-        return 1;
+        return -1;
 
 retry:
     if (ptrace(PTRACE_CONT, pid, nullptr, 0) == -1) {
         perror("ptrace");
         std::cerr << "could not continue tracee\n";
-        return 1;
+        return -1;
     }
 
     if (waitpid(pid, &wait_status, 0) == -1) {
         perror("waitpid");
         std::cerr << "could not wait for tracee\n";
-        return 1;
+        return -1;
     }
 
     if (WIFEXITED(wait_status)) {
         std::cerr << "tracee exited with status "
                   << WEXITSTATUS(wait_status) << '\n';
-        return 1;
+        return -1;
     } else if (WIFSIGNALED(wait_status)) {
         std::cerr << "tracee was terminated ("
                   << strsignal(WTERMSIG(wait_status)) << ")\n";
-        return 1;
+        return -1;
     } else if (WIFSTOPPED(wait_status)) {
         int signal = WSTOPSIG(wait_status);
         switch (signal) {
@@ -99,10 +99,10 @@ retry:
         }
     } else if (WIFCONTINUED(wait_status)) {
         std::cerr << "tracee continued\n";
-        return 1;
+        return -1;
     } else {
         std::cerr << "tracee disappeared\n";
-        return 1;
+        return -1;
     }
 
     return 0;
