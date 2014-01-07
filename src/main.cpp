@@ -61,8 +61,9 @@ int main(int argc, char *argv[])
                 break;
         } else {
             bytestring machineCode;
+
             int error = assembler.assembleInstruction(line, machineCode, inputter);
-            if (error)
+            if (error || machineCode.empty())
                 continue;
 
             std::cout << line << " = [";

@@ -54,10 +54,10 @@ public:
     MemoryStreamer(pid_t pid, void *address)
         : pid{pid},
           buffer{reinterpret_cast<unsigned char *>(&_buffer)},
-          address{reinterpret_cast<unsigned char *>(address)}, offset{0} {}
+          address{static_cast<unsigned char *>(address)}, offset{0} {}
 
     /** Get the next address to be read from. */
-    void *getAddress() const { return reinterpret_cast<void *>(address); }
+    void *getAddress() const { return static_cast<void *>(address); }
 
     /**
      * Read an element from the tracee.
@@ -74,8 +74,9 @@ public:
                 _buffer = ptrace(PTRACE_PEEKDATA, pid, address + outOffset,
                                  nullptr);
                 if (errno) {
-                    std::cerr << "cannot access memory at address "
-                              << address + outOffset << '\n';
+                    std::cerr << "\ncannot access memory at address "
+                              << static_cast<void *>(address + outOffset)
+                              << '\n';
                     return 1;
                 }
 

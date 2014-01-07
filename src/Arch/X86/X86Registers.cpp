@@ -362,7 +362,7 @@ int X86Tracee::printExtraRegisters()
         if (i % 2 == 0)
             printf("\n");
         else
-            printf(" ");
+            printf("    ");
         uint64_t mm = *reinterpret_cast<uint64_t *>(&registers->st[i]);
         printf("%%mm%d = " PRINTFx64, i, mm);
     }

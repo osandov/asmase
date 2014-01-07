@@ -125,8 +125,8 @@ int Assembler::assembleInstruction(const std::string &instruction,
 
     SourceMgr srcMgr;
     srcMgr.AddNewSourceBuffer(inputBuffer, SMLoc{});
-    srcMgr.setDiagHandler(asmaseDiagHandler,
-                          const_cast<void *>((const void *) &inputter));
+    srcMgr.setDiagHandler(
+        asmaseDiagHandler, const_cast<void *>(static_cast<const void *>(&inputter)));
 
     // Set up the output
     SmallString<OUTPUT_BUFFER_SIZE> outputString;
