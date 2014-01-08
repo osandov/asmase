@@ -100,7 +100,8 @@ static std::string parseString(const char *str)
     bool escape = false;
 
     // Make sure we're actually parsing a string
-    assert(*str++ == '"');
+    assert(*str == '"');
+    ++str;
 
     while (*str && (escape || *str != '"')) {
         if (escape) {
@@ -145,7 +146,7 @@ static std::string parseString(const char *str)
 
     // Make sure the string actually ended where it should have
     assert(*str == '"');
-    assert(*++str == '\0');
+    assert(*(str + 1) == '\0');
 
     return token;
 }
