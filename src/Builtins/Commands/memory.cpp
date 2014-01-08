@@ -20,8 +20,6 @@
  */
 
 #include <cinttypes>
-#include <iomanip>
-#include <iostream>
 #include <sstream>
 #include <unordered_map>
 #include <utility>
@@ -110,11 +108,10 @@ static std::string escapeCharacter(char c,
     else if (isprint(c)) // Other printable characters
         return std::string{c};
     else { // Anything else should be an escaped hex sequence
-        std::stringstream escaped;
-        escaped << "\\x";
-        escaped << std::hex << std::setw(2) << std::setfill('0')
-                << (int) (unsigned char) c;
-        return escaped.str();
+        char escaped[5];
+        snprintf(escaped, sizeof(escaped), "\\x%02x",
+            (int) (unsigned char) c);
+        return std::string{escaped};
     }
 }
 
@@ -129,8 +126,8 @@ static int dumpMemoryWith(MemoryStreamer &memStr, size_t repeat,
     for (size_t i = 0; i < repeat; ++i, ++column) {
         if (column >= numColumns) {
             if (!firstRow)
-                std::cout << '\n';
-            std::cout << memStr.getAddress() << ": ";
+                printf("\n");
+            printf("%p: ", memStr.getAddress());
             column = 0;
             firstRow = false;
         }
@@ -138,9 +135,9 @@ static int dumpMemoryWith(MemoryStreamer &memStr, size_t repeat,
         if (memStr.next(value))
             return 1;
 
-        std::cout << printer((U) value);
+        printer((U) value);
     }
-    std::cout << std::endl;
+    printf("\n");
 
     return 0;
 }
@@ -149,17 +146,7 @@ template <typename T, typename U = T>
 static int printfMemory(MemoryStreamer &memStr, size_t repeat, const char *fmt,
                         int numColumns)
 {
-    auto printfer = [fmt](T value)
-    {
-        char *str;
-        // Not POSIX but this function makes me happy
-        int error = asprintf(&str, fmt, (U) value);
-        if (error == -1)
-            abort(); // Not sure what to do in this case
-        std::string formatted{str};
-        free(str);
-        return formatted;
-    };
+    auto printfer = [fmt](U value) { printf(fmt, (U) value); };
 
     return dumpMemoryWith<T, U>(memStr, repeat, numColumns, printfer);
 }
@@ -174,7 +161,7 @@ static int dumpBinary(MemoryStreamer &memStr, size_t repeat, int numColumns,
         std::string str;
         for (T mask = (T) 1 << (sizeof(T) * 8 - 1); mask; mask >>= 1)
             str += (value & mask) ? '1' : '0';
-        return str + spaces;
+        printf("%s%s", str.c_str(), spaces.c_str());
     };
 
     return dumpMemoryWith<T>(memStr, repeat, numColumns, binaryPrinter);
@@ -186,9 +173,8 @@ static int dumpCharacters(MemoryStreamer &memStr, size_t repeat, int numColumns,
     auto characterPrinter = [fieldWidth](char c)
     {
         std::stringstream ss;
-        ss << std::left << std::setw(fieldWidth)
-           << '\'' + escapeCharacter(c, true, false) + '\'';
-        return ss.str();
+        ss << '\'' + escapeCharacter(c, true, false) + '\'';
+        printf("%-*s", fieldWidth, ss.str().c_str());
     };
 
     return dumpMemoryWith<char>(memStr, repeat, numColumns, characterPrinter);
@@ -200,19 +186,18 @@ static int dumpStrings(MemoryStreamer &memStr, size_t repeat)
 
     size_t stringsPrinted = 0;
     while (stringsPrinted < repeat && !error) {
-        std::cout << memStr.getAddress() << ": \"";
+        printf("%p: \"", memStr.getAddress());
 
         for (;;) {
             char c;
             if ((error = memStr.next(c)) || !c)
                 break;
-            std::cout << escapeCharacter(c, false, true);
+            printf("%s", escapeCharacter(c, false, true).c_str());
         }
 
-        std::cout << "\"\n";
+        printf("\"\n");
         ++stringsPrinted;
     }
-    std::cout.flush();
 
     return (error) ? 1 : 0;
 }
@@ -327,8 +312,9 @@ BUILTIN_FUNC(memory)
     static void *address = nullptr;
 
     if (wantsHelp(args)) {
-        std::cout << getUsage(commandName) << '\n';
-        std::cout <<
+        std::string usage = getUsage(commandName);
+        printf("%s\n", usage.c_str());
+        printf(
             "Formats:\n"
             "  d -- decimal\n"
             "  u -- unsigned decimal\n"
@@ -336,13 +322,13 @@ BUILTIN_FUNC(memory)
             "  x -- unsigned hexadecimal\n"
             "  t -- unsigned binary\n"
             "  f -- floating point\n"
-            "  c -- character\n";
-        std::cout <<
+            "  c -- character\n");
+        printf(
             "Sizes:\n"
             "  b -- byte (1 byte)\n"
             "  h -- half word (2 bytes)\n"
             "  w -- word (4 bytes)\n"
-            "  g -- giant (8 bytes)\n";
+            "  g -- giant (8 bytes)\n");
         return 0;
     }
 

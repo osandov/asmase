@@ -19,7 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
+#include <cstdio>
 #include <sstream>
 #include <unordered_map>
 
@@ -77,14 +77,15 @@ BUILTIN_FUNC(registers)
     RegisterCategory categories = RegisterCategory::NONE;
 
     if (wantsHelp(args)) {
-        std::cout << getUsage(commandName) << '\n';
-        std::cout <<
+        std::string usage = getUsage(commandName);
+        printf("%s\n", usage.c_str());
+        printf(
             "Categories:\n"
             "  gp  -- General purpose registers\n"
             "  cc  -- Condition code/status flag registers\n"
             "  fp  -- Floating point registers\n"
             "  x   -- Extra registers\n"
-            "  seg -- Segment registers\n";
+            "  seg -- Segment registers\n");
         return 0;
     }
 

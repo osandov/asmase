@@ -19,8 +19,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
-#include <fstream>
+#include <cstdio>
+#include <cstdlib>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -28,13 +28,15 @@
 #include "Inputter.h"
 
 Inputter::Inputter()
+    : lineBufferSize{0}, lineBuffer{nullptr}
 {
-    files.push_back({"<stdin>", 0, nullptr});
+    files.emplace_back("<stdin>", 0, nullptr);
     using_history();
 }
 
 Inputter::~Inputter()
 {
+    free(lineBuffer);
     clear_history();
 }
 
@@ -42,19 +44,17 @@ Inputter::~Inputter()
 int Inputter::redirectInput(const std::string &filename)
 {
     if (files.size() >= Inputter::MAX_FILES) {
-        std::cerr << "redirection stack too deep\n";
+        fprintf(stderr, "redirection stack too deep\n");
         return 1;
     }
 
-    std::unique_ptr<std::istream> file{new std::ifstream{filename}};
-
-    if (!file->good()) {
-        std::cerr << "could not open file\n";
+    FILE *file = fopen(filename.c_str(), "r");
+    if (!file) {
+        fprintf(stderr, "could not open file\n");
         return 1;
     }
 
-    files.push_back({filename, 0, nullptr});
-    files.back().stream.swap(file);
+    files.emplace_back(filename, 0, file);
     return 0;
 }
 
@@ -65,16 +65,17 @@ std::string Inputter::readLine(const std::string &prompt)
     bool gotLine = false;
 
     do {
-        if (files.size() > 1) {
-            std::istream &file = *files.back().stream;
-            std::getline(file, line);
-            if (file.eof()) // No more input, pop the stack and retry
+        FILE *file = files.back().file;
+        if (file) {
+            getline(&lineBuffer, &lineBufferSize, file);
+            if (feof(file))
                 files.pop_back();
             else {
+                line = lineBuffer;
                 line += '\n';
                 gotLine = true;
             }
-        } else {
+        } else { // stdin sentinel
             char *cline;
             if ((cline = readline(prompt.c_str()))) {
                 if (*cline) // If the line isn't empty, add it to the history

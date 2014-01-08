@@ -20,8 +20,7 @@
  */
 
 #include <cassert>
-#include <iomanip>
-#include <iostream>
+#include <cstdio>
 #include <map>
 #include <sstream>
 
@@ -50,20 +49,16 @@ static BUILTIN_FUNC(test)
     for (auto &arg : args) {
         switch (arg->getType()) {
             case Builtins::ValueType::IDENTIFIER:
-                std::cout << "identifier: " << arg->getIdentifier() << '\n';
+                printf("identifier: %s\n", arg->getIdentifier().c_str());
                 break;
             case Builtins::ValueType::INTEGER:
-                std::cout << "integer: 0x"
-                          << std::hex << std::setw(16) << std::setfill('0')
-                          << arg->getInteger();
-
-                std::cout << std::dec << " (" << arg->getInteger() << ")\n";
+                printf("integer: 0x%1$lx (%1$ld)\n", arg->getInteger());
                 break;
             case Builtins::ValueType::FLOAT:
-                std::cout << "floating: " << arg->getFloat() << '\n';
+                printf("floating: %f\n", arg->getFloat());
                 break;
             case Builtins::ValueType::STRING:
-                std::cout << "string: " << arg->getString() << '\n';
+                printf("string: %s\n", arg->getString().c_str());
                 break;
         }
     }

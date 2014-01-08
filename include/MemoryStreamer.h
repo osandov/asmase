@@ -23,8 +23,8 @@
 #define ASMASE_MEMORY_STREAMER_H
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
-#include <iostream>
 
 #include <sys/ptrace.h>
 #include <sys/types.h>
@@ -74,9 +74,8 @@ public:
                 _buffer = ptrace(PTRACE_PEEKDATA, pid, address + outOffset,
                                  nullptr);
                 if (errno) {
-                    std::cerr << "\ncannot access memory at address "
-                              << static_cast<void *>(address + outOffset)
-                              << '\n';
+                    printf("\ncannot access memory at address %p\n",
+                           static_cast<void *>(address + outOffset));
                     return 1;
                 }
 

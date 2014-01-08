@@ -21,7 +21,7 @@
  */
 
 #include <cstddef>
-#include <iostream>
+#include <cstdio>
 
 #include "ProcessorFlags.h"
 #include "RegisterInfo.h"
@@ -122,6 +122,6 @@ int ARMTracee::printConditionCodeRegisters()
 {
     printf("cpsr = " PRINTFx32 " = ", registers->cpsr);
     cpsrFlags.printFlags(registers->cpsr);
-    std::cout << '\n';
+    printf("\n");
     return 0;
 }

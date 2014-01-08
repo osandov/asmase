@@ -19,8 +19,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
 #include <cstring>
-#include <iostream>
 
 #include <sys/ptrace.h>
 #include <sys/user.h>
@@ -42,7 +42,7 @@ int X86Tracee::setProgramCounter(void *pc)
 
     if (ptrace(PTRACE_GETREGS, pid, nullptr, &regs) == -1) {
         perror("ptrace");
-        std::cerr << "could not get program counter\n";
+        fprintf(stderr, "could not get program counter\n");
         return 1;
     }
 
@@ -54,7 +54,7 @@ int X86Tracee::setProgramCounter(void *pc)
 
     if (ptrace(PTRACE_SETREGS, pid, nullptr, &regs) == -1) {
         perror("ptrace");
-        std::cerr << "could not set program counter\n";
+        fprintf(stderr, "could not set program counter\n");
         return 1;
     }
 
@@ -79,7 +79,7 @@ int X86Tracee::updateRegisters()
     if (ptrace(PTRACE_GETREGS, pid, nullptr, &regs) == -1 ||
         ptrace(PTRACE_GETFPXREGS, pid, nullptr, &fpxregs) == -1) {
         perror("ptrace");
-        std::cerr << "could not get registers\n";
+        fprintf(stderr, "could not get registers\n");
         return 1;
     }
 

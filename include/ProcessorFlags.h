@@ -23,6 +23,7 @@
 #define ASMASE_PROCESSOR_FLAGS_H
 
 #include <cassert>
+#include <cstdio>
 #include <initializer_list>
 #include <string>
 #include <vector>
@@ -103,21 +104,22 @@ public:
     /** Pretty-print the set of flags for the given register value. */
     void printFlags(T reg)
     {
-        std::cout << '[';
+        printf("[");
 
         for (const ProcessorFlag<T> &flag : flags) {
             T flagValue = flag.getValue(reg);
 
             if (flag.alwaysPrint) {
                 if (flagValue != flag.expected)
-                    std::cout << ' ' << flag.name << '=' << flagValue;
+                    printf(" %s = %lld",
+                        flag.name.c_str(), (long long) flagValue);
             } else {
                 if (flagValue == flag.expected)
-                    std::cout << ' ' << flag.name;
+                    printf(" %s", flag.name.c_str());
             }
         }
 
-        std::cout << " ]";
+        printf(" ]");
     }
 };
 

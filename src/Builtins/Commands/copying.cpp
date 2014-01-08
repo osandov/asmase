@@ -19,14 +19,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
+#include <cstdio>
 
 #include "Builtins/Commands.h"
 
 /** Print the GPL copying clauses. */
 static void print_copying()
 {
-    std::cout <<
+    printf(
         "                    GNU GENERAL PUBLIC LICENSE\n"
         "                       Version 3, 29 June 2007\n"
         "\n"
@@ -613,13 +613,13 @@ static void print_copying()
         "  Later license versions may give you additional or different\n"
         "permissions.  However, no additional obligations are imposed on any\n"
         "author or copyright holder as a result of your choosing to follow a\n"
-        "later version.\n";
+        "later version.\n");
 }
 
 /** Print the GPL warranty clauses. */
 static void print_warranty()
 {
-    std::cout <<
+    printf(
         "  15. Disclaimer of Warranty.\n"
         "\n"
         "  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY\n"
@@ -650,7 +650,7 @@ static void print_warranty()
         "reviewing courts shall apply local law that most closely approximates\n"
         "an absolute waiver of all civil liability in connection with the\n"
         "Program, unless a warranty or assumption of liability accompanies a\n"
-        "copy of the Program in return for a fee.\n";
+        "copy of the Program in return for a fee.\n");
 }
 
 BUILTIN_FUNC(warranty)

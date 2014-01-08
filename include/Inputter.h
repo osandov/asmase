@@ -22,8 +22,9 @@
 #ifndef ASMASE_INPUTTER_H
 #define ASMASE_INPUTTER_H
 
-#include <iostream>
+#include <cstdio>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -34,14 +35,29 @@ class Inputter {
     public:
         std::string filename;
         int lineno;
-        std::unique_ptr<std::istream> stream;
+        FILE *file;
+
+        InputFile(const std::string &filename, int lineno, FILE *file)
+            : filename{filename}, lineno{lineno}, file{file} {}
+
+        ~InputFile()
+        {
+            if (file)
+                fclose(file);
+        }
     };
 
     /**
      * Input file stack. The back is the current file and the front represents
-     * std::cout.
+     * stdin.
      */
     std::vector<InputFile> files;
+
+    /** Size of line for getline. */
+    size_t lineBufferSize;
+
+    /** Line for getline. */
+    char *lineBuffer;
 
 public:
     /** The maximum depth of the redirection stack. */

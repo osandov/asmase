@@ -19,21 +19,22 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdio>
 #include <iomanip>
-#include <iostream>
 
 #include "Assembler.h"
 #include "Builtins.h"
 #include "Inputter.h"
+#include "Support.h"
 #include "Tracee.h"
 
 int main(int argc, char *argv[])
 {
-    std::cout <<
+    printf(
         "asmase Copyright (C) 2013-2014 Omar Sandoval\n"
         "This program comes with ABSOLUTELY NO WARRANTY; for details type `:warranty'.\n"
         "This is free software, and you are welcome to redistribute it\n"
-        "under certain conditions; type `:copying' for details.\n";
+        "under certain conditions; type `:copying' for details.\n");
 
     std::shared_ptr<Tracee> tracee{Tracee::createTracee()};
     if (!tracee)
@@ -50,7 +51,7 @@ int main(int argc, char *argv[])
     for (;;) {
         std::string line = inputter.readLine("asmase> ");
         if (line.empty()) {
-            std::cout << std::endl;
+            printf("\n");
             break;
         }
 
@@ -66,14 +67,13 @@ int main(int argc, char *argv[])
             if (error || machineCode.empty())
                 continue;
 
-            std::cout << line << " = [";
+            printf("%s = [", line.c_str());
             for (size_t i = 0; i < machineCode.size(); ++i) {
                 if (i > 0)
-                    std::cout << ", ";
-                std::cout << "0x" << std::hex << std::setw(2)
-                          << std::setfill('0') << (int) machineCode[i];
+                    printf(", ");
+                printf(PRINTFx8, machineCode[i]);
             }
-            std::cout << "]\n";
+            printf("]\n");
 
             error = tracee->executeInstruction(machineCode);
             if (error < 0)

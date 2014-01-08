@@ -22,7 +22,6 @@
 #include <cinttypes>
 #include <cstdio>
 #include <cstddef>
-#include <iostream>
 
 #include <asm/processor-flags.h>
 
@@ -276,7 +275,7 @@ int X86Tracee::printConditionCodeRegisters()
 {
     printf("eflags = " PRINTFx32 " = ", registers->eflags);
     eflagsFlags.printFlags(registers->eflags);
-    std::cout << '\n';
+    printf("\n");
     return 0;
 }
 
@@ -301,14 +300,14 @@ int X86Tracee::printFloatingPointRegisters()
 {
     printf("fcw = " PRINTFx16 " = ", registers->fcw);
     fcwFlags.printFlags(registers->fcw);
-    std::cout << '\n';
+    printf("\n");
 
     printf("fsw = " PRINTFx16 " = ", registers->fsw);
     fswFlags.printFlags(registers->fsw);
-    std::cout << '\n';
+    printf("\n");
 
     printf("ftw = " PRINTFx16 "\n", registers->ftw);
-    std::cout << '\n';
+    printf("\n");
 
     uint16_t top = x87_st_top(registers->fsw);
     for (int16_t physical = 7; physical >= 0; --physical) {
@@ -317,27 +316,27 @@ int X86Tracee::printFloatingPointRegisters()
         uint16_t tag = 
             (registers->ftw & (0x3 << 2 * physical)) >> 2 * physical;
 
-        std::cout << 'R' << physical << " = ";
+        printf("R%d = ", physical);
 
         switch (tag) {
             case 0x0:
-                std::cout << "(valid) ";
+                printf("(valid)   ");
                 break;
             case 0x1:
-                std::cout << "(zero) ";
+                printf("(zero)    ");
                 break;
             case 0x2:
-                std::cout << "(special) ";
+                printf("(special) ");
                 break;
             case 0x3:
-                std::cout << "(empty)\n";
+                printf("(empty)\n");
                 break;
         }
 
         if (tag != 0x3)
-            std::cout << st << " %%st(" << logical << ")\n";
+            printf("%20.18Lf, %%st(%d)\n", st, logical);
     }
-    std::cout << '\n';
+    printf("\n");
 
 #ifdef __x86_64__
     printf("fip = " PRINTFx64 "    fdp = " PRINTFx64 "\n",
@@ -356,7 +355,7 @@ int X86Tracee::printExtraRegisters()
 {
     printf("mxcsr = " PRINTFx32 " = ", registers->mxcsr);
     mxcsrFlags.printFlags(registers->mxcsr);
-    std::cout << '\n';
+    printf("\n");
 
     for (int i = 0; i < 8; ++i) {
         if (i % 2 == 0)
@@ -366,9 +365,9 @@ int X86Tracee::printExtraRegisters()
         uint64_t mm = *reinterpret_cast<uint64_t *>(&registers->st[i]);
         printf("%%mm%d = " PRINTFx64, i, mm);
     }
-    std::cout << '\n';
+    printf("\n");
 
-    std::cout << '\n';
+    printf("\n");
     for (int i = 0; i < UserRegisters::NUM_SSE_REGS; ++i)
         printf("%%xmm%-2d = 0x%016" PRIx64 "%016" PRIx64 "\n",
                i, registers->xmm[i].hi, registers->xmm[i].lo);

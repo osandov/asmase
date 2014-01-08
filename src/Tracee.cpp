@@ -22,8 +22,8 @@
 
 #include <algorithm>
 #include <csignal>
+#include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <utility>
 
 #include <signal.h>
@@ -49,7 +49,7 @@ int Tracee::executeInstruction(const bytestring &machineCode)
 {
     unsigned char *shared = reinterpret_cast<unsigned char *>(sharedMemory);
     if (machineCode.size() + trapInstruction.size() >= sharedSize) {
-        std::cerr << "instruction too long\n";
+        fprintf(stderr, "instruction too long\n");
         return 1;
     }
 
@@ -57,7 +57,7 @@ int Tracee::executeInstruction(const bytestring &machineCode)
     shared += machineCode.size();
     memcpy(shared, trapInstruction.c_str(), trapInstruction.size());
 
-    int wait_status;
+    int waitStatus;
 
     if (setProgramCounter(sharedMemory))
         return -1;
@@ -65,26 +65,26 @@ int Tracee::executeInstruction(const bytestring &machineCode)
 retry:
     if (ptrace(PTRACE_CONT, pid, nullptr, 0) == -1) {
         perror("ptrace");
-        std::cerr << "could not continue tracee\n";
+        fprintf(stderr, "could not continue tracee\n");
         return -1;
     }
 
-    if (waitpid(pid, &wait_status, 0) == -1) {
+    if (waitpid(pid, &waitStatus, 0) == -1) {
         perror("waitpid");
-        std::cerr << "could not wait for tracee\n";
+        fprintf(stderr, "could not wait for tracee\n");
         return -1;
     }
 
-    if (WIFEXITED(wait_status)) {
-        std::cerr << "tracee exited with status "
-                  << WEXITSTATUS(wait_status) << '\n';
+    if (WIFEXITED(waitStatus)) {
+        fprintf(stderr, "tracee exited with status %d\n",
+            WEXITSTATUS(waitStatus));
         return -1;
-    } else if (WIFSIGNALED(wait_status)) {
-        std::cerr << "tracee was terminated ("
-                  << strsignal(WTERMSIG(wait_status)) << ")\n";
+    } else if (WIFSIGNALED(waitStatus)) {
+        fprintf(stderr, "tracee was terminated (%s)\n",
+            strsignal(WTERMSIG(waitStatus)));
         return -1;
-    } else if (WIFSTOPPED(wait_status)) {
-        int signal = WSTOPSIG(wait_status);
+    } else if (WIFSTOPPED(waitStatus)) {
+        int signal = WSTOPSIG(waitStatus);
         switch (signal) {
             case SIGTRAP:
                 break;
@@ -93,15 +93,15 @@ retry:
                 // so continue the process and keep waiting
                 goto retry;
             default:
-                std::cout << "tracee was stopped ("
-                          << strsignal(WSTOPSIG(wait_status)) << ")\n";
+                printf("tracee was stopped(%s)\n", 
+                    strsignal(WSTOPSIG(waitStatus)));
                 return 0;
         }
-    } else if (WIFCONTINUED(wait_status)) {
-        std::cerr << "tracee continued\n";
+    } else if (WIFCONTINUED(waitStatus)) {
+        fprintf(stderr, "tracee continued\n");
         return -1;
     } else {
-        std::cerr << "tracee disappeared\n";
+        fprintf(stderr, "tracee disappeared\n");
         return -1;
     }
 
@@ -129,35 +129,35 @@ std::shared_ptr<RegisterValue> Tracee::getRegisterValue(const std::string &regNa
 /* See Tracee.h. */
 int Tracee::printGeneralPurposeRegisters()
 {
-    std::cerr << "no general-purpose registers on this architecture\n";
+    fprintf(stderr, "no general-purpose registers on this architecture\n");
     return 1;
 }
 
 /* See Tracee.h. */
 int Tracee::printConditionCodeRegisters()
 {
-    std::cerr << "no condition code registers on this architecture\n";
+    fprintf(stderr, "no condition code registers on this architecture\n");
     return 1;
 }
 
 /* See Tracee.h. */
 int Tracee::printSegmentationRegisters()
 {
-    std::cerr << "no segmentation registers on this architecture\n";
+    fprintf(stderr, "no segmentation registers on this architecture\n");
     return 1;
 }
 
 /* See Tracee.h. */
 int Tracee::printFloatingPointRegisters()
 {
-    std::cerr << "no floating point registers on this architecture\n";
+    fprintf(stderr, "no floating point registers on this architecture\n");
     return 1;
 }
 
 /* See Tracee.h. */
 int Tracee::printExtraRegisters()
 {
-    std::cerr << "no extra registers on this architecture\n";
+    fprintf(stderr, "no extra registers on this architecture\n");
     return 1;
 }
 
@@ -174,7 +174,7 @@ int Tracee::printRegisters(RegisterCategory categories)
     for (auto &categoryPrinter : categoryPrinters) {
         if (any(categories & categoryPrinter.first)) {
             if (!firstPrinted)
-                std::cout << '\n';
+                printf("\n");
             firstPrinted = false;
 
             if ((error = (this->*categoryPrinter.second)()))
@@ -203,13 +203,13 @@ std::shared_ptr<Tracee> Tracee::createTracee()
 
     if (!sharedPage) {
         perror("mmap");
-        std::cerr << "could not create shared memory\n";
+        fprintf(stderr, "could not create shared memory\n");
         return {nullptr};
     }
 
     if ((pid = fork()) == -1) {
         perror("fork");
-        std::cerr << "could not fork tracee\n";
+        fprintf(stderr, "could not fork tracee\n");
         return {nullptr};
     }
 

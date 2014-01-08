@@ -22,6 +22,7 @@
 #ifndef ASMASE_SUPPORT_H
 #define ASMASE_SUPPORT_H
 
+#include <cinttypes>
 #include <string>
 
 #define PRINTFx8 "0x%02" PRIx8

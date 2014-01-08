@@ -19,7 +19,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
+#include <cstdio>
 #include <sstream>
 
 #include "Builtins/AST.h"
@@ -41,7 +41,7 @@ BUILTIN_FUNC(source)
 {
     if (wantsHelp(args)) {
         std::string usage = getUsage(commandName);
-        std::cout << getUsage(commandName) << '\n';
+        printf("%s\n", usage.c_str());
         return 0;
     }
 
