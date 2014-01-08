@@ -324,8 +324,7 @@ BUILTIN_FUNC(memory)
     static size_t repeat = 1;
     static Format format = Format::HEXADECIMAL;
     static size_t size = sizeof(long);
-
-    void *address;
+    static void *address = nullptr;
 
     if (wantsHelp(args)) {
         std::cout << getUsage(commandName) << '\n';
@@ -347,18 +346,20 @@ BUILTIN_FUNC(memory)
         return 0;
     }
 
-    if (args.size() < 1 || args.size() > 4) {
+    if (args.size() > 4) {
         std::string usage = getUsage(commandName);
         env.errorContext.printMessage(usage.c_str(), commandStart);
         return 1;
     }
 
     // Address
-    if (checkValueType(*args[0], Builtins::ValueType::INTEGER,
-                       "expected address", env.errorContext))
-        return 1;
+    if (args.size() > 0) {
+        if (checkValueType(*args[0], Builtins::ValueType::INTEGER,
+                        "expected address", env.errorContext))
+            return 1;
 
-    address = (void *) args[0]->getInteger();
+        address = reinterpret_cast<void *>(args[0]->getInteger());
+    }
 
     // Repeat count
     if (args.size() > 1) {
