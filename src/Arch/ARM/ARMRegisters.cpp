@@ -53,6 +53,7 @@ extern const RegisterInfo ARMRegisters = {
         {RT::INT32, RC::GENERAL_PURPOSE, "r15", USER_REGISTER(r15)},
 
         // Aliases for general-purpose registers
+        {RT::INT32, RC::GENERAL_PURPOSE, "sl", USER_REGISTER(sl)},
         {RT::INT32, RC::GENERAL_PURPOSE, "fp", USER_REGISTER(fp)},
         {RT::INT32, RC::GENERAL_PURPOSE, "ip", USER_REGISTER(ip)},
         {RT::INT32, RC::GENERAL_PURPOSE, "sp", USER_REGISTER(sp)},
@@ -102,17 +103,17 @@ static ProcessorFlags<decltype(UserRegisters::cpsr)> cpsrFlags = {
 
 int ARMTracee::printGeneralPurposeRegisters()
 {
-    printf("r0  = " PRINTFx32 "    r1 = " PRINTFx32 "\n"
-           "r2  = " PRINTFx32 "    r3 = " PRINTFx32 "\n"
-           "r4  = " PRINTFx32 "    r5 = " PRINTFx32 "\n"
-           "r6  = " PRINTFx32 "    r7 = " PRINTFx32 "\n"
-           "r8  = " PRINTFx32 "    r9 = " PRINTFx32 "\n"
-           "r10 = " PRINTFx32 "    fp = " PRINTFx32 "\n"
-           "ip  = " PRINTFx32 "    sp = " PRINTFx32 "\n"
-           "lr  = " PRINTFx32 "    pc = " PRINTFx32 "\n",
-           registers->r0, registers->r1, registers->r2,  registers->r3,
-           registers->r4, registers->r5, registers->r6,  registers->r7,
-           registers->r8, registers->r9, registers->r10, registers->fp,
+    printf("r0 = " PRINTFx32 "    r1 = " PRINTFx32 "\n"
+           "r2 = " PRINTFx32 "    r3 = " PRINTFx32 "\n"
+           "r4 = " PRINTFx32 "    r5 = " PRINTFx32 "\n"
+           "r6 = " PRINTFx32 "    r7 = " PRINTFx32 "\n"
+           "r8 = " PRINTFx32 "    r9 = " PRINTFx32 "\n"
+           "sl = " PRINTFx32 "    fp = " PRINTFx32 "\n"
+           "ip = " PRINTFx32 "    sp = " PRINTFx32 "\n"
+           "lr = " PRINTFx32 "    pc = " PRINTFx32 "\n",
+           registers->r0, registers->r1, registers->r2, registers->r3,
+           registers->r4, registers->r5, registers->r6, registers->r7,
+           registers->r8, registers->r9, registers->sl, registers->fp,
            registers->ip, registers->sp, registers->lr, registers->pc);
     return 0;
 };
