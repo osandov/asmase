@@ -72,7 +72,6 @@ std::string Inputter::readLine(const std::string &prompt)
                 files.pop_back();
             else {
                 line = lineBuffer;
-                line += '\n';
                 gotLine = true;
             }
         } else { // stdin sentinel
