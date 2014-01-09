@@ -112,6 +112,9 @@ public:
      */
     int executeInstruction(const bytestring &machineCode);
 
+    /** Pretty-print machine code. */
+    virtual void printInstruction(const bytestring &machineCode);
+
     /**
      * Print the registers in the given categories (which may be a bitwise OR
      * of multiple categories).

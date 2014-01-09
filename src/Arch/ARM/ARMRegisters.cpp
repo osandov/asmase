@@ -53,17 +53,48 @@ extern const RegisterInfo ARMRegisters = {
         {RT::INT32, RC::GENERAL_PURPOSE, "r15", USER_REGISTER(r15)},
 
         // Aliases for general-purpose registers
-        {RT::INT32, RC::GENERAL_PURPOSE, "sl", USER_REGISTER(sl)},
-        {RT::INT32, RC::GENERAL_PURPOSE, "fp", USER_REGISTER(fp)},
-        {RT::INT32, RC::GENERAL_PURPOSE, "ip", USER_REGISTER(ip)},
-        {RT::INT32, RC::GENERAL_PURPOSE, "sp", USER_REGISTER(sp)},
-        {RT::INT32, RC::GENERAL_PURPOSE, "lr", USER_REGISTER(lr)},
-        {RT::INT32, RC::GENERAL_PURPOSE, "pc", USER_REGISTER(pc)},
+        // Arguments/results
+        {RT::INT32, RC::GENERAL_PURPOSE, "a1", USER_REGISTER(r0)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "a2", USER_REGISTER(r1)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "a3", USER_REGISTER(r2)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "a4", USER_REGISTER(r3)},
+
+        // Register variables
+        {RT::INT32, RC::GENERAL_PURPOSE, "v1", USER_REGISTER(r4)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v2", USER_REGISTER(r5)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v3", USER_REGISTER(r6)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v4", USER_REGISTER(r7)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v5", USER_REGISTER(r8)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v6", USER_REGISTER(r9)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v7", USER_REGISTER(r10)},
+        {RT::INT32, RC::GENERAL_PURPOSE, "v8", USER_REGISTER(r11)},
+
+        // Static base
+        {RT::INT32, RC::GENERAL_PURPOSE, "sb", USER_REGISTER(r9)},
+
+        // Stack limit/stack chunk handle
+        {RT::INT32, RC::GENERAL_PURPOSE, "sl", USER_REGISTER(r10)},
+
+        // Frame pointer
+        {RT::INT32, RC::GENERAL_PURPOSE, "fp", USER_REGISTER(r11)},
+
+        // Inter-procedure
+        {RT::INT32, RC::GENERAL_PURPOSE, "ip", USER_REGISTER(r12)},
+
+        // Stack pointer
+        {RT::INT32, RC::GENERAL_PURPOSE, "sp", USER_REGISTER(r13)},
+
+        // Link register
+        {RT::INT32, RC::GENERAL_PURPOSE, "lr", USER_REGISTER(r14)},
+
+        // Program counter
+        {RT::INT32, RC::GENERAL_PURPOSE, "pc", USER_REGISTER(r15)},
 
          // Condition codes
         {RT::INT32, RC::CONDITION_CODE, "cpsr", USER_REGISTER(cpsr)},
     },
 };
+#undef USER_REGISTER
 
 /** Flags in the cpsr register. */
 static ProcessorFlags<decltype(UserRegisters::cpsr)> cpsrFlags = {
@@ -103,18 +134,18 @@ static ProcessorFlags<decltype(UserRegisters::cpsr)> cpsrFlags = {
 
 int ARMTracee::printGeneralPurposeRegisters()
 {
-    printf("r0 = " PRINTFx32 "    r1 = " PRINTFx32 "\n"
-           "r2 = " PRINTFx32 "    r3 = " PRINTFx32 "\n"
-           "r4 = " PRINTFx32 "    r5 = " PRINTFx32 "\n"
-           "r6 = " PRINTFx32 "    r7 = " PRINTFx32 "\n"
-           "r8 = " PRINTFx32 "    r9 = " PRINTFx32 "\n"
-           "sl = " PRINTFx32 "    fp = " PRINTFx32 "\n"
-           "ip = " PRINTFx32 "    sp = " PRINTFx32 "\n"
-           "lr = " PRINTFx32 "    pc = " PRINTFx32 "\n",
-           registers->r0, registers->r1, registers->r2, registers->r3,
-           registers->r4, registers->r5, registers->r6, registers->r7,
-           registers->r8, registers->r9, registers->sl, registers->fp,
-           registers->ip, registers->sp, registers->lr, registers->pc);
+    printf("r0  = " PRINTFx32 "    r1  = " PRINTFx32 "\n"
+           "r2  = " PRINTFx32 "    r3  = " PRINTFx32 "\n"
+           "r4  = " PRINTFx32 "    r5  = " PRINTFx32 "\n"
+           "r6  = " PRINTFx32 "    r7  = " PRINTFx32 "\n"
+           "r8  = " PRINTFx32 "    r9  = " PRINTFx32 "\n"
+           "r10 = " PRINTFx32 "    r11 = " PRINTFx32 "\n"
+           "r12 = " PRINTFx32 "    sp  = " PRINTFx32 "\n"
+           "lr  = " PRINTFx32 "    pc  = " PRINTFx32 "\n",
+           registers->r0,  registers->r1,  registers->r2,  registers->r3,
+           registers->r4,  registers->r5,  registers->r6,  registers->r7,
+           registers->r8,  registers->r9,  registers->r10, registers->r11,
+           registers->r12, registers->r13, registers->r14, registers->r15);
     return 0;
 };
 

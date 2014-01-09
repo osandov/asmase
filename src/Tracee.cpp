@@ -26,7 +26,6 @@
 #include <cstring>
 #include <utility>
 
-#include <signal.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
@@ -106,6 +105,18 @@ retry:
     }
 
     return 0;
+}
+
+/* See Tracee.h. */
+void Tracee::printInstruction(const bytestring &machineCode)
+{
+    printf("[");
+    for (size_t i = 0; i < machineCode.size(); ++i) {
+        if (i > 0)
+            printf(", ");
+        printf(PRINTFx8, machineCode[i]);
+    }
+    printf("]");
 }
 
 /* See Tracee.h. */

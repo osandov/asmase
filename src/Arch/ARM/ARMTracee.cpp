@@ -76,6 +76,24 @@ int ARMTracee::updateRegisters()
     return 0;
 }
 
+void ARMTracee::printInstruction(const bytestring &machineCode)
+{
+    if (machineCode.size() % 4) {
+        Tracee::printInstruction(machineCode);
+        return;
+    }
+
+    printf("[");
+    for (size_t i = 0; i < machineCode.size(); i += 4) {
+        if (i > 0)
+            printf(", ");
+        uint32_t word;
+        word = *reinterpret_cast<const uint32_t *>(machineCode.data() + i);
+        printf(PRINTFx32, word);
+    }
+    printf("]");
+}
+
 /* See Tracee.h. */
 Tracee *Tracee::createPlatformTracee(pid_t pid, void *sharedMemory,
                                      size_t sharedSize)

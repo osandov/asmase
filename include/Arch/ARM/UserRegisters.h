@@ -27,18 +27,25 @@
 class UserRegisters {
 public:
     // General-purpose registers
-    uint32_t r0, r1, r2, r3, r4, r5, r6, r7, r8, r9;
-    uint32_t sl, fp, ip, sp, lr, pc;
+    uint32_t r0;  // a1
+    uint32_t r1;  // a2
+    uint32_t r2;  // a3
+    uint32_t r3;  // a4
+    uint32_t r4;  // v1
+    uint32_t r5;  // v2
+    uint32_t r6;  // v3
+    uint32_t r7;  // v4
+    uint32_t r8;  // v5
+    uint32_t r9;  // v6, sb
+    uint32_t r10; // v7, sl
+    uint32_t r11; // v8, fp
+    uint32_t r12; // ip
+    uint32_t r13; // sp
+    uint32_t r14; // lr
+    uint32_t r15; // pc
 
     // Condition codes
     uint32_t cpsr;
 };
-
-#define r10 sl
-#define r11 fp
-#define r12 ip
-#define r13 sp
-#define r14 lr
-#define r15 pc
 
 #endif /* ASMASE_ARCH_ARM_USER_REGISTERS_H */

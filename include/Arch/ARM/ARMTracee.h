@@ -33,6 +33,8 @@ class ARMTracee : public Tracee {
 
 public:
     ARMTracee(pid_t pid, void *sharedMemory, size_t sharedSize);
+
+    virtual void printInstruction(const bytestring &machineCode);
 };
 
 #endif /* ASMASE_ARCH_ARM_ARMTRACEE_H */

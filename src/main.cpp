@@ -67,13 +67,9 @@ int main(int argc, char *argv[])
             if (error || machineCode.empty())
                 continue;
 
-            printf("%s = [", line.c_str());
-            for (size_t i = 0; i < machineCode.size(); ++i) {
-                if (i > 0)
-                    printf(", ");
-                printf(PRINTFx8, machineCode[i]);
-            }
-            printf("]\n");
+            printf("%s = ", line.c_str());
+            tracee->printInstruction(machineCode);
+            printf("\n");
 
             error = tracee->executeInstruction(machineCode);
             if (error < 0)
