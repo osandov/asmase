@@ -33,8 +33,12 @@ extern const RegisterInfo X86Registers;
 static const bytestring X86TrapInstruction = {0xcc};
 
 X86Tracee::X86Tracee(pid_t pid, void *sharedMemory, size_t sharedSize)
-    : Tracee{X86Registers, X86TrapInstruction, new UserRegisters,
-             pid, sharedMemory, sharedSize} {}
+    : Tracee{X86Registers, new UserRegisters, pid, sharedMemory, sharedSize} {}
+
+const bytestring &X86Tracee::getTrapInstruction()
+{
+    return X86TrapInstruction;
+}
 
 int X86Tracee::setProgramCounter(void *pc)
 {

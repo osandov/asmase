@@ -60,9 +60,6 @@ protected:
     /** Register information. */
     const RegisterInfo &regInfo;
 
-    /** Instruction to use to trigger a software trap (i.e., breakpoint). */
-    const bytestring &trapInstruction;
-
     /**
      * Actual values of the tracee's registers. This is updated lazily for
      * methods that need to know the register values.
@@ -77,6 +74,12 @@ protected:
 
     /** Size of memory shared with the tracee. */
     size_t sharedSize;
+
+    /**
+     * Get the instruction to use to trigger a software trap (i.e., a
+     * breakpoint).
+     */
+    virtual const bytestring &getTrapInstruction() = 0;
 
     /**
      * Set the program counter of the tracee to the given location.
@@ -99,9 +102,8 @@ protected:
     virtual int printExtraRegisters();
 
 public:
-    Tracee(const RegisterInfo &regInfo, const bytestring &trapInstruction,
-           UserRegisters *registers, pid_t pid, void *sharedMemory,
-           size_t sharedSize);
+    Tracee(const RegisterInfo &regInfo, UserRegisters *registers,
+           pid_t pid, void *sharedMemory, size_t sharedSize);
     ~Tracee();
 
     pid_t getPid() const { return pid; }

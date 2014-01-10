@@ -47,6 +47,8 @@ Tracee::categoryPrinters = {
 int Tracee::executeInstruction(const bytestring &machineCode)
 {
     unsigned char *shared = reinterpret_cast<unsigned char *>(sharedMemory);
+    const bytestring &trapInstruction = getTrapInstruction();
+
     if (machineCode.size() + trapInstruction.size() >= sharedSize) {
         fprintf(stderr, "instruction too long\n");
         return 1;
@@ -92,7 +94,7 @@ retry:
                 // so continue the process and keep waiting
                 goto retry;
             default:
-                printf("tracee was stopped(%s)\n", 
+                printf("tracee was stopped (%s)\n", 
                     strsignal(WSTOPSIG(waitStatus)));
                 return 0;
         }

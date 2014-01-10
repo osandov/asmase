@@ -33,8 +33,12 @@ extern const RegisterInfo ARMRegisters;
 static const bytestring ARMTrapInstruction = {0xf0, 0x01, 0xf0, 0xe7};
 
 ARMTracee::ARMTracee(pid_t pid, void *sharedMemory, size_t sharedSize)
-    : Tracee{ARMRegisters, ARMTrapInstruction, new UserRegisters,
-             pid, sharedMemory, sharedSize} {}
+    : Tracee{ARMRegisters, new UserRegisters, pid, sharedMemory, sharedSize} {}
+
+const bytestring &ARMTracee::getTrapInstruction()
+{
+    return ARMTrapInstruction;
+}
 
 int ARMTracee::setProgramCounter(void *pc)
 {

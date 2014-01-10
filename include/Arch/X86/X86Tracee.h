@@ -25,6 +25,8 @@
 #include "Tracee.h"
 
 class X86Tracee : public Tracee {
+    virtual const bytestring &getTrapInstruction();
+
     virtual int setProgramCounter(void *pc);
     virtual int updateRegisters();
 

@@ -21,10 +21,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-Tracee::Tracee(const RegisterInfo &regInfo, const bytestring &trapInstruction,
-               UserRegisters *registers, pid_t pid, void *sharedMemory,
-               size_t sharedSize)
-    : regInfo(regInfo), trapInstruction(trapInstruction), registers{registers},
-      pid{pid}, sharedMemory{sharedMemory}, sharedSize{sharedSize} {}
+Tracee::Tracee(const RegisterInfo &regInfo, UserRegisters *registers,
+               pid_t pid, void *sharedMemory, size_t sharedSize)
+    : regInfo(regInfo), registers{registers}, pid{pid},
+      sharedMemory{sharedMemory}, sharedSize{sharedSize} {}
 
 Tracee::~Tracee() = default;
