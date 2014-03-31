@@ -61,8 +61,8 @@ static std::unordered_map<std::string, Format> formatMap = {
     {"x", Format::HEXADECIMAL},
     {"t", Format::BINARY},
     {"f", Format::FLOAT},
-    {"c", Format::CHARACTER},
     {"a", Format::ADDRESS},
+    {"c", Format::CHARACTER},
     {"s", Format::STRING},
 };
 
@@ -78,7 +78,7 @@ static std::string getUsage(const std::string &commandName)
 {
     std::stringstream ss;
     ss << "usage: " << commandName << " ";
-    ss << "ADDR [REPEAT] [FORMAT] [SIZE]";
+    ss << "[ADDR] [REPEAT] [FORMAT] [SIZE]";
     return ss.str();
 }
 
@@ -322,7 +322,9 @@ BUILTIN_FUNC(memory)
             "  x -- unsigned hexadecimal\n"
             "  t -- unsigned binary\n"
             "  f -- floating point\n"
-            "  c -- character\n");
+            "  a -- address\n"
+            "  c -- character\n"
+            "  s -- string\n");
         printf(
             "Sizes:\n"
             "  b -- byte (1 byte)\n"

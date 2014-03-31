@@ -81,11 +81,11 @@ BUILTIN_FUNC(registers)
         printf("%s\n", usage.c_str());
         printf(
             "Categories:\n"
-            "  gp  -- General purpose registers\n"
-            "  cc  -- Condition code/status flag registers\n"
-            "  fp  -- Floating point registers\n"
-            "  x   -- Extra registers\n"
-            "  seg -- Segment registers\n");
+            "  gp  -- general purpose registers\n"
+            "  cc  -- condition code/status flag registers\n"
+            "  fp  -- floating point registers\n"
+            "  x   -- extra registers\n"
+            "  seg -- segment registers\n");
         return 0;
     }
 
