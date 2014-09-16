@@ -14,11 +14,12 @@ Compilation
 ----------
 `asmase` depends on LLVM, GNU readline, flex, and GNU awk. You can either
 compile LLVM from source (instructions
-[here](http://llvm.org/docs/GettingStarted.html)) or use your distribution's
-packages. Versions 3.3 and newer are supported; I haven't tried anything older,
-but it might work. Compilation works under both GCC and Clang (make sure it's
-new enough to support C++11). If you meet these requirements, all it takes is a
-`make` in the top level (parallel make with `-j` should work).
+[here](http://llvm.org/docs/GettingStarted.html)), download the [pre-built
+binaries](http://llvm.org/releases/download.html), or use your distribution's
+packages. Versions 3.1 and newer are supported; anything older won't work.
+Compilation works under both GCC and Clang (make sure it's new enough to
+support C++11). If you meet these requirements, all it takes is a `make` in the
+top level (parallel make with `-j` should work).
 
 `asmase` has only been tested on and probably only works on Linux due to the
 platform-specificness of `ptrace`, but it is probably possible to port it to
