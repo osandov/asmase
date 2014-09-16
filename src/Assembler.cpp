@@ -42,6 +42,13 @@ using namespace llvm;
 #error "Please use at least LLVM 3.1"
 #endif
 
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#include <system_error>
+#include <memory>
+using std::error_code;
+#define OwningPtr std::unique_ptr
+#endif
+
 #include "Assembler.h"
 #include "Inputter.h"
 
@@ -160,14 +167,24 @@ int Assembler::assembleInstruction(const std::string &instruction,
         target->createMCAsmBackend(tripleName, mcpu);
 #endif
 
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+    OwningPtr<MCStreamer> streamer{
+        createELFStreamer(mcCtx, *MAB, outputStream, codeEmitter, true, false)};
+#else
     OwningPtr<MCStreamer> streamer{
         createPureStreamer(mcCtx, *MAB, outputStream, codeEmitter)};
+#endif
 
     // Set up the parser
     OwningPtr<MCAsmParser> parser{
         createMCAsmParser(srcMgr, mcCtx, *streamer, *asmInfo)};
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+    MCTargetOptions targetOptions;
+    OwningPtr<MCTargetAsmParser> TAP{
+        target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo,
+                                  targetOptions)};
+#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     OwningPtr<MCTargetAsmParser> TAP{
         target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo)};
 #else
@@ -179,10 +196,19 @@ int Assembler::assembleInstruction(const std::string &instruction,
 
     if (parser->Run(false) == 0) {
         outputStream.flush();
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+        std::unique_ptr<MemoryBuffer> outputBuffer{
+            MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
+        auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer);
+        if (error_code ec = objFileErr.getError())
+			return 1;
+		auto objFile = *objFileErr;
+#else
         MemoryBuffer *outputBuffer =
             MemoryBuffer::getMemBuffer(outputString, "machine code", false);
         OwningPtr<object::ObjectFile>
             objFile{object::ObjectFile::createELFObjectFile(outputBuffer)};
+#endif
 
         StringRef textSection;
         error_code err;
@@ -201,15 +227,24 @@ int Assembler::assembleInstruction(const std::string &instruction,
 static error_code getTextSection(object::ObjectFile &objFile,
                                  StringRef &result) {
     error_code err;
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+    object::section_iterator it = objFile.section_begin();
+    while (it != objFile.section_end()) {
+#else
     object::section_iterator it = objFile.begin_sections();
     while (it != objFile.end_sections()) {
+#endif
         bool isText;
         err = it->isText(isText);
         if (err)
             return err;
         if (isText)
             return it->getContents(result);
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+		++it;
+#else
         it.increment(err);
+#endif
         if (err)
             return err;
     }
