@@ -30,6 +30,7 @@
 #include <llvm/MC/MCSubtargetInfo.h>
 #include <llvm/MC/MCTargetAsmParser.h>
 #include <llvm/Object/ObjectFile.h>
+#include <llvm/Support/Host.h>
 #include <llvm/Support/ManagedStatic.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
@@ -46,6 +47,8 @@ using namespace llvm;
 #include <system_error>
 #include <memory>
 using std::error_code;
+using std::error_category;
+using std::system_category;
 #define OwningPtr std::unique_ptr
 #endif
 
@@ -156,23 +159,30 @@ int Assembler::assembleInstruction(const std::string &instruction,
         target->createMCSubtargetInfo(tripleName, mcpu, features));
     assert(subtargetInfo && "Unable to create subtarget info!");
 
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 2
     MCCodeEmitter *codeEmitter =
         target->createMCCodeEmitter(*instrInfo, *registerInfo, *subtargetInfo,
                                     mcCtx);
+#else
+    MCCodeEmitter *codeEmitter =
+        target->createMCCodeEmitter(*instrInfo, *subtargetInfo, mcCtx);
+#endif
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
     MCAsmBackend *MAB =
         target->createMCAsmBackend(*registerInfo, tripleName, mcpu);
+#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 2
+    MCAsmBackend *MAB = target->createMCAsmBackend(tripleName, mcpu);
 #else
-    MCAsmBackend *MAB =
-        target->createMCAsmBackend(tripleName, mcpu);
+    MCAsmBackend *MAB = target->createMCAsmBackend(tripleName);
 #endif
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
     OwningPtr<MCStreamer> streamer{
-        createELFStreamer(mcCtx, *MAB, outputStream, codeEmitter, true, false)};
+        createELFStreamer(mcCtx, nullptr, *MAB, outputStream, codeEmitter,
+                          true, false)};
 #else
     OwningPtr<MCStreamer> streamer{
-        createPureStreamer(mcCtx, *MAB, outputStream, codeEmitter)};
+        createELFStreamer(mcCtx, *MAB, outputStream, codeEmitter, true, false)};
 #endif
 
     // Set up the parser
@@ -194,33 +204,37 @@ int Assembler::assembleInstruction(const std::string &instruction,
     assert(TAP && "This target does not support assembly parsing");
     parser->setTargetParser(*TAP);
 
-    if (parser->Run(false) == 0) {
-        outputStream.flush();
+    if (parser->Run(false) != 0)
+        return 1;
+
+    outputStream.flush();
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
-        std::unique_ptr<MemoryBuffer> outputBuffer{
-            MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
-        auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer);
-        if (error_code ec = objFileErr.getError())
-			return 1;
-		auto objFile = *objFileErr;
+    std::unique_ptr<MemoryBuffer> outputBuffer{
+        MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
+    auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer);
+    if (error_code err = objFileErr.getError()) {
+        fprintf(stderr, "%s\n", err.message().c_str());
+        return 1;
+    }
+    auto objFile = *objFileErr;
 #else
-        MemoryBuffer *outputBuffer =
-            MemoryBuffer::getMemBuffer(outputString, "machine code", false);
-        OwningPtr<object::ObjectFile>
-            objFile{object::ObjectFile::createELFObjectFile(outputBuffer)};
+    MemoryBuffer *outputBuffer =
+        MemoryBuffer::getMemBuffer(outputString, "machine code", false);
+    OwningPtr<object::ObjectFile>
+        objFile{object::ObjectFile::createELFObjectFile(outputBuffer)};
 #endif
 
-        StringRef textSection;
-        error_code err;
-        err = getTextSection(*objFile, textSection);
-        if (!err) {
-            auto *buffer = reinterpret_cast<const unsigned char *>(textSection.data());
-            machineCodeOut = bytestring{buffer, textSection.size()};
-            return 0;
-        }
+    StringRef textSection;
+    error_code err;
+    err = getTextSection(*objFile, textSection);
+    if (err) {
+        fprintf(stderr, "%s\n", err.message().c_str());
+        return 1;
+    } else {
+        auto *buffer = reinterpret_cast<const unsigned char *>(textSection.data());
+        machineCodeOut = bytestring{buffer, textSection.size()};
+        return 0;
     }
-
-    return 1;
 }
 
 /* See above. */
@@ -241,14 +255,14 @@ static error_code getTextSection(object::ObjectFile &objFile,
         if (isText)
             return it->getContents(result);
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
-		++it;
+        ++it;
 #else
         it.increment(err);
 #endif
         if (err)
             return err;
     }
-    return error_code();
+    return error_code(ENOEXEC, system_category());
 }
 
 /* See above. */
@@ -266,7 +280,9 @@ static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg)
         diag.getMessage(),
         diag.getLineContents(),
         diag.getRanges(),
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 3
         diag.getFixIts()
+#endif
     };
     diagnostic.print(nullptr, errs());
 }

@@ -46,7 +46,12 @@ void ErrorContext::printMessage(const char *msg, int column)
         SourceMgr::DK_Error,
         msg,
         line,
-        None};
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 3
+        None
+#else
+        ArrayRef<std::pair<unsigned, unsigned>>{}
+#endif
+    };
     diagnostic.print(nullptr, errs());
 }
 
@@ -69,7 +74,8 @@ void ErrorContext::printMessage(const char *msg, int column, int start, int end)
         SourceMgr::DK_Error,
         msg,
         line,
-        ranges};
+        ranges
+    };
     diagnostic.print(nullptr, errs());
 }
 
@@ -95,7 +101,8 @@ void ErrorContext::printMessage(const char *msg, int column,
         SourceMgr::DK_Error,
         msg,
         line,
-        ArrayRef<std::pair<unsigned, unsigned>>{ranges}};
+        ArrayRef<std::pair<unsigned, unsigned>>{ranges}
+    };
     diagnostic.print(nullptr, errs());
 }
 
