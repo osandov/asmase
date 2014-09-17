@@ -55,6 +55,11 @@ bool checkValueType(const ValueAST &value, ValueType type,
 
 bool wantsHelp(const std::vector<std::unique_ptr<ValueAST>> &args);
 
+/** Return the escaped version of a character. */
+std::string escapeCharacter(char c,
+    bool escapeSingleQuote = false, bool escapeDoubleQuote = false,
+    bool escapeBackslash = false);
+
 }
 
 #endif /* ASMASE_BUILTINS_SUPPORT_H */

@@ -42,6 +42,7 @@ typedef int (*BuiltinFunc)(const std::vector<std::unique_ptr<Builtins::ValueAST>
         const std::string &commandName, int commandStart, int commandEnd, \
         Builtins::Environment &env)
 
+BUILTIN_FUNC(print);
 BUILTIN_FUNC(source);
 BUILTIN_FUNC(memory);
 BUILTIN_FUNC(registers);

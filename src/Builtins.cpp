@@ -44,28 +44,6 @@ public:
     std::string helpString;
 };
 
-static BUILTIN_FUNC(test)
-{
-    for (auto &arg : args) {
-        switch (arg->getType()) {
-            case Builtins::ValueType::IDENTIFIER:
-                printf("identifier: %s\n", arg->getIdentifier().c_str());
-                break;
-            case Builtins::ValueType::INTEGER:
-                printf("integer: 0x%1$lx (%1$ld)\n", arg->getInteger());
-                break;
-            case Builtins::ValueType::FLOAT:
-                printf("floating: %f\n", arg->getFloat());
-                break;
-            case Builtins::ValueType::STRING:
-                printf("string: %s\n", arg->getString().c_str());
-                break;
-        }
-    }
-
-    return 0;
-}
-
 static BUILTIN_FUNC(quit)
 {
     return -1;
@@ -75,7 +53,7 @@ static BUILTIN_FUNC(help);
 
 /** Lookup table from full command name to built-in entry. */
 static std::map<std::string, BuiltinCommand> commands = {
-    {"test",      {builtin_test, "print evaluated arguments as a test"}},
+    {"print",     {builtin_print, "print evaluated arguments"}},
 
     {"quit",      {builtin_quit, "quit the program"}},
     {"help",      {builtin_help, "print this help information"}},

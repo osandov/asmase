@@ -41,4 +41,39 @@ bool wantsHelp(const std::vector<std::unique_ptr<ValueAST>> &args)
            args[0]->getIdentifier() == "help";
 }
 
+std::string escapeCharacter(char c, bool escapeSingleQuote,
+                            bool escapeDoubleQuote, bool escapeBackslash)
+{
+    if (c == '\0') // Null
+        return "\\0";
+    else if (c == '\a') // Bell
+        return "\\a";
+    else if (c == '\b') // Backspace
+        return "\\b";
+    else if (c == '\t') // Horizontal tab
+        return "\\t";
+    else if (c == '\n') // New line
+        return "\\n";
+    else if (c == '\v') // Vertical tab
+        return "\\v";
+    else if (c == '\f') // Form feed
+        return "\\f";
+    else if (c == '\r') // Carriage return
+        return "\\r";
+    else if (c == '\'' && escapeSingleQuote) // Single-quote
+        return "\\'";
+    else if (c == '"' && escapeDoubleQuote) // Double-quote
+        return "\\\"";
+    else if (c == '\\' && escapeBackslash) // Backslash
+        return "\\\\";
+    else if (isprint(c)) // Other printable characters
+        return std::string{c};
+    else { // Anything else should be an escaped hex sequence
+        char escaped[5];
+        snprintf(escaped, sizeof(escaped), "\\x%02x",
+            (int) (unsigned char) c);
+        return std::string{escaped};
+    }
+}
+
 }

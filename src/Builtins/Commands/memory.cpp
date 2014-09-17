@@ -34,6 +34,8 @@
 #include "Support.h"
 #include "Tracee.h"
 
+using Builtins::escapeCharacter;
+
 enum class Format {
     DECIMAL,
     UNSIGNED_DECIMAL,
@@ -80,39 +82,6 @@ static std::string getUsage(const std::string &commandName)
     ss << "usage: " << commandName << " ";
     ss << "[ADDR] [REPEAT] [FORMAT] [SIZE]";
     return ss.str();
-}
-
-static std::string escapeCharacter(char c,
-    bool escapeSingleQuote = false, bool escapeDoubleQuote = false)
-{
-    if (c == '\0') // Null
-        return "\\0";
-    else if (c == '\a') // Bell
-        return "\\a";
-    else if (c == '\b') // Backspace
-        return "\\b";
-    else if (c == '\t') // Horizontal tab
-        return "\\t";
-    else if (c == '\n') // New line
-        return "\\n";
-    else if (c == '\v') // Vertical tab
-        return "\\v";
-    else if (c == '\f') // Form feed
-        return "\\f";
-    else if (c == '\r') // Carriage return
-        return "\\r";
-    else if (c == '\'' && escapeSingleQuote) // Single-quote
-        return "\\'";
-    else if (c == '"' && escapeDoubleQuote) // Double-quote
-        return "\\\"";
-    else if (isprint(c)) // Other printable characters
-        return std::string{c};
-    else { // Anything else should be an escaped hex sequence
-        char escaped[5];
-        snprintf(escaped, sizeof(escaped), "\\x%02x",
-            (int) (unsigned char) c);
-        return std::string{escaped};
-    }
 }
 
 template <typename T, typename U = T, typename Printer>
@@ -173,7 +142,7 @@ static int dumpCharacters(MemoryStreamer &memStr, size_t repeat, int numColumns,
     auto characterPrinter = [fieldWidth](char c)
     {
         std::stringstream ss;
-        ss << '\'' + escapeCharacter(c, true, false) + '\'';
+        ss << '\'' + escapeCharacter(c, true, false, true) + '\'';
         printf("%-*s", fieldWidth, ss.str().c_str());
     };
 
@@ -192,7 +161,7 @@ static int dumpStrings(MemoryStreamer &memStr, size_t repeat)
             char c;
             if ((error = memStr.next(c)) || !c)
                 break;
-            printf("%s", escapeCharacter(c, false, true).c_str());
+            printf("%s", escapeCharacter(c, false, true, true).c_str());
         }
 
         printf("\"\n");
