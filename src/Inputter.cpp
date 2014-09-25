@@ -66,12 +66,15 @@ std::string Inputter::readLine(const std::string &prompt)
 
     do {
         FILE *file = files.back().file;
+        ssize_t size;
         if (file) {
-            getline(&lineBuffer, &lineBufferSize, file);
-            if (feof(file))
+            size = getline(&lineBuffer, &lineBufferSize, file);
+            if (size == -1) {
+                if (!feof(file))
+                    perror("getline");
                 files.pop_back();
-            else {
-                line = lineBuffer;
+            } else {
+                line = std::string{lineBuffer, static_cast<size_t>(size)};
                 gotLine = true;
             }
         } else { // stdin sentinel
