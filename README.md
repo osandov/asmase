@@ -112,3 +112,49 @@ allowed. They might not all be present on every architecture.
 `:source` *file*
 
 Load a given file and run the contained commands/assembly.
+
+### Example ###
+Below is an very brief example interaction with asmase on x86\_64.
+
+```
+$ asmase
+asmase 0.1 Copyright (C) 2013-2014 Omar Sandoval
+This program comes with ABSOLUTELY NO WARRANTY; for details type `:warranty'.
+This is free software, and you are welcome to redistribute it
+under certain conditions; type `:copying' for details.
+asmase> movq $99, %rax
+movq $99, %rax = [0x48, 0xc7, 0xc0, 0x63, 0x00, 0x00, 0x00]
+asmase> :reg
+%rax = 0x0000000000000063    %rcx = 0xffffffffffffffff
+%rdx = 0x0000000000000005    %rbx = 0x00007ff9a97c0000
+%rsp = 0x00007ffff87f2118    %rbp = 0x0000000000000000
+%rsi = 0x00000000000075ea    %rdi = 0x00000000000075ea
+%r8  = 0x00000000ffffffff    %r9  = 0x00007ff9a913b280
+%r10 = 0x00000000000000a6    %r11 = 0x0000000000000202
+%r12 = 0x00000000004307c6    %r13 = 0x00007ffff87f2390
+%r14 = 0x00007ffff87f2220    %r15 = 0x0000000000001000
+%rip = 0x00007ff9a97c0008
+
+eflags = 0x00000202 = [ IF ]
+asmase> incq %rax
+incq %rax = [0x48, 0xff, 0xc0]
+asmase> :reg
+%rax = 0x0000000000000064    %rcx = 0xffffffffffffffff
+%rdx = 0x0000000000000005    %rbx = 0x00007ff9a97c0000
+%rsp = 0x00007ffff87f2118    %rbp = 0x0000000000000000
+%rsi = 0x00000000000075ea    %rdi = 0x00000000000075ea
+%r8  = 0x00000000ffffffff    %r9  = 0x00007ff9a913b280
+%r10 = 0x00000000000000a6    %r11 = 0x0000000000000202
+%r12 = 0x00000000004307c6    %r13 = 0x00007ffff87f2390
+%r14 = 0x00007ffff87f2220    %r15 = 0x0000000000001000
+%rip = 0x00007ff9a97c0004
+
+eflags = 0x00000202 = [ IF ]
+asmase> :mem $rsp
+0x7ffff87f2118: 0x0000000000432183
+asmase> movq %rax, (%rsp)
+movq %rax, (%rsp) = [0x48, 0x89, 0x04, 0x24]
+asmase> :mem $rsp
+0x7ffff87f2118: 0x0000000000000064
+asmase> :quit
+```

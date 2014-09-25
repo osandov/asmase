@@ -20,6 +20,8 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
+#include <getopt.h>
 #include <iomanip>
 
 #include "Assembler.h"
@@ -28,13 +30,57 @@
 #include "Support.h"
 #include "Tracee.h"
 
-int main(int argc, char *argv[])
+static const char *progname;
+
+void usage(bool error)
+{
+    fprintf(error ? stderr : stdout, "Usage: %s [-hv]\n", progname);
+}
+
+void version()
 {
     printf(
-        "asmase Copyright (C) 2013-2014 Omar Sandoval\n"
+        "asmase %s Copyright (C) 2013-2014 Omar Sandoval\n"
         "This program comes with ABSOLUTELY NO WARRANTY; for details type `:warranty'.\n"
         "This is free software, and you are welcome to redistribute it\n"
-        "under certain conditions; type `:copying' for details.\n");
+        "under certain conditions; type `:copying' for details.\n",
+	ASMASE_VERSION);
+}
+
+int main(int argc, char *argv[])
+{
+    int c;
+
+    static struct option long_options[] = {
+        {"version", no_argument, nullptr, 'v'},
+        {"help",    no_argument, nullptr, 'h'},
+    };
+
+    progname = argv[0];
+
+    for (;;) {
+        c = getopt_long(argc, argv, "vh", long_options, nullptr);
+        if (c == -1)
+            break;
+
+        switch (c) {
+        case 'v':
+            version();
+            return 0;
+        case 'h':
+            printf("asmase assembly REPL %s\n\n", ASMASE_VERSION);
+            usage(false);
+            printf("\n");
+            printf("For more information, type `:help` from within asmase, or consult the README.\n");
+            return 0;
+        case '?':
+        default:
+            usage(true);
+            return 2;
+        }
+    }
+
+    version();
 
     std::shared_ptr<Tracee> tracee{Tracee::createTracee()};
     if (!tracee)
