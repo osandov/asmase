@@ -1,7 +1,7 @@
 /*
  * Assembler implementation built on the LLVM MC layer.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2015 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -130,11 +130,9 @@ int Assembler::assembleInstruction(const std::string &instruction,
     const MCInstrInfo *instrInfo = context->instrInfo.get();
 
     // Set up the input
-    MemoryBuffer *inputBuffer =
-        MemoryBuffer::getMemBufferCopy(instruction, "assembly");
-
     SourceMgr srcMgr;
-    srcMgr.AddNewSourceBuffer(inputBuffer, SMLoc{});
+    srcMgr.AddNewSourceBuffer(
+        MemoryBuffer::getMemBufferCopy(instruction, "assembly"), SMLoc{});
     srcMgr.setDiagHandler(
         asmaseDiagHandler, const_cast<void *>(static_cast<const void *>(&inputter)));
 
@@ -176,7 +174,10 @@ int Assembler::assembleInstruction(const std::string &instruction,
     MCAsmBackend *MAB = target->createMCAsmBackend(tripleName);
 #endif
 
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
+    OwningPtr<MCStreamer> streamer{
+        createELFStreamer(mcCtx, *MAB, outputStream, codeEmitter, true)};
+#elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
     OwningPtr<MCStreamer> streamer{
         createELFStreamer(mcCtx, nullptr, *MAB, outputStream, codeEmitter,
                           true, false)};
@@ -208,7 +209,16 @@ int Assembler::assembleInstruction(const std::string &instruction,
         return 1;
 
     outputStream.flush();
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
+    std::unique_ptr<MemoryBuffer> outputBuffer{
+        MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
+    auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer->getMemBufferRef());
+    if (error_code err = objFileErr.getError()) {
+        fprintf(stderr, "%s\n", err.message().c_str());
+        return 1;
+    }
+    std::unique_ptr<object::ObjectFile> objFile{objFileErr->release()};
+#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
     std::unique_ptr<MemoryBuffer> outputBuffer{
         MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
     auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer);
@@ -249,9 +259,13 @@ static error_code getTextSection(object::ObjectFile &objFile,
     while (it != objFile.end_sections()) {
 #endif
         bool isText;
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
+	isText = it->isText();
+#else
         err = it->isText(isText);
         if (err)
             return err;
+#endif
         if (isText)
             return it->getContents(result);
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
