@@ -1,7 +1,7 @@
 /*
  * Driver for asmase.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -40,11 +40,11 @@ void usage(bool error)
 void version()
 {
     printf(
-        "asmase %s Copyright (C) 2013-2014 Omar Sandoval\n"
+        "asmase %s Copyright (C) 2013-2016 Omar Sandoval\n"
         "This program comes with ABSOLUTELY NO WARRANTY; for details type `:warranty'.\n"
         "This is free software, and you are welcome to redistribute it\n"
         "under certain conditions; type `:copying' for details.\n",
-	ASMASE_VERSION);
+        ASMASE_VERSION);
 }
 
 int main(int argc, char *argv[])

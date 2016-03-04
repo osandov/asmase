@@ -2,7 +2,7 @@
  * ARM register information and printing. Floating point registers aren't
  * handled yet.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -33,7 +33,7 @@
 using RT = RegisterType;
 using RC = RegisterCategory;
 extern const RegisterInfo ARMRegisters = {
-    .registers = {
+    {
         // General-purpose
         {RT::INT32, RC::GENERAL_PURPOSE, "r0",  USER_REGISTER(r0)},
         {RT::INT32, RC::GENERAL_PURPOSE, "r1",  USER_REGISTER(r1)},

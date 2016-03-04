@@ -1,7 +1,7 @@
 /*
  * x86 register information and printing.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -35,7 +35,7 @@
 using RT = RegisterType;
 using RC = RegisterCategory;
 extern const RegisterInfo X86Registers = {
-    .registers = {
+    {
         // General-purpose
 #ifdef __x86_64__
         {RT::INT64, RC::GENERAL_PURPOSE, "%", "rax", USER_REGISTER(rax)},

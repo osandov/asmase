@@ -1,7 +1,7 @@
 /*
  * Tracee class.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -104,7 +104,7 @@ protected:
 public:
     Tracee(const RegisterInfo &regInfo, UserRegisters *registers,
            pid_t pid, void *sharedMemory, size_t sharedSize);
-    ~Tracee();
+    virtual ~Tracee();
 
     pid_t getPid() const { return pid; }
 

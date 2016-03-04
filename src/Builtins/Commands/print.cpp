@@ -1,7 +1,7 @@
 /*
  * print built-in command for printing expressions.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -33,17 +33,18 @@ BUILTIN_FUNC(print)
                 printf("identifier: %s\n", arg->getIdentifier().c_str());
                 break;
             case Builtins::ValueType::INTEGER:
-                printf("integer: 0x%1$lx (%1$ld)\n", arg->getInteger());
+                printf("integer: 0x%lx (%ld)\n", arg->getInteger(),
+                       arg->getInteger());
                 break;
             case Builtins::ValueType::FLOAT:
                 printf("floating: %f\n", arg->getFloat());
                 break;
             case Builtins::ValueType::STRING:
-		printf("string: \"");
-		for (char c : arg->getString()) {
-			std::string escaped = escapeCharacter(c, false, true, true);
-			printf("%s", escaped.c_str());
-		}
+                printf("string: \"");
+                for (char c : arg->getString()) {
+                        std::string escaped = escapeCharacter(c, false, true, true);
+                        printf("%s", escaped.c_str());
+                }
                 printf("\"\n");
                 break;
         }
