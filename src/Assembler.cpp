@@ -1,7 +1,7 @@
 /*
  * Assembler implementation built on the LLVM MC layer.
  *
- * Copyright (C) 2013-2015 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -75,6 +75,7 @@ class AssemblerContext {
 
 public:
     std::string tripleName;
+    Triple triple;
     std::string cpu;
     const Target *target;
     OwningPtr<MCRegisterInfo> registerInfo;
@@ -82,7 +83,8 @@ public:
     OwningPtr<MCInstrInfo> instrInfo;
 
     AssemblerContext()
-        : tripleName{sys::getDefaultTargetTriple()}
+        : tripleName{sys::getDefaultTargetTriple()},
+          triple{tripleName}
     {
         if (!llvmIsInit) {
             llvm::InitializeNativeTarget();
@@ -122,6 +124,7 @@ int Assembler::assembleInstruction(const std::string &instruction,
                                    bytestring &machineCodeOut,
                                    const Inputter &inputter)
 {
+    const Triple &triple = context->triple;
     const std::string &tripleName = context->tripleName;
     const std::string &mcpu = context->cpu;
     const Target *target = context->target;
@@ -147,8 +150,13 @@ int Assembler::assembleInstruction(const std::string &instruction,
 #else
     MCContext mcCtx{*asmInfo, *registerInfo, objectFileInfo.get(), &srcMgr};
 #endif
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 7
+    objectFileInfo->InitMCObjectFileInfo(triple, Reloc::Default,
+                                         CodeModel::Default, mcCtx);
+#else
     objectFileInfo->InitMCObjectFileInfo(tripleName, Reloc::Default,
                                          CodeModel::Default, mcCtx);
+#endif
 
     // Set up the streamer
     OwningPtr<MCSubtargetInfo> subtargetInfo;
@@ -157,7 +165,10 @@ int Assembler::assembleInstruction(const std::string &instruction,
         target->createMCSubtargetInfo(tripleName, mcpu, features));
     assert(subtargetInfo && "Unable to create subtarget info!");
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 2
+#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 7
+    MCCodeEmitter *codeEmitter =
+        target->createMCCodeEmitter(*instrInfo, *registerInfo, mcCtx);
+#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 2
     MCCodeEmitter *codeEmitter =
         target->createMCCodeEmitter(*instrInfo, *registerInfo, *subtargetInfo,
                                     mcCtx);
@@ -260,7 +271,7 @@ static error_code getTextSection(object::ObjectFile &objFile,
 #endif
         bool isText;
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
-	isText = it->isText();
+        isText = it->isText();
 #else
         err = it->isText(isText);
         if (err)
