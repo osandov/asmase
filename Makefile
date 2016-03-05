@@ -18,7 +18,8 @@ OBJS1 := $(patsubst src/%.cpp, $(BUILD)/%.o, $(SRCS)) # C++ sources
 OBJS := $(patsubst $(BUILD)/%.cpp, $(BUILD)/%.o, $(OBJS1)) # Generated C++ sources
 
 LLVM_CONFIG ?= llvm-config
-ALL_CXXFLAGS := -Wall -g -Iinclude -I$(BUILD)/include -std=c++11 `$(LLVM_CONFIG) --cxxflags` -fno-strict-aliasing -DASMASE_VERSION=\"$(VERSION)\" $(CXXFLAGS)
+LLVM_CXXFLAGS := `$(LLVM_CONFIG) --cxxflags | sed 's/-Wno-maybe-uninitialized//'`
+ALL_CXXFLAGS := -Wall -g -Iinclude -I$(BUILD)/include -std=c++11 $(LLVM_CXXFLAGS) -fno-strict-aliasing -Wno-extended-offsetof -DASMASE_VERSION=\"$(VERSION)\" $(CXXFLAGS)
 LIBS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support` -lreadline
 LIBS += `$(LLVM_CONFIG) --system-libs 2>/dev/null`
 

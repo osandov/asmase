@@ -4,7 +4,7 @@
  * coupling between yylex and the Scanner class which is a result of this
  * C++ encapsulation.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -26,9 +26,6 @@
 #include <cassert>
 
 #include "Builtins/Scanner.h"
-
-// Suppress clang warnings about deprecated storage class
-#define register
 
 /** Set the lexed token in the scanner and return 1. */
 #define EMIT_TOKEN(type) do { \
