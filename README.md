@@ -17,7 +17,7 @@ compile LLVM from source (instructions
 [here](http://llvm.org/docs/GettingStarted.html)), download the [pre-built
 binaries](http://llvm.org/releases/download.html), or use your distribution's
 packages. Versions 3.1 and newer are supported; anything older won't work.
-Version 3.7 is the newest version at the time of writing, but most major
+Version 3.8 is the newest version at the time of writing, but most major
 releases of LLVM break compatibility. Compilation works under both GCC and
 Clang (make sure it's new enough to support C++11). If you meet these
 requirements, all it takes is a `make` in the top level (parallel make with

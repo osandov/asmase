@@ -219,7 +219,9 @@ int Assembler::assembleInstruction(const std::string &instruction,
     if (parser->Run(false) != 0)
         return 1;
 
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 8)
     outputStream.flush();
+#endif
 #if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> outputBuffer{
         MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
