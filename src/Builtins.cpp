@@ -1,7 +1,7 @@
 /*
  * Built-in command system driver and core built-ins.
  *
- * Copyright (C) 2013-2014 Omar Sandoval
+ * Copyright (C) 2013-2016 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -108,18 +108,13 @@ static int lookupCommand(const std::string &abbrev,
 
 static BUILTIN_FUNC(help)
 {
-    std::vector<std::pair<const char *, const char *>> wantedCommands;
+    std::vector<std::pair<std::string, std::string>> wantedCommands;
 
-    int maxCommandLength = 0;
+    size_t maxCommandLength = 0;
     if (args.size() == 0) {
         for (auto &command : commands) {
-            const char *commandName = command.first.c_str();
-            const char *helpString = command.second.helpString.c_str();
-
-            int commandLength = command.first.size();
-            maxCommandLength = std::max(commandLength, maxCommandLength);
-
-            wantedCommands.emplace_back(commandName, helpString);
+            maxCommandLength = std::max(command.first.size(), maxCommandLength);
+            wantedCommands.emplace_back(command.first, command.second.helpString);
         }
     } else {
         for (auto &argPtr : args) {
@@ -136,16 +131,14 @@ static BUILTIN_FUNC(help)
             if (error)
                 return 1;
 
-            int abbrevLength = abbrev.size();
-            maxCommandLength = std::max(abbrevLength, maxCommandLength);
-            wantedCommands.emplace_back(abbrev.c_str(),
-                                        builtinCommand.helpString.c_str());
+            maxCommandLength = std::max(abbrev.size(), maxCommandLength);
+            wantedCommands.emplace_back(abbrev, builtinCommand.helpString);
         }
     }
 
     for (auto &command : wantedCommands) {
-        const char *commandName = command.first;
-        const char *helpString = command.second;
+        const char *commandName = command.first.c_str();
+        const char *helpString = command.second.c_str();
         printf("  %-*s -- %s\n", (int) maxCommandLength, commandName, helpString);
     }
 
