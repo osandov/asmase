@@ -43,7 +43,7 @@ using namespace llvm;
 #error "Please use at least LLVM 3.1"
 #endif
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
 #include <system_error>
 #include <memory>
 using std::error_code;
@@ -99,7 +99,7 @@ public:
         registerInfo.reset(target->createMCRegInfo(tripleName));
         assert(registerInfo && "Unable to create target register info!");
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
         asmInfo.reset(target->createMCAsmInfo(*registerInfo, tripleName));
 #else
         asmInfo.reset(target->createMCAsmInfo(tripleName));
@@ -145,12 +145,12 @@ int Assembler::assembleInstruction(const std::string &instruction,
 
     // Set up the context
     OwningPtr<MCObjectFileInfo> objectFileInfo{new MCObjectFileInfo()};
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
     MCContext mcCtx{asmInfo, registerInfo, objectFileInfo.get(), &srcMgr};
 #else
     MCContext mcCtx{*asmInfo, *registerInfo, objectFileInfo.get(), &srcMgr};
 #endif
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
     objectFileInfo->InitMCObjectFileInfo(triple, Reloc::Default,
                                          CodeModel::Default, mcCtx);
 #else
@@ -165,10 +165,10 @@ int Assembler::assembleInstruction(const std::string &instruction,
         target->createMCSubtargetInfo(tripleName, mcpu, features));
     assert(subtargetInfo && "Unable to create subtarget info!");
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
     MCCodeEmitter *codeEmitter =
         target->createMCCodeEmitter(*instrInfo, *registerInfo, mcCtx);
-#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 2
+#elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 2
     MCCodeEmitter *codeEmitter =
         target->createMCCodeEmitter(*instrInfo, *registerInfo, *subtargetInfo,
                                     mcCtx);
@@ -176,16 +176,16 @@ int Assembler::assembleInstruction(const std::string &instruction,
     MCCodeEmitter *codeEmitter =
         target->createMCCodeEmitter(*instrInfo, *subtargetInfo, mcCtx);
 #endif
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
     MCAsmBackend *MAB =
         target->createMCAsmBackend(*registerInfo, tripleName, mcpu);
-#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 2
+#elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 2
     MCAsmBackend *MAB = target->createMCAsmBackend(tripleName, mcpu);
 #else
     MCAsmBackend *MAB = target->createMCAsmBackend(tripleName);
 #endif
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
     OwningPtr<MCStreamer> streamer{
         createELFStreamer(mcCtx, *MAB, outputStream, codeEmitter, true)};
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 4
@@ -201,12 +201,12 @@ int Assembler::assembleInstruction(const std::string &instruction,
     OwningPtr<MCAsmParser> parser{
         createMCAsmParser(srcMgr, mcCtx, *streamer, *asmInfo)};
 
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
     MCTargetOptions targetOptions;
     OwningPtr<MCTargetAsmParser> TAP{
         target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo,
                                   targetOptions)};
-#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 4
+#elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4
     OwningPtr<MCTargetAsmParser> TAP{
         target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo)};
 #else
@@ -222,7 +222,7 @@ int Assembler::assembleInstruction(const std::string &instruction,
 #if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 8)
     outputStream.flush();
 #endif
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
     std::unique_ptr<MemoryBuffer> outputBuffer{
         MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
     auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer->getMemBufferRef());
@@ -231,7 +231,7 @@ int Assembler::assembleInstruction(const std::string &instruction,
         return 1;
     }
     std::unique_ptr<object::ObjectFile> objFile{objFileErr->release()};
-#elif LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5
     std::unique_ptr<MemoryBuffer> outputBuffer{
         MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
     auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer);
@@ -264,7 +264,7 @@ int Assembler::assembleInstruction(const std::string &instruction,
 static error_code getTextSection(object::ObjectFile &objFile,
                                  StringRef &result) {
     error_code err;
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
     object::section_iterator it = objFile.section_begin();
     while (it != objFile.section_end()) {
 #else
@@ -272,7 +272,7 @@ static error_code getTextSection(object::ObjectFile &objFile,
     while (it != objFile.end_sections()) {
 #endif
         bool isText;
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 6
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
         isText = it->isText();
 #else
         err = it->isText(isText);
@@ -281,7 +281,7 @@ static error_code getTextSection(object::ObjectFile &objFile,
 #endif
         if (isText)
             return it->getContents(result);
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 5
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
         ++it;
 #else
         it.increment(err);
@@ -307,7 +307,7 @@ static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg)
         diag.getMessage(),
         diag.getLineContents(),
         diag.getRanges(),
-#if LLVM_VERSION_MAJOR > 3 || LLVM_VERSION_MINOR >= 3
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 3)
         diag.getFixIts()
 #endif
     };
