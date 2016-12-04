@@ -28,7 +28,11 @@
 #include <llvm/MC/MCRegisterInfo.h>
 #include <llvm/MC/MCStreamer.h>
 #include <llvm/MC/MCSubtargetInfo.h>
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9)
+#include <llvm/MC/MCParser/MCTargetAsmParser.h>
+#else
 #include <llvm/MC/MCTargetAsmParser.h>
+#endif
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/ManagedStatic.h>
@@ -150,7 +154,10 @@ int Assembler::assembleInstruction(const std::string &instruction,
 #else
     MCContext mcCtx{*asmInfo, *registerInfo, objectFileInfo.get(), &srcMgr};
 #endif
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9)
+    objectFileInfo->InitMCObjectFileInfo(triple, true, CodeModel::Default,
+                                         mcCtx);
+#elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7
     objectFileInfo->InitMCObjectFileInfo(triple, Reloc::Default,
                                          CodeModel::Default, mcCtx);
 #else
