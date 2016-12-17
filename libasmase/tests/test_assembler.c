@@ -82,7 +82,10 @@ int main(void)
 	struct asmase_assembler *as;
 	int status = EXIT_FAILURE;
 
-	libasmase_assembler_init();
+	if (libasmase_init() == -1) {
+		perror("libasmase_init");
+		return EXIT_FAILURE;
+	}
 
 	as = asmase_create_assembler();
 	if (!as)

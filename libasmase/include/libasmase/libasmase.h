@@ -29,6 +29,15 @@
 #include <libasmase/arch.h>
 #include <libasmase/assembler.h>
 
+/**
+ * libasmase_init() - Initialize libasmase.
+ *
+ * This function must be called before the rest of libasmase.
+ *
+ * Return: 0 on success, -1 on failure, in which case errno will be set
+ */
+int libasmase_init(void);
+
 struct asmase_instance;
 
 /**
@@ -174,7 +183,7 @@ struct asmase_instance *asmase_create_instance(void);
 void asmase_destroy_instance(struct asmase_instance *a);
 
 /**
- * execute_code() - Execute machine code on an asmase instance.
+ * asmase_execute_code() - Execute machine code on an asmase instance.
  *
  * @a: asmase instance to execute on.
  * @code: Assembled machine code to execute.

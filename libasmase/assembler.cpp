@@ -300,7 +300,6 @@ error_code AssemblerContext::getTextSection(object::ObjectFile &objFile,
 
 extern "C" {
 
-__attribute__((visibility("default")))
 void libasmase_assembler_init(void)
 {
   llvm::InitializeNativeTarget();

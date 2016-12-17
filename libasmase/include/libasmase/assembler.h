@@ -35,13 +35,6 @@ extern "C" {
 struct asmase_assembler;
 
 /**
- * libasmase_assembler_init(void) - Initialize the libasmase assembler.
- *
- * This must be called before using the assembler interface.
- */
-void libasmase_assembler_init(void);
-
-/**
  * asmase_create_assembler() - Create a new assembler.
  *
  * Return: New assembler.

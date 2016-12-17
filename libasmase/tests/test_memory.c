@@ -42,6 +42,11 @@ int main(void)
 	int status = EXIT_FAILURE;
 	int ret;
 
+	if (libasmase_init() == -1) {
+		perror("libasmase_init");
+		return EXIT_FAILURE;
+	}
+
 	a = asmase_create_instance();
 	if (!a) {
 		perror("asmase_create_instance");

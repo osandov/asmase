@@ -34,6 +34,13 @@
 
 #include "internal.h"
 
+__attribute__((visibility("default")))
+int libasmase_init(void)
+{
+	libasmase_assembler_init();
+	return 0;
+}
+
 /*
  * Entry point for the tracee. Requests to be ptraced and traps.
  *

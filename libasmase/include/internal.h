@@ -30,6 +30,8 @@
 
 #include "arch.h"
 
+void libasmase_assembler_init(void);
+
 struct asmase_instance {
 	/**
 	 * @pid: PID of the tracee.
