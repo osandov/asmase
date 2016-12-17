@@ -308,24 +308,25 @@ void libasmase_assembler_init(void)
 }
 
 __attribute__((visibility("default")))
-struct assembler_context *create_assembler_context(void)
+struct asmase_assembler *asmase_create_assembler(void)
 {
-  return reinterpret_cast<struct assembler_context *>(new AssemblerContext);
+  return reinterpret_cast<struct asmase_assembler *>(new AssemblerContext);
 }
 
 __attribute__((visibility("default")))
-void destroy_assembler_context(struct assembler_context *ctx)
+void asmase_destroy_assembler(struct asmase_assembler *as)
 {
-  auto context = reinterpret_cast<class AssemblerContext *>(ctx);
+  auto context = reinterpret_cast<class AssemblerContext *>(as);
 
   delete context;
 }
 
 __attribute__((visibility("default")))
-int assemble_code(const struct assembler_context *ctx, const char *filename,
-    int line, const char *asm_code, char **out, size_t *len)
+int asmase_assemble_code(const struct asmase_assembler *as,
+    const char *filename, int line, const char *asm_code, char **out,
+    size_t *len)
 {
-  auto context = reinterpret_cast<const class AssemblerContext *>(ctx);
+  auto context = reinterpret_cast<const class AssemblerContext *>(as);
   std::string result;
 
   *out = NULL;

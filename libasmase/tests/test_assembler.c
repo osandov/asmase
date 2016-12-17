@@ -24,14 +24,15 @@
 
 #include <libasmase/libasmase.h>
 
-static int test_ok(struct assembler_context *ctx)
+static int test_ok(struct asmase_assembler *as)
 {
 	unsigned char expected[] = {0xb8, 0x05, 0x00, 0x00, 0x00};
 	char *out;
 	size_t len;
 	int ret;
 
-	ret = assemble_code(ctx, "test_ok", 1, "movl $5, %eax", &out, &len);
+	ret = asmase_assemble_code(as, "test_ok", 1, "movl $5, %eax", &out,
+				   &len);
 	if (ret == -1) {
 		fprintf(stderr, "Internal error assembling test_ok\n");
 		return -1;
@@ -52,13 +53,14 @@ static int test_ok(struct assembler_context *ctx)
 	return 0;
 }
 
-static int test_error(struct assembler_context *ctx)
+static int test_error(struct asmase_assembler *as)
 {
 	char *out;
 	size_t len;
 	int ret;
 
-	ret = assemble_code(ctx, "test_error", 1, "foo $5, %eax", &out, &len);
+	ret = asmase_assemble_code(as, "test_error", 1, "foo $5, %eax", &out,
+				   &len);
 	if (ret == -1) {
 		fprintf(stderr, "Internal error assembling test_ok\n");
 		return -1;
@@ -77,23 +79,23 @@ static int test_error(struct assembler_context *ctx)
 
 int main(void)
 {
-	struct assembler_context *ctx;
+	struct asmase_assembler *as;
 	int status = EXIT_FAILURE;
 
 	libasmase_assembler_init();
 
-	ctx = create_assembler_context();
-	if (!ctx)
+	as = asmase_create_assembler();
+	if (!as)
 		return EXIT_FAILURE;
 
-	if (test_ok(ctx) == -1)
+	if (test_ok(as) == -1)
 		goto out;
 
-	if (test_error(ctx) == -1)
+	if (test_error(as) == -1)
 		goto out;
 
 	status = EXIT_SUCCESS;
 out:
-	destroy_assembler_context(ctx);
+	asmase_destroy_assembler(as);
 	return status;
 }

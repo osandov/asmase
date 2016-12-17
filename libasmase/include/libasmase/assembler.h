@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-struct assembler_context;
+struct asmase_assembler;
 
 /**
  * libasmase_assembler_init(void) - Initialize the libasmase assembler.
@@ -42,24 +42,23 @@ struct assembler_context;
 void libasmase_assembler_init(void);
 
 /**
- * create_assembler_context() - Create a new assembler.
+ * asmase_create_assembler() - Create a new assembler.
  *
  * Return: New assembler.
  */
-struct assembler_context *create_assembler_context(void);
+struct asmase_assembler *asmase_create_assembler(void);
 
 /**
- * destroy_assembler_context() - Free all resources associated with an
- * assembler.
+ * asmase_destroy_assembler() - Free all resources associated with an assembler.
  *
- * @ctx: Assembler to destroy.
+ * @as: Assembler to destroy.
  */
-void destroy_assembler_context(struct assembler_context *ctx);
+void asmase_destroy_assembler(struct asmase_assembler *as);
 
 /**
- * assemble_code() - Assemble some assembly code to machine code.
+ * asmase_assemble_code() - Assemble some assembly code to machine code.
  *
- * @ctx: Assembler.
+ * @as: Assembler.
  * @filename: Filename for diagnostics.
  * @line: Line number for diagnostics.
  * @asm_code: Assembly code.
@@ -71,8 +70,9 @@ void destroy_assembler_context(struct assembler_context *ctx);
  * code, in which case @out will contain a diagnostic message; or -1 if there
  * was an internal error, in which case @out will be NULL.
  */
-int assemble_code(const struct assembler_context *ctx, const char *filename,
-		  int line, const char *asm_code, char **out, size_t *len);
+int asmase_assemble_code(const struct asmase_assembler *as,
+			 const char *filename, int line, const char *asm_code,
+			 char **out, size_t *len);
 
 #ifdef __cplusplus
 }
