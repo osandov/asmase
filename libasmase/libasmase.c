@@ -75,7 +75,7 @@ static int attach_to_tracee(struct asmase_instance *a)
 }
 
 __attribute__((visibility("default")))
-struct asmase_instance *create_asmase_instance(void)
+struct asmase_instance *asmase_create_instance(void)
 {
 	struct asmase_instance *a;
 
@@ -104,7 +104,7 @@ struct asmase_instance *create_asmase_instance(void)
 
 	if (attach_to_tracee(a) == -1) {
 		int saved_errno = errno;
-		destroy_asmase_instance(a);
+		asmase_destroy_instance(a);
 		errno = saved_errno;
 		return NULL;
 	}
@@ -113,7 +113,7 @@ struct asmase_instance *create_asmase_instance(void)
 }
 
 __attribute__((visibility("default")))
-void destroy_asmase_instance(struct asmase_instance *a)
+void asmase_destroy_instance(struct asmase_instance *a)
 {
 	kill(a->pid, SIGKILL);
 	waitpid(a->pid, NULL, 0);

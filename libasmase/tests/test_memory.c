@@ -42,9 +42,9 @@ int main(void)
 	int status = EXIT_FAILURE;
 	int ret;
 
-	a = create_asmase_instance();
+	a = asmase_create_instance();
 	if (!a) {
-		perror("create_asmase_instance");
+		perror("asmase_create_instance");
 		return EXIT_FAILURE;
 	}
 
@@ -54,6 +54,6 @@ int main(void)
 
 	status = EXIT_SUCCESS;
 out:
-	destroy_asmase_instance(a);
+	asmase_destroy_instance(a);
 	return status;
 }

@@ -159,19 +159,19 @@ struct asmase_register {
 };
 
 /**
- * create_asmase_instance() - Create a new asmase instance.
+ * asmase_create_instance() - Create a new asmase instance.
  *
  * Return: New asmase instance.
  */
-struct asmase_instance *create_asmase_instance(void);
+struct asmase_instance *asmase_create_instance(void);
 
 /**
- * destroy_asmase_instance() - Free all resources associated with an asmase
+ * asmase_destroy_instance() - Free all resources associated with an asmase
  * instance.
  *
  * @a: asmase instance to destroy.
  */
-void destroy_asmase_instance(struct asmase_instance *a);
+void asmase_destroy_instance(struct asmase_instance *a);
 
 /**
  * execute_code() - Execute machine code on an asmase instance.
