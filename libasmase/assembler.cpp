@@ -103,16 +103,12 @@ static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg)
 class AssemblerContext {
 private:
   /* LLVM state that can be reused. */
-  std::string tripleName;
-  Triple triple;
-  std::string mcpu;
+  const std::string tripleName, mcpu;
+  const Triple triple;
   const Target *target;
-  OwningPtr<MCRegisterInfo> registerInfo;
-  OwningPtr<MCAsmInfo> asmInfo;
-  OwningPtr<MCInstrInfo> instrInfo;
-
-  std::string filename;
-  int line;
+  OwningPtr<const MCRegisterInfo> registerInfo;
+  OwningPtr<const MCAsmInfo> asmInfo;
+  OwningPtr<const MCInstrInfo> instrInfo;
 
   static error_code getTextSection(object::ObjectFile &objFile,
       std::string &result);
@@ -120,19 +116,12 @@ private:
 public:
   AssemblerContext();
 
-  void setFilename(const std::string &filename) { this->filename = filename; }
-  const std::string &getFilename() const { return filename; }
-
-  void setLine(int line) { this->line = line; }
-  int getLine() const { return line; }
-
   error_code assembleCode(const char *filename, int line, const char *asm_code,
       std::string &result) const;
 };
 
 AssemblerContext::AssemblerContext()
-  : tripleName{sys::getDefaultTargetTriple()}, triple{tripleName},
-  filename{"<unknown>"}, line{1}
+  : tripleName{sys::getDefaultTargetTriple()}, triple{tripleName}
 {
   std::string err;
   target = TargetRegistry::lookupTarget(tripleName, err);
