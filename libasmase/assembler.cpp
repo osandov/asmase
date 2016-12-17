@@ -103,9 +103,10 @@ static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg)
 class AssemblerContext {
 private:
   /* LLVM state that can be reused. */
-  const std::string tripleName, mcpu;
+  const std::string tripleName, mcpu, features;
   const Triple triple;
   const Target *target;
+  OwningPtr<const MCSubtargetInfo> subtargetInfo;
   OwningPtr<const MCRegisterInfo> registerInfo;
   OwningPtr<const MCAsmInfo> asmInfo;
   OwningPtr<const MCInstrInfo> instrInfo;
@@ -126,6 +127,10 @@ AssemblerContext::AssemblerContext()
   std::string err;
   target = TargetRegistry::lookupTarget(tripleName, err);
   assert(target && "Could not get target!");
+
+  subtargetInfo.reset(
+      target->createMCSubtargetInfo(tripleName, mcpu, features));
+  assert(subtargetInfo && "Unable to create subtarget info!");
 
   registerInfo.reset(target->createMCRegInfo(tripleName));
   assert(registerInfo && "Unable to create target register info!");
@@ -174,12 +179,6 @@ error_code AssemblerContext::assembleCode(const char *filename, int line,
 #endif
 
   // Set up the streamer
-  OwningPtr<MCSubtargetInfo> subtargetInfo;
-  std::string features;
-  subtargetInfo.reset(
-      target->createMCSubtargetInfo(tripleName, mcpu, features));
-  assert(subtargetInfo && "Unable to create subtarget info!");
-
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
   MCCodeEmitter *codeEmitter =
     target->createMCCodeEmitter(*instrInfo, *registerInfo, mcCtx);
