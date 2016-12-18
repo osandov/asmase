@@ -28,9 +28,7 @@ static void Assembler_dealloc(Assembler *self)
 static PyObject *Assembler_assemble_code(Assembler *self, PyObject *args,
 					 PyObject *kwds)
 {
-	static char *keywords[] = {
-		"code", "filename", "line", NULL,
-	};
+	static char *keywords[] = {"code", "filename", "line", NULL};
 	PyObject *obj = NULL, *str;
 	const char *code, *filename = "";
 	int line = 1;
@@ -73,7 +71,7 @@ static PyMethodDef Assembler_methods[] = {
 	 "Keyword arguments:\n"
 	 "code -- assembly code\n"
 	 "filename -- filename for diagnostics\n"
-	 "line -- line number for diagnostics\n"},
+	 "line -- line number for diagnostics"},
 	{},
 };
 
