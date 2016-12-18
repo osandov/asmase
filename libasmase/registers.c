@@ -206,6 +206,11 @@ int asmase_get_registers(const struct asmase_instance *a, int reg_sets,
 	struct get_registers_data data = {};
 	size_t i;
 
+	if (reg_sets & ~ASMASE_REGISTERS_ALL) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	for_each_reg_set(reg_sets, prepare_regs, &data);
 
 	for (i = 0; i < ARCH_NUM_PTRACE_REGSETS; i++) {

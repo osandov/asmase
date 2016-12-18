@@ -54,6 +54,8 @@ enum asmase_register_set {
 	ASMASE_REGISTERS_VECTOR_STATUS = (1 << 7),
 };
 
+#define ASMASE_REGISTERS_ALL ((1 << 8) - 1)
+
 /**
  * struct asmase_status_register_bits - A set of bits in a status register.
  *
