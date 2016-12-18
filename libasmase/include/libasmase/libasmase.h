@@ -193,7 +193,7 @@ void asmase_destroy_instance(struct asmase_instance *a);
  * Return: 0 on success, -1 on failure, in which case errno will be set
  */
 int asmase_execute_code(const struct asmase_instance *a,
-			const unsigned char *code, size_t len, int *wstatus);
+			const char *code, size_t len, int *wstatus);
 
 /**
  * asmase_get_register_sets() - Get the types of registers available on an

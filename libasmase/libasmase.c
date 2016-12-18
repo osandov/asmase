@@ -130,9 +130,9 @@ void asmase_destroy_instance(struct asmase_instance *a)
 
 __attribute__((visibility("default")))
 int asmase_execute_code(const struct asmase_instance *a,
-			const unsigned char *code, size_t len, int *wstatus)
+			const char *code, size_t len, int *wstatus)
 {
-	unsigned char *p = a->shared_mem;
+	char *p = a->shared_mem;
 	size_t total_len;
 	bool overflow;
 
