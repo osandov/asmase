@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 import numpy
 
 module = Extension(
@@ -12,4 +12,5 @@ module = Extension(
 )
 
 setup(name='libasmase',
-      ext_modules=[module])
+      ext_modules=[module],
+      test_suite='tests')
