@@ -139,6 +139,11 @@ struct asmase_register {
 	size_t num_status_bits;
 
 	/**
+	 * @set: Register set this register belongs to.
+	 */
+	enum asmase_register_set set;
+
+	/**
 	 * @type: Register type.
 	 */
 	enum asmase_register_type type;
@@ -209,7 +214,7 @@ int asmase_execute_code(const struct asmase_instance *a,
 int asmase_get_register_sets(const struct asmase_instance *a);
 
 /**
- * asmase_get_registers() - Get the value of the registers of an asmase
+ * asmase_get_registers() - Get the values of the registers of an asmase
  * instance.
  *
  * @a: asmase instance.

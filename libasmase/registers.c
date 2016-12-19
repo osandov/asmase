@@ -171,11 +171,13 @@ static int prepare_regs(enum asmase_register_set set,
 	return 0;
 }
 
-static inline void copy_register(struct asmase_register *reg,
+static inline void copy_register(enum asmase_register_set set,
+				 struct asmase_register *reg,
 				 const struct arch_register_descriptor *desc,
 				 void *buf)
 {
 	reg->name = desc->name;
+	reg->set = set;
 	reg->type = desc->type;
 	reg->status_bits = desc->status_bits;
 	reg->num_status_bits = desc->num_status_bits;
@@ -193,7 +195,7 @@ static int emit_regs(enum asmase_register_set set,
 	for (i = 0; i < num_regs; i++) {
 		buf = ((char *)&data->regsets +
 		       arch_ptrace_regset_offsetof(regs[i].ptrace_regset));
-		copy_register(&data->regs[data->i++], &regs[i], buf);
+		copy_register(set, &data->regs[data->i++], &regs[i], buf);
 	}
 
 	return 0;
