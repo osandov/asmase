@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <Python.h>
 
 #include <libasmase/libasmase.h>
@@ -26,8 +27,25 @@ static int Instance_init(Instance *self)
 
 static void Instance_dealloc(Instance *self)
 {
-	asmase_destroy_instance(self->a);
+	if (self->a)
+		asmase_destroy_instance(self->a);
 	Py_TYPE(self)->tp_free((PyObject *)self);
+}
+
+static PyObject *PyErr_InstanceDestroyed(void)
+{
+	errno = ECHILD;
+	return PyErr_SetFromErrno(PyExc_OSError);
+}
+
+static PyObject *Instance_destroy(Instance *self)
+{
+	if (!self->a)
+		return PyErr_InstanceDestroyed();
+
+	asmase_destroy_instance(self->a);
+	self->a = NULL;
+	Py_RETURN_NONE;
 }
 
 static PyObject *Instance_execute_code(Instance *self, PyObject *arg)
@@ -35,6 +53,9 @@ static PyObject *Instance_execute_code(Instance *self, PyObject *arg)
 	Py_buffer code;
 	int wstatus;
 	int ret;
+
+	if (!self->a)
+		return PyErr_InstanceDestroyed();
 
 	ret = PyObject_GetBuffer(arg, &code, PyBUF_SIMPLE);
 	if (ret == -1)
@@ -49,6 +70,9 @@ static PyObject *Instance_execute_code(Instance *self, PyObject *arg)
 
 static PyObject *Instance_get_register_sets(Instance *self)
 {
+	if (!self->a)
+		return PyErr_InstanceDestroyed();
+
 	return PyLong_FromLong(asmase_get_register_sets(self->a));
 }
 
@@ -278,6 +302,9 @@ static PyObject *Instance_get_registers(Instance *self, PyObject *args,
 	if (!PyArg_ParseTupleAndKeywords(args, kwds, "i", keywords, &regsets))
 		return NULL;
 
+	if (!self->a)
+		return PyErr_InstanceDestroyed();
+
 	ret = asmase_get_registers(self->a, regsets, &regs, &num_regs);
 	if (ret == -1)
 		return PyErr_SetFromErrno(PyExc_OSError);
@@ -321,6 +348,9 @@ static PyObject *Instance_read_memory(Instance *self, PyObject *args,
 					 &PyLong_Type, &pylen))
 		return NULL;
 
+	if (!self->a)
+		return PyErr_InstanceDestroyed();
+
 	addr = PyLong_AsVoidPtr(pyaddr);
 	len = PyLong_AsSize_t(pylen);
 	if (PyErr_Occurred())
@@ -341,6 +371,10 @@ static PyObject *Instance_read_memory(Instance *self, PyObject *args,
 }
 
 static PyMethodDef Instance_methods[] = {
+	{"destroy", (PyCFunction)Instance_destroy, METH_NOARGS,
+	 "destroy()\n\n"
+	 "Destroy this instance. No other methods must be called on this\n"
+	 "instance after this."},
 	{"execute_code", (PyCFunction)Instance_execute_code, METH_O,
 	 "execute_code(code) -> int\n\n"
 	 "Execute machine code on this instance. Returns the status of the\n"
