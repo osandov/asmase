@@ -132,3 +132,55 @@ class TestX86_64(unittest.TestCase):
         eflags, flags = self.get_eflags()
         self.assertFalse(eflags & (1 << 11))
         self.assertNotIn('OF', flags)
+
+    def test_mmx(self):
+        regs = ['mm{}'.format(i) for i in range(8)]
+        values = {}
+        for reg in regs:
+            value = random.getrandbits(64)
+            values[reg] = value
+            self.execute_code('movq ${}, %rax\n'
+                              'movq %rax, %{}'.format(value, reg))
+        registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_VECTOR)
+        vector_registers = registers[asmase.ASMASE_REGISTERS_VECTOR]
+        for reg, value in values.items():
+            self.assertEqual(vector_registers[reg][0], value)
+
+    def test_sse(self):
+        regs = ['xmm{}'.format(i) for i in range(16)]
+        values = {}
+        for reg in regs:
+            value = random.getrandbits(128)
+            values[reg] = value
+            lo = value & 0xffffffffffffffff
+            hi = value >> 64
+            self.execute_code('movq ${}, %rax\n'
+                              'pushq %rax\n'
+                              'movq ${}, %rax\n'
+                              'pushq %rax\n'
+                              'movdqu (%rsp), %{}'.format(hi, lo, reg))
+        registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_VECTOR)
+        vector_registers = registers[asmase.ASMASE_REGISTERS_VECTOR]
+        for reg, value in values.items():
+            self.assertEqual(vector_registers[reg][0], value)
+
+    def get_mxcsr(self):
+        registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_VECTOR_STATUS)
+        vector_status_registers = registers[asmase.ASMASE_REGISTERS_VECTOR_STATUS]
+        return vector_status_registers['mxcsr'][0]
+
+    def test_mxcsr(self):
+        self.execute_code('movl $0xffff, %eax\n'
+                          'movl %eax, (%rsp)\n'
+                          'ldmxcsr (%rsp)\n')
+        self.assertEqual(self.get_mxcsr(), 0xffff)
+
+        self.execute_code('xorl %eax, %eax\n'
+                          'movl %eax, (%rsp)\n'
+                          'ldmxcsr (%rsp)\n')
+        self.assertEqual(self.get_mxcsr(), 0x0)
+
+        self.execute_code('movl $0x1f80, %eax\n'
+                          'movl %eax, (%rsp)\n'
+                          'ldmxcsr (%rsp)\n')
+        self.assertEqual(self.get_mxcsr(), 0x1f80)
