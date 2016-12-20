@@ -19,6 +19,7 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +40,7 @@ static int print_registers(struct asmase_instance *a, int reg_set)
 	}
 
 	for (i = 0; i < num_regs; i++) {
+		assert(reg_set & regs[i].set);
 		printf("    \"%s\" = ", regs[i].name);
 		switch (regs[i].type) {
 		case ASMASE_REGISTER_U8:

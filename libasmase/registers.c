@@ -138,8 +138,9 @@ static int for_each_reg_set(int reg_sets,
 			return ret;
 	}
 	if (reg_sets & ASMASE_REGISTERS_VECTOR_STATUS) {
-		ret = fn(ASMASE_REGISTERS_VECTOR, arch_vector_status_regs,
-			 arch_num_vector_status_regs, data);
+		ret = fn(ASMASE_REGISTERS_VECTOR_STATUS,
+			 arch_vector_status_regs, arch_num_vector_status_regs,
+			 data);
 		if (ret)
 			return ret;
 	}
