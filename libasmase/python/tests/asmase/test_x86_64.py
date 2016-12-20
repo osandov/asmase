@@ -1,4 +1,5 @@
 import asmase
+import random
 import unittest
 
 class TestX86_64(unittest.TestCase):
@@ -13,13 +14,14 @@ class TestX86_64(unittest.TestCase):
         return self.instance.execute_code(self.assembler.assemble_code(code))
 
     def test_general_purpose(self):
-        regs = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
-                'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
+        regs = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi', 'r8',
+                'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
         general_purpose = {}
         expected = {asmase.ASMASE_REGISTERS_GENERAL_PURPOSE: general_purpose}
-        for i, reg in enumerate(regs):
-            general_purpose[reg] = (i, asmase.ASMASE_REGISTERS_GENERAL_PURPOSE, None)
-            self.execute_code('movq ${}, %{}'.format(i, reg))
+        for reg in regs:
+            value = random.getrandbits(64)
+            general_purpose[reg] = (value, asmase.ASMASE_REGISTERS_GENERAL_PURPOSE, None)
+            self.execute_code('movq ${}, %{}'.format(value, reg))
         registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_GENERAL_PURPOSE)
         self.assertEqual(registers, expected)
 
