@@ -144,8 +144,49 @@ DEFINE_ARCH_REGISTERS(status,
 #define FPREGSET ARCH_PTRACE_NT_PRXFPREG
 #endif
 
-#define X87_REGISTER_DESCRIPTOR(n)	\
-	__REGISTER_DESCRIPTOR("R"#n, ASMASE_REGISTER_FLOAT80, FPREGSET, st_space[4 * n])
+/* Top physical register in x87 register stack. */
+inline uint16_t x87_st_top(uint16_t fsw)
+{
+    return (fsw & 0x3800) >> 11;
+}
+
+/*
+ * Convert a physical x87 register number (i.e., Ri) to a logical (i.e., %st(i))
+ * register number.
+ */
+inline uint16_t x87_phys_to_log(uint16_t index, uint16_t top)
+{
+    return (index - top + 8) % 8;
+}
+
+static void x87_copy_register(const struct arch_register_descriptor *desc,
+			      void *dst, void *src)
+{
+#ifdef __x86_64__
+	struct user_fpregs_struct *fpregs = src;
+	uint16_t fsw = fpregs->swd;
+	unsigned int *st_space = fpregs->st_space;
+#else
+	struct user_fpxregs_struct *fpxregs = src;
+	uint16_t fsw = fpxregs->swd;
+	long int *st_space = fpxregs->st_space;
+#endif
+	uint16_t top = x87_st_top(fsw);
+	uint16_t physical, logical;
+
+	physical = desc->offset;
+	logical = x87_phys_to_log(physical, top);
+	*(long double *)dst = *(long double *)&st_space[4 * logical];
+}
+
+#define X87_REGISTER_DESCRIPTOR(n) {		\
+	.name = "R"#n,				\
+	.offset = n,				\
+	.size = sizeof(long double),		\
+	.ptrace_regset = FPREGSET,		\
+	.type = ASMASE_REGISTER_FLOAT80,	\
+	.copy_register_fn = x87_copy_register,	\
+}
 
 DEFINE_ARCH_REGISTERS(floating_point,
 	X87_REGISTER_DESCRIPTOR(7),
@@ -216,21 +257,6 @@ DEFINE_STATUS_REGISTER_BITS(fsw,
 
 	STATUS_REGISTER_FLAG("B", 15), /* FPU busy */
 );
-
-/* Top physical register in x87 register stack. */
-inline uint16_t x87_st_top(uint16_t fsw)
-{
-    return (fsw & 0x3800) >> 11;
-}
-
-/*
- * Convert a physical x87 register number (i.e., Ri) to a logical (i.e., %st(i))
- * register number.
- */
-inline uint16_t x87_phys_to_log(uint16_t index, uint16_t top)
-{
-    return (index - top + 8) % 8;
-}
 
 /* Based on "Recreating FSAVE format" in the Intel Instruction Set Reference. */
 static inline uint16_t x87_tag(long double st)
