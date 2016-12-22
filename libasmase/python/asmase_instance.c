@@ -18,6 +18,7 @@ typedef struct {
 static PyStructSequence_Field RegisterValue_fields[] = {
 	{"value", "int or numpy float"},
 	{"type", "type of value (asmase.ASMASE_REGISTER_*)"},
+	{"set", "register set (asmase.ASMASE_REGISTERS_*)"},
 	{"bits", "list of decoded status bits as strings"},
 	{}
 };
@@ -25,7 +26,7 @@ PyStructSequence_Desc RegisterValue_desc = {
 	"asmase.RegisterValue",
 	"Value of a register",
 	RegisterValue_fields,
-	3
+	4
 };
 PyTypeObject RegisterValue_type;
 
@@ -88,36 +89,6 @@ static PyObject *Instance_get_register_sets(Instance *self)
 		return PyErr_InstanceDestroyed();
 
 	return PyLong_FromLong(asmase_get_register_sets(self->a));
-}
-
-/*
- * Returns a borrowed reference.
- */
-static PyObject *get_regset_odict(PyObject *odict, int regset)
-{
-	PyObject *key = NULL;
-	PyObject *regset_odict = NULL;
-	int ret;
-
-	key = PyLong_FromLong(regset);
-	if (!key)
-		goto out;
-
-	regset_odict = PyODict_GetItem(odict, key);
-	if (!regset_odict) {
-		regset_odict = PyODict_New();
-		if (!regset_odict)
-			goto out;
-
-		ret = PyODict_SetItem(odict, key, regset_odict);
-		Py_DECREF(regset_odict);
-		if (ret == -1)
-			regset_odict = NULL;
-	}
-
-out:
-	Py_XDECREF(key);
-	return regset_odict;
 }
 
 static PyObject *PyLong_FromUnsignedInt128(uint64_t lo, uint64_t hi)
@@ -272,7 +243,7 @@ err:
 }
 
 static PyObject *BuildRegisterValue(PyObject *value, PyObject *type,
-				    PyObject *status_bits)
+				    PyObject *set, PyObject *status_bits)
 {
 	PyObject *register_value;
 
@@ -284,15 +255,17 @@ static PyObject *BuildRegisterValue(PyObject *value, PyObject *type,
 	PyStructSequence_SetItem(register_value, 0, value);
 	Py_INCREF(type);
 	PyStructSequence_SetItem(register_value, 1, type);
+	Py_INCREF(set);
+	PyStructSequence_SetItem(register_value, 2, set);
 	Py_INCREF(status_bits);
-	PyStructSequence_SetItem(register_value, 2, status_bits);
+	PyStructSequence_SetItem(register_value, 3, status_bits);
 	return register_value;
 }
 
-static int add_register(PyObject *regset_odict, struct asmase_register *reg)
+static int add_register(PyObject *odict, struct asmase_register *reg)
 {
 	PyObject *name = NULL;
-	PyObject *value = NULL, *type = NULL, *status_bits = NULL;
+	PyObject *value = NULL, *type = NULL, *set = NULL, *status_bits = NULL;
 	PyObject *register_value = NULL;
 	int ret = -1;
 
@@ -308,18 +281,23 @@ static int add_register(PyObject *regset_odict, struct asmase_register *reg)
 	if (!type)
 		goto out;
 
+	set = PyLong_FromLong(reg->set);
+	if (!set)
+		goto out;
+
 	status_bits = get_register_status_bits(reg);
 	if (!status_bits)
 		goto out;
 
-	register_value = BuildRegisterValue(value, type, status_bits);
+	register_value = BuildRegisterValue(value, type, set, status_bits);
 	if (!register_value)
 		goto out;
 
-	ret = PyODict_SetItem(regset_odict, name, register_value);
+	ret = PyODict_SetItem(odict, name, register_value);
 out:
 	Py_XDECREF(register_value);
 	Py_XDECREF(status_bits);
+	Py_XDECREF(set);
 	Py_XDECREF(type);
 	Py_XDECREF(value);
 	Py_XDECREF(name);
@@ -351,13 +329,7 @@ static PyObject *Instance_get_registers(Instance *self, PyObject *args,
 		goto err;
 
 	for (i = 0; i < num_regs; i++) {
-		PyObject *regset_odict;
-
-		regset_odict = get_regset_odict(odict, regs[i].set);
-		if (!regset_odict)
-			goto err;
-
-		ret = add_register(regset_odict, &regs[i]);
+		ret = add_register(odict, &regs[i]);
 		if (ret == -1)
 			goto err;
 	}
@@ -425,10 +397,9 @@ static PyMethodDef Instance_methods[] = {
 	 "bitmask of ASMASE_REGISTERS_*."},
 	{"get_registers", (PyCFunction)Instance_get_registers,
 	 METH_VARARGS | METH_KEYWORDS,
-	 "get_registers(regsets) -> register sets\n\n"
+	 "get_registers(regsets) -> OrderedDict of str: RegisterValue\n\n"
 	 "Get the values of the registers of this instance. Returns a mapping\n"
-	 "from register set (ASMASE_REGISTERS_*) to a mapping from register\n"
-	 "name to (value, ASMASE_REGISTER_* type, decoded status bits).\n\n"
+	 "from register name to RegisterValue.\n\n"
 	 "Arguments:\n"
 	 "regsets -- bitmask of ASMASE_REGISTERS_* representing which\n"
 	 "registers to get"},
