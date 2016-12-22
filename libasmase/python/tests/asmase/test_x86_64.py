@@ -2,6 +2,7 @@ import asmase
 import random
 import unittest
 
+
 class TestX86_64(unittest.TestCase):
     def setUp(self):
         self.assembler = asmase.Assembler()
@@ -76,7 +77,6 @@ class TestX86_64(unittest.TestCase):
         self.assertFalse(eflags & (1 << 4))
         self.assertNotIn('AF', flags)
 
-
         # Zero flag
         self.execute_code('movq $1, %rax\n'
                           'movq $1, %rbx\n'
@@ -132,6 +132,197 @@ class TestX86_64(unittest.TestCase):
         eflags, flags = self.get_eflags()
         self.assertFalse(eflags & (1 << 11))
         self.assertNotIn('OF', flags)
+
+    def get_fp_regs(self):
+        registers = self.instance.get_registers(
+            asmase.ASMASE_REGISTERS_FLOATING_POINT |
+            asmase.ASMASE_REGISTERS_FLOATING_POINT_STATUS)
+        return (registers[asmase.ASMASE_REGISTERS_FLOATING_POINT],
+                registers[asmase.ASMASE_REGISTERS_FLOATING_POINT_STATUS])
+
+    def test_x87_data_registers(self):
+        for i in range(7, -1, -1):
+            self.execute_code('movq ${}, (%rsp)\nfildq (%rsp)'.format(i))
+            regs, status = self.get_fp_regs()
+            for j in range(7, i - 1, -1):
+                with self.subTest(i=i, j=j):
+                    self.assertEqual(round(regs['R{}'.format(j)][0]), j)
+            return
+
+    def test_x87_control_word(self):
+        self.execute_code('finit')
+        regs, status = self.get_fp_regs()
+        self.assertEqual(status['fcw'][0], 0x37f)
+        self.assertIn('PC=EXT', status['fcw'][2])
+        self.assertIn('RC=RN', status['fcw'][2])
+
+        self.execute_code('movq $0, %rax\n'
+                          'pushq %rax\n'
+                          'fldcw (%rsp)')
+        regs, status = self.get_fp_regs()
+        self.assertEqual(status['fcw'][0], 0x40)
+
+        self.execute_code('movq $0x7f, %rax\n'
+                          'movq %rax, (%rsp)\n'
+                          'fldcw (%rsp)')
+        regs, status = self.get_fp_regs()
+        self.assertIn('PC=SGL', status['fcw'][2])
+
+        self.execute_code('movq $0x27f, %rax\n'
+                          'movq %rax, (%rsp)\n'
+                          'fldcw (%rsp)')
+        regs, status = self.get_fp_regs()
+        self.assertIn('PC=DBL', status['fcw'][2])
+
+        self.execute_code('movq $0x77f, %rax\n'
+                          'movq %rax, (%rsp)\n'
+                          'fldcw (%rsp)')
+        regs, status = self.get_fp_regs()
+        self.assertIn('RC=R-', status['fcw'][2])
+
+        self.execute_code('movq $0xf7f, %rax\n'
+                          'movq %rax, (%rsp)\n'
+                          'fldcw (%rsp)')
+        regs, status = self.get_fp_regs()
+        self.assertIn('RC=RZ', status['fcw'][2])
+
+        self.execute_code('movq $0xb7f, %rax\n'
+                          'movq %rax, (%rsp)\n'
+                          'fldcw (%rsp)')
+        regs, status = self.get_fp_regs()
+        self.assertIn('RC=R+', status['fcw'][2])
+
+    def test_x87_status_word_top(self):
+        self.execute_code('finit')
+        for i in range(7, -1, -1):
+            self.execute_code('fldz')
+            regs, status = self.get_fp_regs()
+            top = (status['fsw'][0] & 0x3800) >> 11
+            self.assertEqual(top, i)
+            self.assertIn('TOP=0x{:x}'.format(top), status['fsw'][2])
+
+    def check_fsw(self, code, bits):
+        self.execute_code('finit')
+
+        regs, status = self.get_fp_regs()
+        for shift, name in bits:
+            with self.subTest(shift=shift, name=name):
+                self.assertFalse(status['fsw'][0] & (1 << shift))
+                self.assertNotIn(name, status['fsw'][2])
+        self.execute_code(code)
+
+        regs, status = self.get_fp_regs()
+        for shift, name in bits:
+            with self.subTest(shift=shift, name=name):
+                self.assertTrue(status['fsw'][0] & (1 << shift))
+                self.assertIn(name, status['fsw'][2])
+
+    def test_x87_status_word_exceptions(self):
+        self.check_fsw('fldz\n' * 9, [(6, 'SF'), (0, 'EF=IE')])
+
+        self.check_fsw('movq $1, %rax\n'
+                       'movq %rax, (%rsp)\n'
+                       'fldl (%rsp)\n',
+                       [(1, 'EF=DE')])
+
+        self.check_fsw('fldz\n'
+                       'fld1\n'
+                       'fdiv %st(1), %st(0)',
+                       [(2, 'EF=ZE')])
+
+        self.check_fsw('movq $65535, %rax\n'
+                       'pushq %rax\n'
+                       'fildq (%rsp)\n'
+                       'fld1\n'
+                       'fscale',
+                       [(3, 'EF=OE'), (5, 'EF=PE')])
+
+        self.check_fsw('movq $-65535, %rax\n'
+                       'pushq %rax\n'
+                       'fildq (%rsp)\n'
+                       'fld1\n'
+                       'fscale',
+                       [(4, 'EF=UE')])
+
+    def test_x87_status_word_condition_codes(self):
+        self.execute_code('finit')
+        regs, status = self.get_fp_regs()
+        self.assertFalse(status['fsw'][0] & (1 << 8))
+        self.assertNotIn('C0', status['fsw'][2])
+        self.assertFalse(status['fsw'][0] & (1 << 9))
+        self.assertNotIn('C1', status['fsw'][2])
+        self.assertFalse(status['fsw'][0] & (1 << 10))
+        self.assertNotIn('C2', status['fsw'][2])
+        self.assertFalse(status['fsw'][0] & (1 << 14))
+        self.assertNotIn('C3', status['fsw'][2])
+
+        # C3
+        self.execute_code('fldz\n'
+                          'fxam')
+        regs, status = self.get_fp_regs()
+        self.assertTrue(status['fsw'][0] & (1 << 14))
+        self.assertIn('C3', status['fsw'][2])
+
+        # C2
+        self.execute_code('fld1\n'
+                          'fxam')
+        regs, status = self.get_fp_regs()
+        self.assertTrue(status['fsw'][0] & (1 << 10))
+        self.assertIn('C2', status['fsw'][2])
+
+        # C1
+        self.execute_code('fchs\n'
+                          'fxam')
+        regs, status = self.get_fp_regs()
+        self.assertTrue(status['fsw'][0] & (1 << 9))
+        self.assertIn('C1', status['fsw'][2])
+
+        # C0
+        self.execute_code('movq $-1, %rax\n'
+                          'pushq %rax\n'
+                          'pushq %rax\n'
+                          'fldt (%rsp)\n'
+                          'fxam')
+        regs, status = self.get_fp_regs()
+        self.assertTrue(status['fsw'][0] & (1 << 8))
+        self.assertIn('C0', status['fsw'][2])
+
+    def test_x87_tag_word(self):
+        # Empty
+        self.execute_code('finit')
+        regs, status = self.get_fp_regs()
+        self.assertEqual(status['ftw'][0], 0xffff)
+
+        # Valid
+        ftw = 0xffff
+        for i in range(8):
+            self.execute_code('fldpi')
+            regs, status = self.get_fp_regs()
+            ftw >>= 2
+            self.assertEqual(status['ftw'][0], ftw)
+
+        # Zero
+        self.execute_code('finit')
+        ftw = 0xffff
+        for i in range(7, -1, -1):
+            self.execute_code('fldz')
+            regs, status = self.get_fp_regs()
+            ftw &= ~(0x3 << 2 * i)
+            ftw |= (0x1 << 2 * i)
+            self.assertEqual(status['ftw'][0], ftw)
+
+        # Special
+        self.execute_code('finit\n'
+                          'movq $-1, %rax\n'
+                          'pushq %rax\n'
+                          'pushq %rax')
+        ftw = 0xffff
+        for i in range(7, -1, -1):
+            self.execute_code('fldt (%rsp)')
+            regs, status = self.get_fp_regs()
+            ftw &= ~(0x3 << 2 * i)
+            ftw |= (0x2 << 2 * i)
+            self.assertEqual(status['ftw'][0], ftw)
 
     def test_mmx(self):
         regs = ['mm{}'.format(i) for i in range(8)]
