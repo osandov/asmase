@@ -56,7 +56,11 @@ struct arch_register_descriptor {
 	size_t num_status_bits;
 	int ptrace_regset;
 	enum asmase_register_type type;
+	void (*copy_register_fn)(const struct arch_register_descriptor *, void *, void *);
 };
+
+void default_copy_register(const struct arch_register_descriptor *desc,
+			   void *dst, void *src);
 
 /**
  * DEFINE_ARCH_PTRACE_REGSETS<n> - Define the architecture ptrace register sets.
@@ -129,7 +133,7 @@ static inline size_t arch_ptrace_regset_sizeof(int ptrace_regset)	\
 	 BUILD_BUG_ON_ZERO(__ASMASE_REGISTER_TYPE_SIZEOF(type) == 0))
 
 #define ____REGISTER_DESCRIPTOR(name_, type_, nt, field, status_bits_,			\
-				num_status_bits_, check_size) {				\
+				num_status_bits_, check_size, fn) {			\
 	.name = name_,									\
 	.offset = offsetof(FIELD_TYPEOF(struct arch_ptrace_regsets, nt), field),	\
 	.size = ASMASE_REGISTER_TYPE_SIZEOF(type_) +					\
@@ -140,17 +144,21 @@ static inline size_t arch_ptrace_regset_sizeof(int ptrace_regset)	\
 	.num_status_bits = num_status_bits_,						\
 	.ptrace_regset = nt,								\
 	.type = type_,									\
+	.copy_register_fn = fn,								\
 }
 
 #define __REGISTER_DESCRIPTOR(name, type, nt, field)	\
-	____REGISTER_DESCRIPTOR(name, type, nt, field, NULL, 0, false)
+	____REGISTER_DESCRIPTOR(name, type, nt, field, NULL, 0, false, default_copy_register)
 
 #define REGISTER_DESCRIPTOR(name, type, nt, field)	\
-	____REGISTER_DESCRIPTOR(name, type, nt, field, NULL, 0, true)
+	____REGISTER_DESCRIPTOR(name, type, nt, field, NULL, 0, true, default_copy_register)
+
+#define STATUS_REGISTER_DESCRIPTOR_FN(name, type, nt, field, fn)		\
+	____REGISTER_DESCRIPTOR(#name, type, nt, field, arch_##name##_bits,	\
+				ARRAY_SIZE(arch_##name##_bits), true, fn)
 
 #define STATUS_REGISTER_DESCRIPTOR(name, type, nt, field)		\
-	____REGISTER_DESCRIPTOR(#name, type, nt, field, arch_##name##_bits,	\
-				ARRAY_SIZE(arch_##name##_bits), true)
+	STATUS_REGISTER_DESCRIPTOR_FN(name, type, nt, field, default_copy_register)
 
 #define __USER_REGS_DESCRIPTOR_UINT(reg, reg_name, bits) \
 	REGISTER_DESCRIPTOR(reg_name, ASMASE_REGISTER_U##bits, ARCH_PTRACE_NT_PRSTATUS, reg)

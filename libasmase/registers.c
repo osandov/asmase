@@ -172,6 +172,12 @@ static int prepare_regs(enum asmase_register_set set,
 	return 0;
 }
 
+void default_copy_register(const struct arch_register_descriptor *desc,
+			   void *dst, void *src)
+{
+	memcpy(dst, ((char *)src) + desc->offset, desc->size);
+}
+
 static inline void copy_register(enum asmase_register_set set,
 				 struct asmase_register *reg,
 				 const struct arch_register_descriptor *desc,
@@ -182,7 +188,7 @@ static inline void copy_register(enum asmase_register_set set,
 	reg->type = desc->type;
 	reg->status_bits = desc->status_bits;
 	reg->num_status_bits = desc->num_status_bits;
-	memcpy(&reg->u32, ((char *)buf) + desc->offset, desc->size);
+	desc->copy_register_fn(desc, &reg->u32, buf);
 }
 
 static int emit_regs(enum asmase_register_set set,

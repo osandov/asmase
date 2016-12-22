@@ -20,6 +20,7 @@
  */
 
 #include <stddef.h>
+#include <string.h>
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <asm/processor-flags.h>
@@ -216,15 +217,92 @@ DEFINE_STATUS_REGISTER_BITS(fsw,
 	STATUS_REGISTER_FLAG("B", 15), /* FPU busy */
 );
 
+/* Top physical register in x87 register stack. */
+inline uint16_t x87_st_top(uint16_t fsw)
+{
+    return (fsw & 0x3800) >> 11;
+}
+
+/*
+ * Convert a physical x87 register number (i.e., Ri) to a logical (i.e., %st(i))
+ * register number.
+ */
+inline uint16_t x87_phys_to_log(uint16_t index, uint16_t top)
+{
+    return (index - top + 8) % 8;
+}
+
+/* Based on "Recreating FSAVE format" in the Intel Instruction Set Reference. */
+static inline uint16_t x87_tag(long double st)
+{
+	struct x87_float {
+		uint64_t fraction : 63;
+		uint64_t integer : 1;
+		uint64_t exponent : 15;
+		uint64_t sign : 1;
+	} fp;
+
+	memcpy(&fp, &st, sizeof(fp));
+	if (fp.exponent == 0x7fff)
+		return 2; /* Special */
+	else if (fp.exponent == 0x0000) {
+		if (fp.fraction == 0 && fp.integer == 0)
+			return 1; /* Zero */
+		else
+			return 2; /* Special */
+	} else {
+		if (fp.integer)
+			return 0; /* Valid */
+		else
+			return 2; /* Special */
+	}
+}
+
+/*
+ * ptrace() returns the abridged floating point tag word. This reconstructs the
+ * processor's full tag word from the floating point stack itself.
+ */
+static void ftw_copy_register(const struct arch_register_descriptor *desc,
+			      void *dst, void *src)
+{
+#ifdef __x86_64__
+	struct user_fpregs_struct *fpregs = src;
+	uint16_t fsw = fpregs->swd;
+	uint16_t aftw = fpregs->ftw;
+	unsigned int *st_space = fpregs->st_space;
+#else
+	struct user_fpxregs_struct *fpxregs = src;
+	uint16_t fsw = fpxregs->swd;
+	uint16_t aftw = fpxregs->twd;
+	long int *st_space = fpxregs->st_space;
+#endif
+	uint16_t top = x87_st_top(fsw);
+	uint16_t ftw = 0;
+	uint16_t physical;
+
+	for (physical = 0; physical < 8; physical++) {
+		uint16_t logical = x87_phys_to_log(physical, top);
+		uint16_t tag;
+
+		if (aftw & (1 << physical))
+			tag = x87_tag(*(long double *)&st_space[4 * logical]);
+		else
+			tag = 0x3;
+		ftw |= tag << (2 * physical);
+	}
+
+	*(uint16_t *)dst = ftw;
+}
+
 DEFINE_ARCH_REGISTERS(floating_point_status,
 	STATUS_REGISTER_DESCRIPTOR(fcw, ASMASE_REGISTER_U16, FPREGSET, cwd),
 	STATUS_REGISTER_DESCRIPTOR(fsw, ASMASE_REGISTER_U16, FPREGSET, swd),
 #ifdef __x86_64__
-	STATUS_REGISTER_DESCRIPTOR(ftw, ASMASE_REGISTER_U16, FPREGSET, ftw),
+	STATUS_REGISTER_DESCRIPTOR_FN(ftw, ASMASE_REGISTER_U16, FPREGSET, ftw, ftw_copy_register),
 	REGISTER_DESCRIPTOR("fip", ASMASE_REGISTER_U64, FPREGSET, rip),
 	REGISTER_DESCRIPTOR("fdp", ASMASE_REGISTER_U64, FPREGSET, rdp),
 #else
-	STATUS_REGISTER_DESCRIPTOR(ftw, ASMASE_REGISTER_U16, FPREGSET, twd),
+	STATUS_REGISTER_DESCRIPTOR_FN(ftw, ASMASE_REGISTER_U16, FPREGSET, twd, ftw_copy_register),
 	__REGISTER_DESCRIPTOR("fip", ASMASE_REGISTER_U64, FPREGSET, fip), /* and fcs */
 	__REGISTER_DESCRIPTOR("fdp", ASMASE_REGISTER_U64, FPREGSET, foo), /* and fos */
 #endif
