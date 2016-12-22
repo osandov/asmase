@@ -146,60 +146,60 @@ class TestX86_64(unittest.TestCase):
             regs, status = self.get_fp_regs()
             for j in range(7, i - 1, -1):
                 with self.subTest(i=i, j=j):
-                    self.assertEqual(round(regs['R{}'.format(j)][0]), j)
+                    self.assertEqual(round(regs['R{}'.format(j)].value), j)
             return
 
     def test_x87_control_word(self):
         self.execute_code('finit')
         regs, status = self.get_fp_regs()
-        self.assertEqual(status['fcw'][0], 0x37f)
-        self.assertIn('PC=EXT', status['fcw'][2])
-        self.assertIn('RC=RN', status['fcw'][2])
+        self.assertEqual(status['fcw'].value, 0x37f)
+        self.assertIn('PC=EXT', status['fcw'].bits)
+        self.assertIn('RC=RN', status['fcw'].bits)
 
         self.execute_code('movq $0, %rax\n'
                           'pushq %rax\n'
                           'fldcw (%rsp)')
         regs, status = self.get_fp_regs()
-        self.assertEqual(status['fcw'][0], 0x40)
+        self.assertEqual(status['fcw'].value, 0x40)
 
         self.execute_code('movq $0x7f, %rax\n'
                           'movq %rax, (%rsp)\n'
                           'fldcw (%rsp)')
         regs, status = self.get_fp_regs()
-        self.assertIn('PC=SGL', status['fcw'][2])
+        self.assertIn('PC=SGL', status['fcw'].bits)
 
         self.execute_code('movq $0x27f, %rax\n'
                           'movq %rax, (%rsp)\n'
                           'fldcw (%rsp)')
         regs, status = self.get_fp_regs()
-        self.assertIn('PC=DBL', status['fcw'][2])
+        self.assertIn('PC=DBL', status['fcw'].bits)
 
         self.execute_code('movq $0x77f, %rax\n'
                           'movq %rax, (%rsp)\n'
                           'fldcw (%rsp)')
         regs, status = self.get_fp_regs()
-        self.assertIn('RC=R-', status['fcw'][2])
+        self.assertIn('RC=R-', status['fcw'].bits)
 
         self.execute_code('movq $0xf7f, %rax\n'
                           'movq %rax, (%rsp)\n'
                           'fldcw (%rsp)')
         regs, status = self.get_fp_regs()
-        self.assertIn('RC=RZ', status['fcw'][2])
+        self.assertIn('RC=RZ', status['fcw'].bits)
 
         self.execute_code('movq $0xb7f, %rax\n'
                           'movq %rax, (%rsp)\n'
                           'fldcw (%rsp)')
         regs, status = self.get_fp_regs()
-        self.assertIn('RC=R+', status['fcw'][2])
+        self.assertIn('RC=R+', status['fcw'].bits)
 
     def test_x87_status_word_top(self):
         self.execute_code('finit')
         for i in range(7, -1, -1):
             self.execute_code('fldz')
             regs, status = self.get_fp_regs()
-            top = (status['fsw'][0] & 0x3800) >> 11
+            top = (status['fsw'].value & 0x3800) >> 11
             self.assertEqual(top, i)
-            self.assertIn('TOP=0x{:x}'.format(top), status['fsw'][2])
+            self.assertIn('TOP=0x{:x}'.format(top), status['fsw'].bits)
 
     def check_fsw(self, code, bits):
         self.execute_code('finit')
@@ -207,15 +207,15 @@ class TestX86_64(unittest.TestCase):
         regs, status = self.get_fp_regs()
         for shift, name in bits:
             with self.subTest(shift=shift, name=name):
-                self.assertFalse(status['fsw'][0] & (1 << shift))
-                self.assertNotIn(name, status['fsw'][2])
+                self.assertFalse(status['fsw'].value & (1 << shift))
+                self.assertNotIn(name, status['fsw'].bits)
         self.execute_code(code)
 
         regs, status = self.get_fp_regs()
         for shift, name in bits:
             with self.subTest(shift=shift, name=name):
-                self.assertTrue(status['fsw'][0] & (1 << shift))
-                self.assertIn(name, status['fsw'][2])
+                self.assertTrue(status['fsw'].value & (1 << shift))
+                self.assertIn(name, status['fsw'].bits)
 
     def test_x87_status_word_exceptions(self):
         self.check_fsw('fldz\n' * 9, [(6, 'SF'), (0, 'EF=IE')])
@@ -247,35 +247,35 @@ class TestX86_64(unittest.TestCase):
     def test_x87_status_word_condition_codes(self):
         self.execute_code('finit')
         regs, status = self.get_fp_regs()
-        self.assertFalse(status['fsw'][0] & (1 << 8))
-        self.assertNotIn('C0', status['fsw'][2])
-        self.assertFalse(status['fsw'][0] & (1 << 9))
-        self.assertNotIn('C1', status['fsw'][2])
-        self.assertFalse(status['fsw'][0] & (1 << 10))
-        self.assertNotIn('C2', status['fsw'][2])
-        self.assertFalse(status['fsw'][0] & (1 << 14))
-        self.assertNotIn('C3', status['fsw'][2])
+        self.assertFalse(status['fsw'].value & (1 << 8))
+        self.assertNotIn('C0', status['fsw'].bits)
+        self.assertFalse(status['fsw'].value & (1 << 9))
+        self.assertNotIn('C1', status['fsw'].bits)
+        self.assertFalse(status['fsw'].value & (1 << 10))
+        self.assertNotIn('C2', status['fsw'].bits)
+        self.assertFalse(status['fsw'].value & (1 << 14))
+        self.assertNotIn('C3', status['fsw'].bits)
 
         # C3
         self.execute_code('fldz\n'
                           'fxam')
         regs, status = self.get_fp_regs()
-        self.assertTrue(status['fsw'][0] & (1 << 14))
-        self.assertIn('C3', status['fsw'][2])
+        self.assertTrue(status['fsw'].value & (1 << 14))
+        self.assertIn('C3', status['fsw'].bits)
 
         # C2
         self.execute_code('fld1\n'
                           'fxam')
         regs, status = self.get_fp_regs()
-        self.assertTrue(status['fsw'][0] & (1 << 10))
-        self.assertIn('C2', status['fsw'][2])
+        self.assertTrue(status['fsw'].value & (1 << 10))
+        self.assertIn('C2', status['fsw'].bits)
 
         # C1
         self.execute_code('fchs\n'
                           'fxam')
         regs, status = self.get_fp_regs()
-        self.assertTrue(status['fsw'][0] & (1 << 9))
-        self.assertIn('C1', status['fsw'][2])
+        self.assertTrue(status['fsw'].value & (1 << 9))
+        self.assertIn('C1', status['fsw'].bits)
 
         # C0
         self.execute_code('movq $-1, %rax\n'
@@ -284,14 +284,14 @@ class TestX86_64(unittest.TestCase):
                           'fldt (%rsp)\n'
                           'fxam')
         regs, status = self.get_fp_regs()
-        self.assertTrue(status['fsw'][0] & (1 << 8))
-        self.assertIn('C0', status['fsw'][2])
+        self.assertTrue(status['fsw'].value & (1 << 8))
+        self.assertIn('C0', status['fsw'].bits)
 
     def test_x87_tag_word(self):
         # Empty
         self.execute_code('finit')
         regs, status = self.get_fp_regs()
-        self.assertEqual(status['ftw'][0], 0xffff)
+        self.assertEqual(status['ftw'].value, 0xffff)
 
         # Valid
         ftw = 0xffff
@@ -299,7 +299,7 @@ class TestX86_64(unittest.TestCase):
             self.execute_code('fldpi')
             regs, status = self.get_fp_regs()
             ftw >>= 2
-            self.assertEqual(status['ftw'][0], ftw)
+            self.assertEqual(status['ftw'].value, ftw)
 
         # Zero
         self.execute_code('finit')
@@ -309,7 +309,7 @@ class TestX86_64(unittest.TestCase):
             regs, status = self.get_fp_regs()
             ftw &= ~(0x3 << 2 * i)
             ftw |= (0x1 << 2 * i)
-            self.assertEqual(status['ftw'][0], ftw)
+            self.assertEqual(status['ftw'].value, ftw)
 
         # Special
         self.execute_code('finit\n'
@@ -322,7 +322,7 @@ class TestX86_64(unittest.TestCase):
             regs, status = self.get_fp_regs()
             ftw &= ~(0x3 << 2 * i)
             ftw |= (0x2 << 2 * i)
-            self.assertEqual(status['ftw'][0], ftw)
+            self.assertEqual(status['ftw'].value, ftw)
 
     def test_mmx(self):
         regs = ['mm{}'.format(i) for i in range(8)]
@@ -335,7 +335,7 @@ class TestX86_64(unittest.TestCase):
         registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_VECTOR)
         vector_registers = registers[asmase.ASMASE_REGISTERS_VECTOR]
         for reg, value in values.items():
-            self.assertEqual(vector_registers[reg][0], value)
+            self.assertEqual(vector_registers[reg].value, value)
 
     def test_sse(self):
         regs = ['xmm{}'.format(i) for i in range(16)]
@@ -353,12 +353,12 @@ class TestX86_64(unittest.TestCase):
         registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_VECTOR)
         vector_registers = registers[asmase.ASMASE_REGISTERS_VECTOR]
         for reg, value in values.items():
-            self.assertEqual(vector_registers[reg][0], value)
+            self.assertEqual(vector_registers[reg].value, value)
 
     def get_mxcsr(self):
         registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_VECTOR_STATUS)
         vector_status_registers = registers[asmase.ASMASE_REGISTERS_VECTOR_STATUS]
-        return vector_status_registers['mxcsr'][0]
+        return vector_status_registers['mxcsr'].value
 
     def test_mxcsr(self):
         self.execute_code('movl $0xffff, %eax\n'
@@ -384,5 +384,5 @@ class TestX86_64(unittest.TestCase):
                           'movq %rax, 8(%rsp)\n')
         registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_GENERAL_PURPOSE)
         general_purpose = registers[asmase.ASMASE_REGISTERS_GENERAL_PURPOSE]
-        rsp = general_purpose['rsp'][0]
+        rsp = general_purpose['rsp'].value
         self.assertEqual(self.instance.read_memory(rsp, 13), b'hello, world!')

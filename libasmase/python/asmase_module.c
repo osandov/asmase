@@ -9,7 +9,8 @@
 #endif
 
 extern PyObject *AssemblerDiagnostic;
-extern PyTypeObject Assembler_type, Instance_type;
+extern PyTypeObject Assembler_type, Instance_type, RegisterValue_type;
+extern PyStructSequence_Desc RegisterValue_desc;
 
 static struct PyModuleDef asmasemodule = {
 	PyModuleDef_HEAD_INIT,
@@ -64,6 +65,11 @@ PyInit_asmase(void)
 
 	Py_INCREF(&Instance_type);
 	PyModule_AddObject(m, "Instance", (PyObject *)&Instance_type);
+
+	if (PyStructSequence_InitType2(&RegisterValue_type, &RegisterValue_desc) < 0)
+		return NULL;
+	Py_INCREF(&RegisterValue_type);
+	PyModule_AddObject(m, "RegisterValue", (PyObject *)&RegisterValue_type);
 
 #ifdef ASMASE_HAVE_FLOAT80
 	import_array();

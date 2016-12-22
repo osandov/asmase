@@ -15,6 +15,20 @@ typedef struct {
 	struct asmase_instance *a;
 } Instance;
 
+static PyStructSequence_Field RegisterValue_fields[] = {
+	{"value", "int or numpy float"},
+	{"type", "type of value (asmase.ASMASE_REGISTER_*)"},
+	{"bits", "list of decoded status bits as strings"},
+	{}
+};
+PyStructSequence_Desc RegisterValue_desc = {
+	"asmase.RegisterValue",
+	"Value of a register",
+	RegisterValue_fields,
+	3
+};
+PyTypeObject RegisterValue_type;
+
 static int Instance_init(Instance *self)
 {
 	self->a = asmase_create_instance();
@@ -257,11 +271,29 @@ err:
 	return NULL;
 }
 
+static PyObject *BuildRegisterValue(PyObject *value, PyObject *type,
+				    PyObject *status_bits)
+{
+	PyObject *register_value;
+
+	register_value = PyStructSequence_New(&RegisterValue_type);
+	if (!register_value)
+		return NULL;
+
+	Py_INCREF(value);
+	PyStructSequence_SetItem(register_value, 0, value);
+	Py_INCREF(type);
+	PyStructSequence_SetItem(register_value, 1, type);
+	Py_INCREF(status_bits);
+	PyStructSequence_SetItem(register_value, 2, status_bits);
+	return register_value;
+}
+
 static int add_register(PyObject *regset_odict, struct asmase_register *reg)
 {
 	PyObject *name = NULL;
-	PyObject *value = NULL, *status_bits = NULL;
-	PyObject *tuple = NULL;
+	PyObject *value = NULL, *type = NULL, *status_bits = NULL;
+	PyObject *register_value = NULL;
 	int ret = -1;
 
 	name = PyUnicode_FromString(reg->name);
@@ -272,18 +304,23 @@ static int add_register(PyObject *regset_odict, struct asmase_register *reg)
 	if (!value)
 		goto out;
 
+	type = PyLong_FromLong(reg->type);
+	if (!type)
+		goto out;
+
 	status_bits = get_register_status_bits(reg);
 	if (!status_bits)
 		goto out;
 
-	tuple = Py_BuildValue("(OiO)", value, reg->type, status_bits);
-	if (!tuple)
+	register_value = BuildRegisterValue(value, type, status_bits);
+	if (!register_value)
 		goto out;
 
-	ret = PyODict_SetItem(regset_odict, name, tuple);
+	ret = PyODict_SetItem(regset_odict, name, register_value);
 out:
-	Py_XDECREF(tuple);
+	Py_XDECREF(register_value);
 	Py_XDECREF(status_bits);
+	Py_XDECREF(type);
 	Py_XDECREF(value);
 	Py_XDECREF(name);
 	return ret;
