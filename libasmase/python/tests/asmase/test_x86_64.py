@@ -375,3 +375,14 @@ class TestX86_64(unittest.TestCase):
                           'movl %eax, (%rsp)\n'
                           'ldmxcsr (%rsp)\n')
         self.assertEqual(self.get_mxcsr(), 0x1f80)
+
+    def test_memory(self):
+        self.execute_code('subq $16, %rsp\n'
+                          'movq $0x77202c6f6c6c6568, %rax\n'
+                          'movq %rax, (%rsp)\n'
+                          'movq $0x21646c726f, %rax\n'
+                          'movq %rax, 8(%rsp)\n')
+        registers = self.instance.get_registers(asmase.ASMASE_REGISTERS_GENERAL_PURPOSE)
+        general_purpose = registers[asmase.ASMASE_REGISTERS_GENERAL_PURPOSE]
+        rsp = general_purpose['rsp'][0]
+        self.assertEqual(self.instance.read_memory(rsp, 13), b'hello, world!')
