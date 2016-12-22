@@ -24,6 +24,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include <sys/uio.h>
 
 #include <libasmase/arch.h>
@@ -188,6 +189,15 @@ struct asmase_instance *asmase_create_instance(void);
  * @a: asmase instance to destroy.
  */
 void asmase_destroy_instance(struct asmase_instance *a);
+
+/**
+ * asmase_get_pid() - Get the PID of an asmase instance.
+ *
+ * @a: asmase instance
+ *
+ * Return: PID of the instance
+ */
+pid_t asmase_get_pid(const struct asmase_instance *a);
 
 /**
  * asmase_execute_code() - Execute machine code on an asmase instance.

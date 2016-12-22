@@ -129,6 +129,12 @@ void asmase_destroy_instance(struct asmase_instance *a)
 }
 
 __attribute__((visibility("default")))
+pid_t asmase_get_pid(const struct asmase_instance *a)
+{
+	return a->pid;
+}
+
+__attribute__((visibility("default")))
 int asmase_execute_code(const struct asmase_instance *a,
 			const char *code, size_t len, int *wstatus)
 {
