@@ -22,6 +22,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include <signal.h>
+#include <spawn.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +31,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/wait.h>
@@ -42,59 +45,164 @@ int libasmase_init(void)
 	return 0;
 }
 
-static void tracee_close_all_fds(void)
+static char *tracee_path(void)
 {
-	DIR *dir;
+	const char *libexec;
+	char *path;
+	int ret;
 
-	dir = opendir("/proc/self/fd");
-	if (!dir)
-		abort();
+	libexec = getenv("ASMASE_LIBEXEC");
+	if (!libexec)
+		libexec = LIBEXEC;
 
-	for (;;) {
-		struct dirent *dirent;
-		long fd;
-		char *end;
-
-		errno = 0;
-		dirent = readdir(dir);
-		if (!dirent)
-			break;
-
-		if (strcmp(dirent->d_name, ".") == 0 ||
-		    strcmp(dirent->d_name, "..") == 0)
-			continue;
-
-		errno = 0;
-		fd = strtol(dirent->d_name, &end, 10);
-		if (errno || *end)
-			abort();
-
-		if (fd != dirfd(dir))
-			close(fd);
-	}
-	if (errno)
-		abort();
-
-	closedir(dir);
+	ret = asprintf(&path, "%s/asmase_tracee", libexec);
+	if (ret == -1)
+		return NULL;
+	return path;
 }
 
-/*
- * Entry point for the tracee. Requests to be ptraced and traps.
- */
-static void tracee(int flags) __attribute__((noreturn));
-static void tracee(int flags)
+static char **argv_alloc(void)
 {
-	if (flags & ASMASE_SANDBOX_FDS)
-		tracee_close_all_fds();
+	char **argv;
 
-	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
-		abort();
+	argv = malloc(sizeof(char *));
+	if (argv)
+		argv[0] = NULL;
+	return argv;
+}
 
-	if (raise(SIGTRAP))
-		abort();
+static void argv_free(char **argv)
+{
+	int i;
 
-	/* We shouldn't make it here. */
-	abort();
+	for (i = 0; argv[i]; i++)
+		free(argv[i]);
+	free(argv);
+}
+
+static int argv_appendf(char ***argv, int *argc, const char *format, ...)
+{
+	va_list ap;
+	char **tmp;
+	char *arg;
+	int ret;
+
+	tmp = realloc(*argv, sizeof(char *) * (*argc + 2));
+	if (!tmp)
+		return -1;
+	*argv = tmp;
+
+	va_start(ap, format);
+	ret = vasprintf(&arg, format, ap);
+	if (ret == -1)
+		return -1;
+
+	(*argv)[(*argc)++] = arg;
+	(*argv)[*argc] = NULL;
+	return 0;
+}
+
+static char **tracee_argv(const struct asmase_instance *a, int pipefd,
+			  int flags)
+{
+	char **argv;
+	int argc = 0;
+	int ret;
+
+	argv = argv_alloc();
+	if (!argv)
+		return NULL;
+
+	ret = argv_appendf(&argv, &argc, "asmase_tracee");
+	if (ret == -1)
+		goto err;
+
+	ret = argv_appendf(&argv, &argc, "--pipefd=%d", pipefd);
+	if (ret == -1)
+		goto err;
+
+	ret = argv_appendf(&argv, &argc, "--memfd=%d", a->memfd);
+	if (ret == -1)
+		goto err;
+
+	ret = argv_appendf(&argv, &argc, "--memfd-size=%zu", a->memfd_size);
+	if (ret == -1)
+		goto err;
+
+	if (flags & ASMASE_SANDBOX_FDS) {
+		ret = argv_appendf(&argv, &argc, "--close-fds");
+		if (ret == -1)
+			goto err;
+	}
+
+	return argv;
+err:
+	argv_free(argv);
+	return NULL;
+}
+
+static pid_t exec_tracee(struct asmase_instance *a, int flags)
+{
+	posix_spawn_file_actions_t file_actions;
+	posix_spawnattr_t attr;
+	char *path;
+	char **argv;
+	/* Empty environment to avoid leaking anything. */
+	char *envp[] = {NULL};
+	int pipefd[2] = {-1, -1};
+	pid_t pid = -1;
+	ssize_t sret;
+	int ret;
+
+	errno = posix_spawn_file_actions_init(&file_actions);
+	if (errno)
+		goto out;
+
+	errno = posix_spawnattr_init(&attr);
+	if (errno)
+		goto out_file_actions;
+
+	ret = pipe(pipefd);
+	if (ret == -1)
+		goto out_spawnattr;
+
+	errno = posix_spawn_file_actions_addclose(&file_actions, pipefd[0]);
+	if (errno)
+		goto out_pipe;
+
+	path = tracee_path();
+	if (!path)
+		goto out_pipe;
+
+	argv = tracee_argv(a, pipefd[1], flags);
+	if (!argv)
+		goto out_path;
+
+	errno = posix_spawn(&pid, path, &file_actions, &attr, argv, envp);
+	if (errno)
+		goto out_argv;
+
+	close(pipefd[1]);
+	pipefd[1] = -1;
+	sret = read(pipefd[0], &a->memfd_addr, sizeof(a->memfd_addr));
+	if (sret == -1)
+		goto out_argv;
+
+out_argv:
+	argv_free(argv);
+out_path:
+	free(path);
+out_pipe:
+	if (pipefd[0] != -1)
+		close(pipefd[0]);
+	if (pipefd[1] != -1)
+		close(pipefd[1]);
+out_spawnattr:
+	posix_spawnattr_destroy(&attr);
+out_file_actions:
+	posix_spawn_file_actions_destroy(&file_actions);
+out:
+	return pid;
 }
 
 static int attach_to_tracee(struct asmase_instance *a)
@@ -102,10 +210,6 @@ static int attach_to_tracee(struct asmase_instance *a)
 	if (waitpid(a->pid, NULL, 0) == -1)
 		return -1;
 
-	/*
-	 * This was introduced in Linux 3.8, so it might make sense to make this
-	 * a non-fatal error.
-	 */
 	if (ptrace(PTRACE_SETOPTIONS, a->pid, NULL, PTRACE_O_EXITKILL) == -1)
 		return -1;
 
@@ -121,24 +225,24 @@ struct asmase_instance *asmase_create_instance(int flags)
 	if (!a)
 		return NULL;
 
-	a->shared_size = sysconf(_SC_PAGESIZE);
-	a->shared_mem = mmap(NULL, a->shared_size,
-			     PROT_READ | PROT_WRITE | PROT_EXEC,
-			     MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-	if (a->shared_mem == MAP_FAILED) {
+	a->memfd_size = sysconf(_SC_PAGESIZE);
+	a->memfd = syscall(SYS_memfd_create, "asmase_tracee", 0);
+	if (a->memfd == -1) {
+		free(a);
+		return NULL;
+	}
+	if (ftruncate(a->memfd, a->memfd_size) == -1) {
+		close(a->memfd);
 		free(a);
 		return NULL;
 	}
 
-	a->pid = fork();
+	a->pid = exec_tracee(a, flags);
 	if (a->pid == -1) {
-		munmap(a->shared_mem, a->shared_size);
+		close(a->memfd);
 		free(a);
 		return NULL;
 	}
-
-	if (a->pid == 0)
-		tracee(flags); /* This doesn't return. */
 
 	if (attach_to_tracee(a) == -1) {
 		int saved_errno = errno;
@@ -155,7 +259,7 @@ void asmase_destroy_instance(struct asmase_instance *a)
 {
 	kill(a->pid, SIGKILL);
 	waitpid(a->pid, NULL, 0);
-	munmap(a->shared_mem, a->shared_size);
+	close(a->memfd);
 	free(a);
 }
 
@@ -169,22 +273,26 @@ __attribute__((visibility("default")))
 int asmase_execute_code(const struct asmase_instance *a,
 			const char *code, size_t len, int *wstatus)
 {
-	char *p = a->shared_mem;
+	struct iovec iov[] = {
+		{(void *)code, len},
+		{(void *)arch_trap_instruction, arch_trap_instruction_len},
+	};
+	ssize_t sret;
 	size_t total_len;
 	bool overflow;
 
 	overflow = __builtin_add_overflow(len, arch_trap_instruction_len,
 					  &total_len);
-	if (overflow || total_len >= a->shared_size) {
+	if (overflow || total_len >= a->memfd_size) {
 		errno = E2BIG;
 		return -1;
 	}
 
-	memcpy(p, code, len);
-	p += len;
-	memcpy(p, arch_trap_instruction, arch_trap_instruction_len);
+	sret = pwritev(a->memfd, iov, ARRAY_SIZE(iov), 0);
+	if (sret == -1)
+		return -1;
 
-	if (arch_set_tracee_program_counter(a->pid, a->shared_mem) == -1)
+	if (arch_set_tracee_program_counter(a->pid, a->memfd_addr) == -1)
 		return -1;
 
 retry:

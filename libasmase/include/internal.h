@@ -39,14 +39,19 @@ struct asmase_instance {
 	pid_t pid;
 
 	/**
-	 * @shared_mem: Memory map shared with the tracee.
+	 * @memfd: memfd mapped into the tracee.
 	 */
-	void *shared_mem;
+	int memfd;
 
 	/**
-	 * @shared_size: size of the memory map shared with the tracee.
+	 * @memfd_size: size of the memfd mapping.
 	 */
-	size_t shared_size;
+	size_t memfd_size;
+
+	/**
+	 * @memfd_addr: address of the memfd mapping in the tracee.
+	 */
+	void *memfd_addr;
 };
 
 extern const unsigned char arch_trap_instruction[];

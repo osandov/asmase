@@ -22,6 +22,10 @@
 #ifndef LIBASMASE_UTIL_H
 #define LIBASMASE_UTIL_H
 
+#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
 #define FIELD_TYPEOF(t, f) typeof(((t*)0)->f)
 
@@ -31,5 +35,46 @@
 #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
 #define __must_be_array(a) BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) + __must_be_array(arr))
+
+static inline long simple_strtol(char *str)
+{
+	char *end;
+	long ret;
+
+	ret = strtol(str, &end, 10);
+	if (end == str || *end) {
+		errno = EINVAL;
+		return 0;
+	}
+	return ret;
+}
+
+static inline long simple_strtoul(char *str)
+{
+	char *end;
+	unsigned long ret;
+
+	ret = strtoul(str, &end, 10);
+	if (end == str || *end) {
+		errno = EINVAL;
+		return 0;
+	}
+	return ret;
+}
+
+static inline int simple_strtoi(char *str)
+{
+	long ret;
+
+	errno = 0;
+	ret = simple_strtol(str);
+	if (errno)
+		return ret;
+	if (ret < INT_MIN || ret > INT_MAX) {
+		errno = EOVERFLOW;
+		return 0;
+	}
+	return ret;
+}
 
 #endif /* LIBASMASE_UTIL_H */

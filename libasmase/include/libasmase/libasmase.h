@@ -179,7 +179,10 @@ struct asmase_register {
  * Flags for asmase_create_instance().
  */
 enum asmase_create_flags {
-	/* Close all file descriptors */
+	/*
+	 * Close all file descriptors. File descriptors with the FD_CLOEXEC file
+	 * descriptor flag are always closed whether this flag is set or not.
+	 */
 	ASMASE_SANDBOX_FDS = (1 << 0),
 };
 
