@@ -176,11 +176,21 @@ struct asmase_register {
 };
 
 /**
+ * Flags for asmase_create_instance().
+ */
+enum asmase_create_flags {
+	/* Close all file descriptors */
+	ASMASE_SANDBOX_FDS = (1 << 0),
+};
+
+/**
  * asmase_create_instance() - Create a new asmase instance.
+ *
+ * @flags: A bitmask of enum asmase_create_flags.
  *
  * Return: New asmase instance.
  */
-struct asmase_instance *asmase_create_instance(void);
+struct asmase_instance *asmase_create_instance(int flags);
 
 /**
  * asmase_destroy_instance() - Free all resources associated with an asmase
@@ -193,9 +203,9 @@ void asmase_destroy_instance(struct asmase_instance *a);
 /**
  * asmase_get_pid() - Get the PID of an asmase instance.
  *
- * @a: asmase instance
+ * @a: asmase instance.
  *
- * Return: PID of the instance
+ * Return: PID of the instance.
  */
 pid_t asmase_get_pid(const struct asmase_instance *a);
 

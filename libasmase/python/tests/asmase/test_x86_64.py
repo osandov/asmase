@@ -2,18 +2,10 @@ import asmase
 import random
 import unittest
 
+from tests.asmase import AsmaseTestCase
 
-class TestX86_64(unittest.TestCase):
-    def setUp(self):
-        self.assembler = asmase.Assembler()
-        self.instance = asmase.Instance()
 
-    def tearDown(self):
-        self.instance.destroy()
-
-    def execute_code(self, code):
-        return self.instance.execute_code(self.assembler.assemble_code(code))
-
+class TestX86_64(AsmaseTestCase):
     def test_general_purpose(self):
         regs = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi', 'r8',
                 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']

@@ -19,6 +19,7 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <dirent.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -41,26 +42,56 @@ int libasmase_init(void)
 	return 0;
 }
 
+static void tracee_close_all_fds(void)
+{
+	DIR *dir;
+
+	dir = opendir("/proc/self/fd");
+	if (!dir)
+		abort();
+
+	for (;;) {
+		struct dirent *dirent;
+		long fd;
+		char *end;
+
+		errno = 0;
+		dirent = readdir(dir);
+		if (!dirent)
+			break;
+
+		if (strcmp(dirent->d_name, ".") == 0 ||
+		    strcmp(dirent->d_name, "..") == 0)
+			continue;
+
+		errno = 0;
+		fd = strtol(dirent->d_name, &end, 10);
+		if (errno || *end)
+			abort();
+
+		if (fd != dirfd(dir))
+			close(fd);
+	}
+	if (errno)
+		abort();
+
+	closedir(dir);
+}
+
 /*
  * Entry point for the tracee. Requests to be ptraced and traps.
- *
- * TODO: sandboxing. seccomp() disabling all syscalls should suffice, but for
- * defense-in-depth, let's close all fds and unmap as much memory as possible.
- * Wihtout sandboxing, might also want to do something special with ptrace() for
- * clone and exec.
  */
-static void tracee(void) __attribute__((noreturn));
-static void tracee(void)
+static void tracee(int flags) __attribute__((noreturn));
+static void tracee(int flags)
 {
-	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1) {
-		perror("ptrace");
-		abort();
-	}
+	if (flags & ASMASE_SANDBOX_FDS)
+		tracee_close_all_fds();
 
-	if (raise(SIGTRAP)) {
-		perror("raise");
+	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
 		abort();
-	}
+
+	if (raise(SIGTRAP))
+		abort();
 
 	/* We shouldn't make it here. */
 	abort();
@@ -82,7 +113,7 @@ static int attach_to_tracee(struct asmase_instance *a)
 }
 
 __attribute__((visibility("default")))
-struct asmase_instance *asmase_create_instance(void)
+struct asmase_instance *asmase_create_instance(int flags)
 {
 	struct asmase_instance *a;
 
@@ -107,7 +138,7 @@ struct asmase_instance *asmase_create_instance(void)
 	}
 
 	if (a->pid == 0)
-		tracee(); /* This doesn't return. */
+		tracee(flags); /* This doesn't return. */
 
 	if (attach_to_tracee(a) == -1) {
 		int saved_errno = errno;

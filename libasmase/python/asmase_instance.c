@@ -30,9 +30,15 @@ PyStructSequence_Desc RegisterValue_desc = {
 };
 PyTypeObject RegisterValue_type;
 
-static int Instance_init(Instance *self)
+static int Instance_init(Instance *self, PyObject *args, PyObject *kwds)
 {
-	self->a = asmase_create_instance();
+	static char *keywords[] = {"flags", NULL};
+	int flags = 0;
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "|i", keywords, &flags))
+		return -1;
+
+	self->a = asmase_create_instance(flags);
 	if (!self->a) {
 		PyErr_SetFromErrno(PyExc_OSError);
 		return -1;
