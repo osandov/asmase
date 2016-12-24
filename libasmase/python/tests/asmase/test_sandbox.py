@@ -2,8 +2,10 @@ import asmase
 import os
 import unittest
 
+from tests.asmase import AsmaseTestCase
 
-class TestSandbox(unittest.TestCase):
+
+class TestSandbox(AsmaseTestCase):
     def setUp(self):
         self.assembler = asmase.Assembler()
 
