@@ -1,6 +1,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <getopt.h>
+#include <seccomp.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -61,6 +62,20 @@ static void close_all_fds(void)
 	closedir(dir);
 }
 
+static void seccomp_all(void)
+{
+	scmp_filter_ctx *ctx;
+
+	ctx = seccomp_init(SCMP_ACT_TRAP);
+	if (!ctx)
+		exit(EXIT_FAILURE);
+
+	if (seccomp_load(ctx))
+		exit(EXIT_FAILURE);
+
+	seccomp_release(ctx);
+}
+
 static void usage(bool error)
 {
 	fprintf(error ? stderr : stdout,
@@ -68,6 +83,7 @@ static void usage(bool error)
 		"\n"
 		"Sandbox options:\n"
 		"  --close-fds    close all file descriptors\n"
+		"  --seccomp      disallow all syscalls with seccomp\n"
 		"\n"
 		"Miscellaneous:\n"
 		"  -h, --help     display this help message and exit\n");
@@ -81,12 +97,13 @@ int main(int argc, char **argv)
 		{"memfd", required_argument, NULL, 'f'},
 		{"memfd-size", required_argument, NULL, 's'},
 		{"close-fds", no_argument, NULL, 'c'},
+		{"seccomp", no_argument, NULL, 'S'},
 		{"help", no_argument, NULL, 'h'},
 		{}
 	};
 	int pipefd = -1, memfd = -1;
 	unsigned long memfd_size = 0;
-	bool close_fds = false;
+	bool close_fds = false, use_seccomp = false;
 
 	for (;;) {
 		int c;
@@ -117,6 +134,9 @@ int main(int argc, char **argv)
 		case 'c':
 			close_fds = true;
 			break;
+		case 'S':
+			use_seccomp = true;
+			break;
 		case 'h':
 			usage(false);
 			break;
@@ -135,6 +155,12 @@ int main(int argc, char **argv)
 		close_all_fds();
 
 	ptrace(PTRACE_TRACEME, -1, NULL, NULL);
+	if (use_seccomp)
+		seccomp_all();
+	/*
+	 * If seccomp is enabled, we'll get SIGSYS instead of SIGTRAP; that's
+	 * okay.
+	 */
 	raise(SIGTRAP);
 
 	/* We shouldn't make it here. */

@@ -135,6 +135,12 @@ static char **tracee_argv(const struct asmase_instance *a, int pipefd,
 			goto err;
 	}
 
+	if (flags & ASMASE_SANDBOX_SYSCALLS) {
+		ret = argv_appendf(&argv, &argc, "--seccomp");
+		if (ret == -1)
+			goto err;
+	}
+
 	return argv;
 err:
 	argv_free(argv);

@@ -17,7 +17,7 @@ OBJS := assembler.o \
 all: libasmase.so asmase_tracee
 
 asmase_tracee: tracee.c
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lseccomp
 
 libasmase.so: $(OBJS)
 	$(CC) $(LDFLAGS) -shared -o $@ $^

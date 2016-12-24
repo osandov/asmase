@@ -56,6 +56,7 @@ PyInit_asmase(void)
 	PyModule_AddIntMacro(m, ASMASE_REGISTER_FLOAT80);
 
 	PyModule_AddIntMacro(m, ASMASE_SANDBOX_FDS);
+	PyModule_AddIntMacro(m, ASMASE_SANDBOX_SYSCALLS);
 
 	AssemblerDiagnostic = PyErr_NewException("asmase.AssemblerDiagnostic",
 						 NULL, NULL);

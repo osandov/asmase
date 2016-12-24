@@ -184,6 +184,10 @@ enum asmase_create_flags {
 	 * descriptor flag are always closed whether this flag is set or not.
 	 */
 	ASMASE_SANDBOX_FDS = (1 << 0),
+	/*
+	 * Don't allow any syscalls.
+	 */
+	ASMASE_SANDBOX_SYSCALLS = (1 << 1),
 };
 
 /**
