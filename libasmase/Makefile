@@ -19,7 +19,7 @@ OBJS := assembler.o \
 all: libasmase.so asmase_tracee
 
 asmase_tracee: tracee.c
-	$(CC) $(CFLAGS) -static -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 
 libasmase.so: $(OBJS)
 	$(CC) $(LDFLAGS) -shared -o $@ $^
@@ -46,5 +46,5 @@ check: tests
 
 .PHONY: clean
 clean:
-	rm -f libasmase.so $(OBJS)
+	rm -f libasmase.so asmase_tracee $(OBJS)
 	rm -f $(TESTS)
