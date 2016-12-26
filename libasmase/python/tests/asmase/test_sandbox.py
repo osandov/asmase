@@ -29,3 +29,19 @@ class TestSandbox(AsmaseTestCase):
         )
         self.assertTrue(os.WIFSTOPPED(wstatus))
         self.assertEqual(os.WSTOPSIG(wstatus), signal.SIGSYS)
+
+    def get_environ(self):
+        with open('/proc/{}/environ'.format(self.instance.get_pid()), 'rb') as f:
+            data = f.read()
+        if not data:
+            return []
+        elif data[-1] == 0:
+            data = data[:-1]
+        return data.split(b'\0')
+
+    def test_environ(self):
+        self.instance = asmase.Instance()
+        self.assertTrue(self.get_environ())
+        self.instance.destroy()
+        self.instance = asmase.Instance(asmase.ASMASE_SANDBOX_ENVIRON)
+        self.assertFalse(self.get_environ())

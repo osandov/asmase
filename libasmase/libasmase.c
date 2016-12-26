@@ -153,8 +153,8 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 	posix_spawnattr_t attr;
 	char *path;
 	char **argv;
-	/* Empty environment to avoid leaking anything. */
-	char *envp[] = {NULL};
+	char **envp;
+	char *empty_environ[] = {NULL};
 	int pipefd[2] = {-1, -1};
 	pid_t pid = -1;
 	ssize_t sret;
@@ -183,6 +183,8 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 	argv = tracee_argv(a, pipefd[1], flags);
 	if (!argv)
 		goto out_path;
+
+	envp = (flags & ASMASE_SANDBOX_ENVIRON) ? empty_environ : environ;
 
 	errno = posix_spawn(&pid, path, &file_actions, &attr, argv, envp);
 	if (errno)

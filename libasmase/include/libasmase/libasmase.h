@@ -188,6 +188,10 @@ enum asmase_create_flags {
 	 * Don't allow any syscalls.
 	 */
 	ASMASE_SANDBOX_SYSCALLS = (1 << 1),
+	/*
+	 * Execute tracee with no environment variables.
+	 */
+	ASMASE_SANDBOX_ENVIRON = (1 << 2),
 };
 
 /**
