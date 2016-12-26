@@ -229,6 +229,12 @@ struct asmase_instance *asmase_create_instance(int flags)
 {
 	struct asmase_instance *a;
 
+	if (flags & ~(ASMASE_SANDBOX_FDS | ASMASE_SANDBOX_SYSCALLS |
+		      ASMASE_SANDBOX_ENVIRON)) {
+		errno = EINVAL;
+		return NULL;
+	}
+
 	a = malloc(sizeof(*a));
 	if (!a)
 		return NULL;

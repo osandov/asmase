@@ -1,4 +1,5 @@
 import asmase
+import errno
 import os
 import signal
 import unittest
@@ -9,6 +10,7 @@ from tests.asmase import AsmaseTestCase
 class TestSandbox(AsmaseTestCase):
     def setUp(self):
         self.assembler = asmase.Assembler()
+        self.instance = None
 
     def test_fds(self):
         self.instance = asmase.Instance(asmase.ASMASE_SANDBOX_FDS)
@@ -41,7 +43,15 @@ class TestSandbox(AsmaseTestCase):
 
     def test_environ(self):
         self.instance = asmase.Instance()
-        self.assertTrue(self.get_environ())
-        self.instance.destroy()
+        try:
+            self.assertTrue(self.get_environ())
+        finally:
+            self.instance.destroy()
+            self.instance = None
         self.instance = asmase.Instance(asmase.ASMASE_SANDBOX_ENVIRON)
         self.assertFalse(self.get_environ())
+
+    def test_invalid(self):
+        with self.assertRaises(OSError) as e:
+            self.instance = asmase.Instance(-1)
+        self.assertEqual(e.exception.errno, errno.EINVAL)
