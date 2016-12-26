@@ -19,6 +19,7 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <signal.h>
@@ -47,17 +48,18 @@ int libasmase_init(void)
 
 static int create_memfd(struct asmase_instance *a)
 {
-	a->memfd_addr = NULL;
+	void *memfd_addr = NULL;
+
 	a->memfd_size = sysconf(_SC_PAGESIZE);
 	a->memfd = syscall(SYS_memfd_create, "asmase_tracee", 0);
 	if (a->memfd == -1)
 		return -1;
 
 	/*
-	 * We use the first byte of the memfd as a flag which the tracee sets
+	 * The tracee will fill in the address that it mapped the memfd into
 	 * when it's done setting up.
 	 */
-	if (pwrite(a->memfd, "\0", 1, 0) == -1) {
+	if (pwrite(a->memfd, &memfd_addr, sizeof(memfd_addr), 0) == -1) {
 		close(a->memfd);
 		return -1;
 	}
@@ -122,8 +124,7 @@ static int argv_appendf(char ***argv, int *argc, const char *format, ...)
 	return 0;
 }
 
-static char **tracee_argv(const struct asmase_instance *a, int pipefd,
-			  int flags)
+static char **tracee_argv(const struct asmase_instance *a, int flags)
 {
 	char **argv;
 	int argc = 0;
@@ -134,10 +135,6 @@ static char **tracee_argv(const struct asmase_instance *a, int pipefd,
 		return NULL;
 
 	ret = argv_appendf(&argv, &argc, "asmase_tracee");
-	if (ret == -1)
-		goto err;
-
-	ret = argv_appendf(&argv, &argc, "--pipefd=%d", pipefd);
 	if (ret == -1)
 		goto err;
 
@@ -175,10 +172,7 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 	char **argv;
 	char **envp;
 	char *empty_environ[] = {NULL};
-	int pipefd[2] = {-1, -1};
 	pid_t pid = -1;
-	ssize_t sret;
-	int ret;
 
 	errno = posix_spawn_file_actions_init(&file_actions);
 	if (errno)
@@ -188,19 +182,11 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 	if (errno)
 		goto out_file_actions;
 
-	ret = pipe(pipefd);
-	if (ret == -1)
-		goto out_spawnattr;
-
-	errno = posix_spawn_file_actions_addclose(&file_actions, pipefd[0]);
-	if (errno)
-		goto out_pipe;
-
 	path = tracee_path();
 	if (!path)
-		goto out_pipe;
+		goto out_spawnattr;
 
-	argv = tracee_argv(a, pipefd[1], flags);
+	argv = tracee_argv(a, flags);
 	if (!argv)
 		goto out_path;
 
@@ -210,21 +196,10 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 	if (errno)
 		goto out_argv;
 
-	close(pipefd[1]);
-	pipefd[1] = -1;
-	sret = read(pipefd[0], &a->memfd_addr, sizeof(a->memfd_addr));
-	if (sret == -1)
-		goto out_argv;
-
 out_argv:
 	argv_free(argv);
 out_path:
 	free(path);
-out_pipe:
-	if (pipefd[0] != -1)
-		close(pipefd[0]);
-	if (pipefd[1] != -1)
-		close(pipefd[1]);
 out_spawnattr:
 	posix_spawnattr_destroy(&attr);
 out_file_actions:
@@ -236,7 +211,7 @@ out:
 static int attach_to_tracee(struct asmase_instance *a)
 {
 	int wstatus;
-	char flag = 0;
+	ssize_t sret;
 
 	for (;;) {
 		if (waitpid(a->pid, &wstatus, 0) == -1)
@@ -251,9 +226,11 @@ static int attach_to_tracee(struct asmase_instance *a)
 			return -1;
 		}
 
-		if (pread(a->memfd, &flag, 1, 0) == -1)
+		sret = pread(a->memfd, &a->memfd_addr, sizeof(a->memfd_addr), 0);
+		if (sret == -1)
 			return -1;
-		if (flag)
+		assert(sret == sizeof(a->memfd_addr));
+		if (a->memfd_addr)
 			break;
 
 		if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1)

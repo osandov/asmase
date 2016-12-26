@@ -14,7 +14,7 @@
 
 #include "util.h"
 
-static void *mmap_memfd(int pipefd, int memfd, unsigned int size)
+static void *mmap_memfd(int memfd, unsigned int size)
 {
 	void *addr;
 
@@ -23,9 +23,6 @@ static void *mmap_memfd(int pipefd, int memfd, unsigned int size)
 	if (addr == MAP_FAILED)
 		exit(EXIT_FAILURE);
 	close(memfd);
-
-	write(pipefd, &addr, sizeof(addr));
-	close(pipefd);
 	return addr;
 }
 
@@ -81,7 +78,7 @@ static void seccomp_all(void)
 static void usage(bool error)
 {
 	fprintf(error ? stderr : stdout,
-		"usage: asmase_tracee --pipefd=FD --memfd=FD --memfd-size=SIZE [OPTIONS]\n"
+		"usage: asmase_tracee --memfd=FD --memfd-size=SIZE [OPTIONS]\n"
 		"\n"
 		"Sandbox options:\n"
 		"  --close-fds    close all file descriptors\n"
@@ -95,7 +92,6 @@ static void usage(bool error)
 int main(int argc, char **argv)
 {
 	const struct option long_options[] = {
-		{"pipefd", required_argument, NULL, 'p'},
 		{"memfd", required_argument, NULL, 'f'},
 		{"memfd-size", required_argument, NULL, 's'},
 		{"close-fds", no_argument, NULL, 'c'},
@@ -103,7 +99,7 @@ int main(int argc, char **argv)
 		{"help", no_argument, NULL, 'h'},
 		{}
 	};
-	int pipefd = -1, memfd = -1;
+	int memfd = -1;
 	unsigned long memfd_size = 0;
 	bool close_fds = false, use_seccomp = false;
 	void *memfd_addr;
@@ -116,12 +112,6 @@ int main(int argc, char **argv)
 			break;
 
 		switch (c) {
-		case 'p':
-			errno = 0;
-			pipefd = simple_strtoi(optarg);
-			if (errno)
-				usage(true);
-			break;
 		case 'f':
 			errno = 0;
 			memfd = simple_strtoi(optarg);
@@ -150,10 +140,10 @@ int main(int argc, char **argv)
 	}
 	if (optind != argc)
 		usage(true);
-	if (pipefd < 0 || memfd < 0 || memfd_size == 0)
+	if (memfd < 0 || memfd_size == 0)
 		usage(true);
 
-	memfd_addr = mmap_memfd(pipefd, memfd, memfd_size);
+	memfd_addr = mmap_memfd(memfd, memfd_size);
 	if (close_fds)
 		close_all_fds();
 
@@ -164,9 +154,10 @@ int main(int argc, char **argv)
 		seccomp_all();
 
 	/*
-	 * Set the flag which tells the tracer that we're done setting up.
+	 * This serves two purposes: it tells the tracer where we mapped the
+	 * memfd and it lets the tracer know that we're done setting up.
 	 */
-	*(char *)memfd_addr = 1;
+	*(void **)memfd_addr = memfd_addr;
 
 	/*
 	 * If seccomp is enabled, we'll get SIGSYS instead of SIGTRAP; that's
