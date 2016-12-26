@@ -45,6 +45,26 @@ int libasmase_init(void)
 	return 0;
 }
 
+static int create_memfd(struct asmase_instance *a)
+{
+	a->memfd_addr = NULL;
+	a->memfd_size = sysconf(_SC_PAGESIZE);
+	a->memfd = syscall(SYS_memfd_create, "asmase_tracee", 0);
+	if (a->memfd == -1)
+		return -1;
+
+	/*
+	 * We use the first byte of the memfd as a flag which the tracee sets
+	 * when it's done setting up.
+	 */
+	if (pwrite(a->memfd, "\0", 1, 0) == -1) {
+		close(a->memfd);
+		return -1;
+	}
+
+	return 0;
+}
+
 static char *tracee_path(void)
 {
 	const char *libexec;
@@ -215,8 +235,30 @@ out:
 
 static int attach_to_tracee(struct asmase_instance *a)
 {
-	if (waitpid(a->pid, NULL, 0) == -1)
-		return -1;
+	int wstatus;
+	char flag = 0;
+
+	for (;;) {
+		if (waitpid(a->pid, &wstatus, 0) == -1)
+			return -1;
+
+		/*
+		 * If the tracee exited or was signaled before it requested to
+		 * be ptrace'd, we can't attach to it.
+		 */
+		if (!WIFSTOPPED(wstatus)) {
+			errno = ECHILD;
+			return -1;
+		}
+
+		if (pread(a->memfd, &flag, 1, 0) == -1)
+			return -1;
+		if (flag)
+			break;
+
+		if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1)
+			return -1;
+	}
 
 	if (ptrace(PTRACE_SETOPTIONS, a->pid, NULL, PTRACE_O_EXITKILL) == -1)
 		return -1;
@@ -239,14 +281,7 @@ struct asmase_instance *asmase_create_instance(int flags)
 	if (!a)
 		return NULL;
 
-	a->memfd_size = sysconf(_SC_PAGESIZE);
-	a->memfd = syscall(SYS_memfd_create, "asmase_tracee", 0);
-	if (a->memfd == -1) {
-		free(a);
-		return NULL;
-	}
-	if (ftruncate(a->memfd, a->memfd_size) == -1) {
-		close(a->memfd);
+	if (create_memfd(a) == -1) {
 		free(a);
 		return NULL;
 	}
