@@ -166,25 +166,14 @@ err:
 
 static pid_t exec_tracee(struct asmase_instance *a, int flags)
 {
-	posix_spawn_file_actions_t file_actions;
-	posix_spawnattr_t attr;
 	char *path;
-	char **argv;
-	char **envp;
+	char **argv, **envp;
 	char *empty_environ[] = {NULL};
 	pid_t pid = -1;
 
-	errno = posix_spawn_file_actions_init(&file_actions);
-	if (errno)
-		goto out;
-
-	errno = posix_spawnattr_init(&attr);
-	if (errno)
-		goto out_file_actions;
-
 	path = tracee_path();
 	if (!path)
-		goto out_spawnattr;
+		goto out;
 
 	argv = tracee_argv(a, flags);
 	if (!argv)
@@ -192,18 +181,16 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 
 	envp = (flags & ASMASE_SANDBOX_ENVIRON) ? empty_environ : environ;
 
-	errno = posix_spawn(&pid, path, &file_actions, &attr, argv, envp);
-	if (errno)
+	errno = posix_spawn(&pid, path, NULL, NULL, argv, envp);
+	if (errno) {
+		pid = -1;
 		goto out_argv;
+	}
 
 out_argv:
 	argv_free(argv);
 out_path:
 	free(path);
-out_spawnattr:
-	posix_spawnattr_destroy(&attr);
-out_file_actions:
-	posix_spawn_file_actions_destroy(&file_actions);
 out:
 	return pid;
 }
