@@ -126,6 +126,9 @@ int main(int argc, char **argv)
 	void *memfd_addr;
 	unsigned long stack_size = 0;
 
+	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
+		exit(EXIT_FAILURE);
+
 	for (;;) {
 		int c;
 
@@ -179,9 +182,6 @@ int main(int argc, char **argv)
 
 	if (limit_stack)
 		set_stack_limit(stack_size);
-
-	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
-		exit(EXIT_FAILURE);
 
 	if (use_seccomp)
 		seccomp_all();
