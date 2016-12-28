@@ -198,6 +198,11 @@ enum asmase_create_flags {
 	ASMASE_SANDBOX_STACK = (1 << 3),
 };
 
+/*
+ * Enable all sandboxing flags.
+ */
+#define ASMASE_SANDBOX_ALL ((1 << 4) - 1)
+
 /**
  * asmase_create_instance() - Create a new asmase instance.
  *
