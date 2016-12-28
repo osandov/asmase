@@ -158,6 +158,12 @@ static char **tracee_argv(const struct asmase_instance *a, int flags)
 			goto err;
 	}
 
+	if (flags & ASMASE_SANDBOX_STACK) {
+		ret = argv_appendf(&argv, &argc, "--stack=%d", 256 * 1024);
+		if (ret == -1)
+			goto err;
+	}
+
 	return argv;
 err:
 	argv_free(argv);
@@ -236,7 +242,7 @@ struct asmase_instance *asmase_create_instance(int flags)
 	struct asmase_instance *a;
 
 	if (flags & ~(ASMASE_SANDBOX_FDS | ASMASE_SANDBOX_SYSCALLS |
-		      ASMASE_SANDBOX_ENVIRON)) {
+		      ASMASE_SANDBOX_ENVIRON | ASMASE_SANDBOX_STACK)) {
 		errno = EINVAL;
 		return NULL;
 	}

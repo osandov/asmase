@@ -51,6 +51,16 @@ class TestSandbox(AsmaseTestCase):
         self.instance = asmase.Instance(asmase.ASMASE_SANDBOX_ENVIRON)
         self.assertFalse(self.get_environ())
 
+    def test_stack(self):
+        self.instance = asmase.Instance(asmase.ASMASE_SANDBOX_STACK)
+
+        wstatus = self.execute_code(
+            'subq $0x20000000, %rsp\n'
+            'movq $0, (%rsp)\n'
+        )
+        self.assertTrue(os.WIFSTOPPED(wstatus))
+        self.assertEqual(os.WSTOPSIG(wstatus), signal.SIGSEGV)
+
     def test_invalid(self):
         with self.assertRaises(OSError) as e:
             self.instance = asmase.Instance(-1)

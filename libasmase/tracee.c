@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/ptrace.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 
 #include "util.h"
@@ -61,6 +62,24 @@ static void close_all_fds(void)
 	closedir(dir);
 }
 
+static void set_stack_limit(unsigned long bytes)
+{
+	struct rlimit rlimit;
+
+	if (getrlimit(RLIMIT_STACK, &rlimit) == -1)
+		exit(EXIT_FAILURE);
+
+	if (rlimit.rlim_max <= bytes)
+		return;
+
+	rlimit.rlim_max = bytes;
+	if (rlimit.rlim_cur > bytes)
+		rlimit.rlim_cur = bytes;
+
+	if (setrlimit(RLIMIT_STACK, &rlimit) == -1)
+		exit(EXIT_FAILURE);
+}
+
 static void seccomp_all(void)
 {
 	scmp_filter_ctx *ctx;
@@ -81,8 +100,9 @@ static void usage(bool error)
 		"usage: asmase_tracee --memfd=FD --memfd-size=SIZE [OPTIONS]\n"
 		"\n"
 		"Sandbox options:\n"
-		"  --close-fds    close all file descriptors\n"
-		"  --seccomp      disallow all syscalls with seccomp\n"
+		"  --close-fds      close all file descriptors\n"
+		"  --seccomp        disallow all syscalls with seccomp\n"
+		"  --stack=BYTES    limit the size of the stack\n"
 		"\n"
 		"Miscellaneous:\n"
 		"  -h, --help     display this help message and exit\n");
@@ -96,13 +116,15 @@ int main(int argc, char **argv)
 		{"memfd-size", required_argument, NULL, 's'},
 		{"close-fds", no_argument, NULL, 'c'},
 		{"seccomp", no_argument, NULL, 'S'},
+		{"stack", required_argument, NULL, 't'},
 		{"help", no_argument, NULL, 'h'},
 		{}
 	};
 	int memfd = -1;
 	unsigned long memfd_size = 0;
-	bool close_fds = false, use_seccomp = false;
+	bool close_fds = false, use_seccomp = false, limit_stack = false;
 	void *memfd_addr;
+	unsigned long stack_size = 0;
 
 	for (;;) {
 		int c;
@@ -130,6 +152,13 @@ int main(int argc, char **argv)
 		case 'S':
 			use_seccomp = true;
 			break;
+		case 't':
+			errno = 0;
+			stack_size = simple_strtoul(optarg);
+			if (errno)
+				usage(true);
+			limit_stack = true;
+			break;
 		case 'h':
 			usage(false);
 			break;
@@ -144,8 +173,12 @@ int main(int argc, char **argv)
 		usage(true);
 
 	memfd_addr = mmap_memfd(memfd, memfd_size);
+
 	if (close_fds)
 		close_all_fds();
+
+	if (limit_stack)
+		set_stack_limit(stack_size);
 
 	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
 		exit(EXIT_FAILURE);

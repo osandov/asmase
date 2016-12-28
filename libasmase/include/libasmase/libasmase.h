@@ -192,6 +192,10 @@ enum asmase_create_flags {
 	 * Execute tracee with no environment variables.
 	 */
 	ASMASE_SANDBOX_ENVIRON = (1 << 2),
+	/*
+	 * Execute the tracee with a limited stack (256 KB).
+	 */
+	ASMASE_SANDBOX_STACK = (1 << 3),
 };
 
 /**

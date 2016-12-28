@@ -36,7 +36,7 @@
 #define __must_be_array(a) BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) + __must_be_array(arr))
 
-static inline long simple_strtol(char *str)
+static inline long simple_strtol(const char *str)
 {
 	char *end;
 	long ret;
@@ -49,7 +49,7 @@ static inline long simple_strtol(char *str)
 	return ret;
 }
 
-static inline long simple_strtoul(char *str)
+static inline unsigned long simple_strtoul(const char *str)
 {
 	char *end;
 	unsigned long ret;
@@ -62,7 +62,7 @@ static inline long simple_strtoul(char *str)
 	return ret;
 }
 
-static inline int simple_strtoi(char *str)
+static inline int simple_strtoi(const char *str)
 {
 	long ret;
 
