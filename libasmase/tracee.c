@@ -16,6 +16,32 @@
 
 #include "util.h"
 
+static void reset_signals(void)
+{
+	struct sigaction sa = {
+		.sa_handler = SIG_DFL,
+		.sa_flags = SA_RESTART,
+	};
+	sigset_t mask;
+	int i;
+
+	if (sigemptyset(&sa.sa_mask) == -1)
+		exit(EXIT_FAILURE);
+
+	/*
+	 * The only errors from sigaction() are EFAULT and EINVAL. EFAULT won't
+	 * happen and EINVAL is expected.
+	 */
+	for (i = 1; i < NSIG; i++)
+		sigaction(i, &sa, NULL);
+
+	if (sigemptyset(&mask) == -1)
+		exit(EXIT_FAILURE);
+
+	if (sigprocmask(SIG_SETMASK, &mask, NULL) == -1)
+		exit(EXIT_FAILURE);
+}
+
 static void *mmap_memfd(int memfd, unsigned int size)
 {
 	void *addr;
@@ -109,6 +135,8 @@ int main(int argc, char **argv)
 
 	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
 		exit(EXIT_FAILURE);
+
+	reset_signals();
 
 	for (;;) {
 		int c;
