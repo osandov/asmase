@@ -164,6 +164,12 @@ static char **tracee_argv(const struct asmase_instance *a, int flags)
 			goto err;
 	}
 
+	if (flags & ASMASE_SANDBOX_CPU) {
+		ret = argv_appendf(&argv, &argc, "--nice=19");
+		if (ret == -1)
+			goto err;
+	}
+
 	return argv;
 err:
 	argv_free(argv);

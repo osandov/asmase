@@ -61,6 +61,10 @@ class TestSandbox(AsmaseTestCase):
         self.assertTrue(os.WIFSTOPPED(wstatus))
         self.assertEqual(os.WSTOPSIG(wstatus), signal.SIGSEGV)
 
+    def test_cpu(self):
+        self.instance = asmase.Instance(asmase.ASMASE_SANDBOX_CPU)
+        self.assertEqual(os.getpriority(os.PRIO_PROCESS, self.instance.get_pid()), 19)
+
     def test_invalid(self):
         with self.assertRaises(OSError) as e:
             self.instance = asmase.Instance(-1)

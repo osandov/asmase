@@ -12,6 +12,7 @@
 #include <sys/ptrace.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include "util.h"
 
@@ -101,6 +102,7 @@ static void usage(bool error)
 		"\n"
 		"Sandbox options:\n"
 		"  --close-fds      close all file descriptors\n"
+		"  --nice=NICE      set (and limit) the nice value\n"
 		"  --seccomp        disallow all syscalls with seccomp\n"
 		"  --stack=BYTES    limit the size of the stack\n"
 		"\n"
@@ -115,6 +117,7 @@ int main(int argc, char **argv)
 		{"memfd", required_argument, NULL, 'f'},
 		{"memfd-size", required_argument, NULL, 's'},
 		{"close-fds", no_argument, NULL, 'c'},
+		{"nice", required_argument, NULL, 'n'},
 		{"seccomp", no_argument, NULL, 'S'},
 		{"stack", required_argument, NULL, 't'},
 		{"help", no_argument, NULL, 'h'},
@@ -122,11 +125,19 @@ int main(int argc, char **argv)
 	};
 	int memfd = -1;
 	unsigned long memfd_size = 0;
-	bool close_fds = false, use_seccomp = false, limit_stack = false;
+	bool close_fds = false;
+	bool nice_flag = false;
+	bool use_seccomp = false;
+	bool limit_stack = false;
 	void *memfd_addr;
 	unsigned long stack_size = 0;
+	int nice = 0;
 
 	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
+		exit(EXIT_FAILURE);
+
+	/* Work around autogroup for nice. */
+	if (setsid() == -1)
 		exit(EXIT_FAILURE);
 
 	for (;;) {
@@ -152,6 +163,13 @@ int main(int argc, char **argv)
 		case 'c':
 			close_fds = true;
 			break;
+		case 'n':
+			errno = 0;
+			nice = simple_strtoi(optarg);
+			if (errno)
+				usage(true);
+			nice_flag = true;
+			break;
 		case 'S':
 			use_seccomp = true;
 			break;
@@ -174,6 +192,11 @@ int main(int argc, char **argv)
 		usage(true);
 	if (memfd < 0 || memfd_size == 0)
 		usage(true);
+
+	if (nice_flag) {
+		if (setpriority(PRIO_PROCESS, 0, nice) == -1)
+			exit(EXIT_FAILURE);
+	}
 
 	memfd_addr = mmap_memfd(memfd, memfd_size);
 
