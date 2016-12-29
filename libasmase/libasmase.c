@@ -307,15 +307,11 @@ int asmase_execute_code(const struct asmase_instance *a,
 	if (arch_set_tracee_program_counter(a->pid, a->memfd_addr) == -1)
 		return -1;
 
-retry:
 	if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1)
 		return -1;
 
 	if (waitpid(a->pid, wstatus, 0) == -1)
 		return -1;
-
-	if (WIFSTOPPED(*wstatus) && WSTOPSIG(*wstatus) == SIGWINCH)
-		goto retry;
 
 	return 0;
 }

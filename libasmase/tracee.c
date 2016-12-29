@@ -35,7 +35,7 @@ static void reset_signals(void)
 	for (i = 1; i < NSIG; i++)
 		sigaction(i, &sa, NULL);
 
-	if (sigemptyset(&mask) == -1)
+	if (sigemptyset(&mask) == -1 || sigaddset(&mask, SIGWINCH) == -1)
 		exit(EXIT_FAILURE);
 
 	if (sigprocmask(SIG_SETMASK, &mask, NULL) == -1)
