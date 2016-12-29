@@ -69,12 +69,12 @@ static PyObject *Instance_destroy(Instance *self)
 	Py_RETURN_NONE;
 }
 
-static PyObject *Instance_get_pid(Instance *self, PyObject *arg)
+static PyObject *Instance_getpid(Instance *self, PyObject *arg)
 {
 	if (!self->a)
 		return PyErr_InstanceDestroyed();
 
-	return PyLong_FromLong(asmase_get_pid(self->a));
+	return PyLong_FromLong(asmase_getpid(self->a));
 }
 
 static PyObject *Instance_execute_code(Instance *self, PyObject *arg)
@@ -398,8 +398,8 @@ static PyMethodDef Instance_methods[] = {
 	 "destroy()\n\n"
 	 "Destroy this instance. No other methods must be called on this\n"
 	 "instance after this."},
-	{"get_pid", (PyCFunction)Instance_get_pid, METH_NOARGS,
-	 "get_pid() -> int\n\n"
+	{"getpid", (PyCFunction)Instance_getpid, METH_NOARGS,
+	 "getpid() -> int\n\n"
 	 "Get the PID of this instance."},
 	{"execute_code", (PyCFunction)Instance_execute_code, METH_O,
 	 "execute_code(code) -> int\n\n"

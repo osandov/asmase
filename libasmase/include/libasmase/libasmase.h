@@ -217,13 +217,13 @@ struct asmase_instance *asmase_create_instance(int flags);
 void asmase_destroy_instance(struct asmase_instance *a);
 
 /**
- * asmase_get_pid() - Get the PID of an asmase instance.
+ * asmase_getpid() - Get the PID of an asmase instance.
  *
  * @a: asmase instance.
  *
  * Return: PID of the instance.
  */
-pid_t asmase_get_pid(const struct asmase_instance *a);
+pid_t asmase_getpid(const struct asmase_instance *a);
 
 /**
  * asmase_execute_code() - Execute machine code on an asmase instance.

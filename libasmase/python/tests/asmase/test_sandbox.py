@@ -24,7 +24,7 @@ class TestSandbox(AsmaseTestCase):
 
     def _test_fds(self, flags):
         with _instance(flags) as instance:
-            pid = instance.get_pid()
+            pid = instance.getpid()
             self.assertEqual(os.listdir('/proc/{}/fd'.format(pid)), [])
 
     def test_fds(self):
@@ -52,7 +52,7 @@ class TestSandbox(AsmaseTestCase):
 
     @staticmethod
     def get_environ(instance):
-        with open('/proc/{}/environ'.format(instance.get_pid()), 'rb') as f:
+        with open('/proc/{}/environ'.format(instance.getpid()), 'rb') as f:
             data = f.read()
         if not data:
             return []

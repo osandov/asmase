@@ -276,7 +276,7 @@ void asmase_destroy_instance(struct asmase_instance *a)
 }
 
 __attribute__((visibility("default")))
-pid_t asmase_get_pid(const struct asmase_instance *a)
+pid_t asmase_getpid(const struct asmase_instance *a)
 {
 	return a->pid;
 }
