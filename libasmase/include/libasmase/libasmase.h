@@ -192,20 +192,12 @@ enum asmase_create_flags {
 	 * Execute tracee with no environment variables.
 	 */
 	ASMASE_SANDBOX_ENVIRON = (1 << 2),
-	/*
-	 * Execute the tracee with a limited stack (256 KB).
-	 */
-	ASMASE_SANDBOX_STACK = (1 << 3),
-	/*
-	 * Execute the tracee with limited CPU (nice value of 19).
-	 */
-	ASMASE_SANDBOX_CPU = (1 << 4),
 };
 
 /*
  * Enable all sandboxing flags.
  */
-#define ASMASE_SANDBOX_ALL ((1 << 5) - 1)
+#define ASMASE_SANDBOX_ALL ((1 << 3) - 1)
 
 /**
  * asmase_create_instance() - Create a new asmase instance.

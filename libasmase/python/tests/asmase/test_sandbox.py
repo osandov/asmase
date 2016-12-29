@@ -70,29 +70,6 @@ class TestSandbox(AsmaseTestCase):
         self._test_environ(asmase.ASMASE_SANDBOX_ENVIRON)
         self._test_environ(asmase.ASMASE_SANDBOX_ALL)
 
-    def _test_stack(self, flags):
-        with _instance(flags) as instance:
-            code = self.assembler.assemble_code(
-                'subq $0x20000000, %rsp\n'
-                'movq $0, (%rsp)\n'
-            )
-            wstatus = instance.execute_code(code)
-            self.assertTrue(os.WIFSTOPPED(wstatus))
-            self.assertEqual(os.WSTOPSIG(wstatus), signal.SIGSEGV)
-
-    def test_stack(self):
-        self._test_stack(asmase.ASMASE_SANDBOX_STACK)
-        self._test_stack(asmase.ASMASE_SANDBOX_ALL)
-
-    def _test_cpu(self, flags):
-        with _instance(flags) as instance:
-            prio = os.getpriority(os.PRIO_PROCESS, instance.get_pid())
-            self.assertEqual(prio, 19)
-
-    def test_cpu(self):
-        self._test_cpu(asmase.ASMASE_SANDBOX_CPU)
-        self._test_cpu(asmase.ASMASE_SANDBOX_ALL)
-
     def test_invalid(self):
         with self.assertRaises(OSError) as e:
             self.instance = asmase.Instance(-1)
