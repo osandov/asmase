@@ -20,8 +20,10 @@
  */
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/ptrace.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <asm/processor-flags.h>
 
@@ -46,6 +48,34 @@ int arch_set_tracee_program_counter(pid_t pid, void *pc)
 		return -1;
 
 	return 0;
+}
+
+int arch_assemble_munmap(struct asmase_assembler *as,
+			 unsigned long munmap_start, unsigned long munmap_len,
+			 char **out, size_t *len)
+{
+	char code[200];
+	int ret;
+
+	snprintf(code, sizeof(code),
+#ifdef __x86_64__
+		 "movq $%lu, %%rdi\n"
+		 "movq $%lu, %%rsi\n"
+		 "movq $%d, %%rax\n"
+		 "syscall\n",
+#else
+		 "movl $%lu, %%ebx\n"
+		 "movl $%lu, %%eci\n"
+		 "movl $%d, %%eax\n"
+		 "int $0x80\n",
+#endif
+		 munmap_start, munmap_len, SYS_munmap);
+
+	ret = asmase_assemble_code(as, "arch_assemble_munmap", 1, code, out,
+				   len);
+	assert(ret != 1);
+
+	return ret;
 }
 
 const struct arch_register_descriptor arch_program_counter_reg =

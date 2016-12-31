@@ -33,8 +33,9 @@
  *
  * 1. The architecture trap instruction (DEFINE_ARCH_TRAP_INSTRUCTION()).
  * 2. A function to set the program counter of a tracee.
- * 3. The architecture ptrace register sets (DEFINE_ARCH_PTRACE_REGSETS<n>()).
- * 4. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
+ * 3. A function to assemble a call to the munmap() syscall.
+ * 4. The architecture ptrace register sets (DEFINE_ARCH_PTRACE_REGSETS<n>()).
+ * 5. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
  *    REGISTER_DESCRIPTOR()).
  */
 

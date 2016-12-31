@@ -60,6 +60,11 @@ PyInit_asmase(void)
 	PyModule_AddIntMacro(m, ASMASE_SANDBOX_ENVIRON);
 	PyModule_AddIntMacro(m, ASMASE_SANDBOX_ALL);
 
+	PyModule_AddIntMacro(m, ASMASE_MUNMAP_FILE);
+	PyModule_AddIntMacro(m, ASMASE_MUNMAP_ANON);
+	PyModule_AddIntMacro(m, ASMASE_MUNMAP_HEAP);
+	PyModule_AddIntMacro(m, ASMASE_MUNMAP_ALL);
+
 	AssemblerDiagnostic = PyErr_NewException("asmase.AssemblerDiagnostic",
 						 NULL, NULL);
 	Py_INCREF(AssemblerDiagnostic);

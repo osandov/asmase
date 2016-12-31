@@ -59,6 +59,10 @@ extern const size_t arch_trap_instruction_len;
 
 int arch_set_tracee_program_counter(pid_t pid, void *pc);
 
+int arch_assemble_munmap(struct asmase_assembler *as,
+			 unsigned long munmap_start, unsigned long munmap_len,
+			 char **out, size_t *len);
+
 extern const struct arch_register_descriptor arch_program_counter_reg;
 
 extern const struct arch_register_descriptor arch_segment_regs[];

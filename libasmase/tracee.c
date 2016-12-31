@@ -89,13 +89,18 @@ static void close_all_fds(void)
 	closedir(dir);
 }
 
-static void seccomp_all(void)
+static void seccomp_all(bool allow_munmap)
 {
-	scmp_filter_ctx *ctx;
+	scmp_filter_ctx ctx;
 
 	ctx = seccomp_init(SCMP_ACT_TRAP);
 	if (!ctx)
 		exit(EXIT_FAILURE);
+
+	if (allow_munmap) {
+		if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(munmap), 0))
+			exit(EXIT_FAILURE);
+	}
 
 	if (seccomp_load(ctx))
 		exit(EXIT_FAILURE);
@@ -109,8 +114,9 @@ static void usage(bool error)
 		"usage: asmase_tracee --memfd=FD --memfd-size=SIZE [OPTIONS]\n"
 		"\n"
 		"Sandbox options:\n"
-		"  --close-fds      close all file descriptors\n"
-		"  --seccomp        disallow all syscalls with seccomp\n"
+		"  --close-fds       close all file descriptors\n"
+		"  --seccomp         disallow all syscalls with seccomp\n"
+		"  --allow-munmap    allow munmap() if using seccomp\n"
 		"\n"
 		"Miscellaneous:\n"
 		"  -h, --help     display this help message and exit\n");
@@ -124,6 +130,7 @@ int main(int argc, char **argv)
 		{"memfd-size", required_argument, NULL, 's'},
 		{"close-fds", no_argument, NULL, 'c'},
 		{"seccomp", no_argument, NULL, 'S'},
+		{"allow-munmap", no_argument, NULL, 'a'},
 		{"help", no_argument, NULL, 'h'},
 		{}
 	};
@@ -131,6 +138,7 @@ int main(int argc, char **argv)
 	unsigned long memfd_size = 0;
 	bool close_fds = false;
 	bool use_seccomp = false;
+	bool allow_munmap = false;
 	void *memfd_addr;
 
 	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
@@ -164,6 +172,9 @@ int main(int argc, char **argv)
 		case 'S':
 			use_seccomp = true;
 			break;
+		case 'a':
+			allow_munmap = true;
+			break;
 		case 'h':
 			usage(false);
 			break;
@@ -183,7 +194,7 @@ int main(int argc, char **argv)
 		close_all_fds();
 
 	if (use_seccomp)
-		seccomp_all();
+		seccomp_all(allow_munmap);
 
 	/*
 	 * This serves two purposes: it tells the tracer where we mapped the

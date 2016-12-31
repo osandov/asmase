@@ -1,5 +1,16 @@
 import asmase
+from contextlib import contextmanager
 import unittest
+
+
+@contextmanager
+def instance(*args, **kwds):
+    instance = asmase.Instance(*args, **kwds)
+    try:
+        yield instance
+    finally:
+        instance.destroy()
+
 
 class AsmaseTestCase(unittest.TestCase):
     def setUp(self):

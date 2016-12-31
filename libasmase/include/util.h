@@ -36,6 +36,11 @@
 #define __must_be_array(a) BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]) + __must_be_array(arr))
 
+static inline bool strstartswith(const char *haystack, const char *needle)
+{
+	return strncmp(haystack, needle, strlen(needle)) == 0;
+}
+
 static inline long simple_strtol(const char *str)
 {
 	char *end;

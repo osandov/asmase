@@ -1,20 +1,10 @@
 import asmase
-from contextlib import contextmanager
 import errno
 import os
 import signal
 import unittest
 
-from tests.asmase import AsmaseTestCase
-
-
-@contextmanager
-def _instance(*args, **kwds):
-    instance = asmase.Instance(*args, **kwds)
-    try:
-        yield instance
-    finally:
-        instance.destroy()
+from tests.asmase import AsmaseTestCase, instance as _instance
 
 
 class TestSandbox(AsmaseTestCase):

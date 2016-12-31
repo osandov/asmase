@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdarg.h>
@@ -156,6 +157,12 @@ static char **tracee_argv(const struct asmase_instance *a, int flags)
 		ret = argv_appendf(&argv, &argc, "--seccomp");
 		if (ret == -1)
 			goto err;
+
+		if (flags & ASMASE_MUNMAP_ALL) {
+			ret = argv_appendf(&argv, &argc, "--allow-munmap");
+			if (ret == -1)
+				goto err;
+		}
 	}
 
 	return argv;
@@ -230,12 +237,143 @@ static int attach_to_tracee(struct asmase_instance *a)
 	return 0;
 }
 
+struct proc_map {
+	unsigned long start, end;
+	char *path;
+	struct proc_map *next;
+};
+
+static int do_munmap_tracee(struct asmase_instance *a,
+			    struct asmase_assembler *as,
+			    struct proc_map *maps, int flags)
+{
+	struct proc_map *map;
+	int ret;
+
+	for (map = maps; map; map = map->next) {
+		int mask;
+		char *out;
+		size_t len;
+
+		if (map->path) {
+			if (strstartswith(map->path, "/memfd:asmase_tracee"))
+				mask = 0;
+			else if (map->path[0] == '/')
+				mask = ASMASE_MUNMAP_FILE;
+			else if (strcmp(map->path, "[heap]") == 0)
+				mask = ASMASE_MUNMAP_HEAP;
+			else
+				mask = 0;
+		} else {
+			mask = ASMASE_MUNMAP_ANON;
+		}
+
+		if (flags & mask) {
+			ret = arch_assemble_munmap(as, map->start,
+						   map->end - map->start, &out, &len);
+			if (ret == -1)
+				return -1;
+
+			ret = asmase_execute_code(a, out, len, NULL);
+			free(out);
+			if (ret == -1)
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int munmap_tracee(struct asmase_instance *a, int flags)
+{
+	struct asmase_assembler *as;
+	struct proc_map *maps = NULL, *tail;
+	FILE *file = NULL;
+	char path[50];
+	int ret = -1;
+
+	as = asmase_create_assembler();
+	if (!as)
+		goto out;
+
+	snprintf(path, sizeof(path), "/proc/%ld/maps", (long)a->pid);
+
+	file = fopen(path, "r");
+	if (!file)
+		goto out;
+
+	for (;;) {
+		struct proc_map *map;
+		unsigned long start, end;
+		char c;
+
+		ret = fscanf(file, "%lx-%lx %*c%*c%*c%*c %*x %*x:%*x %*u",
+			     &start, &end);
+		if (ret == EOF)
+			break;
+
+		map = malloc(sizeof(*map));
+		if (!map) {
+			ret = -1;
+			goto out;
+		}
+		map->start = start;
+		map->end = end;
+		map->path = NULL;
+		map->next = NULL;
+		if (!maps) {
+			maps = tail = map;
+		} else {
+			tail->next = map;
+			tail = map;
+		}
+
+		ret = fscanf(file, "%*[ ]%m[^\n]", &map->path);
+		if (ret == EOF) {
+			if (!ferror(file))
+				errno = EINVAL;
+			ret = -1;
+			goto out;
+		}
+
+		c = fgetc(file);
+		if (c == EOF) {
+			if (!ferror(file))
+				errno = EINVAL;
+			ret = -1;
+			goto out;
+		}
+		assert(c == '\n');
+	}
+	if (ferror(file)) {
+		ret = -1;
+		goto out;
+	}
+
+	ret = do_munmap_tracee(a, as, maps, flags);
+
+out:
+	while (maps) {
+		struct proc_map *next = maps->next;
+
+		free(maps->path);
+		free(maps);
+		maps = next;
+	}
+	if (file)
+		fclose(file);
+	if (as)
+		asmase_destroy_assembler(as);
+	return ret;
+}
+
 __attribute__((visibility("default")))
 struct asmase_instance *asmase_create_instance(int flags)
 {
 	struct asmase_instance *a;
+	int saved_errno;
 
-	if (flags & ~ASMASE_SANDBOX_ALL) {
+	if (flags & ~(ASMASE_SANDBOX_ALL | ASMASE_MUNMAP_ALL)) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -256,14 +394,21 @@ struct asmase_instance *asmase_create_instance(int flags)
 		return NULL;
 	}
 
-	if (attach_to_tracee(a) == -1) {
-		int saved_errno = errno;
-		asmase_destroy_instance(a);
-		errno = saved_errno;
-		return NULL;
+	if (attach_to_tracee(a) == -1)
+		goto err;
+
+	if (flags & ASMASE_MUNMAP_ALL) {
+		if (munmap_tracee(a, flags & ASMASE_MUNMAP_ALL) == -1)
+			goto err;
 	}
 
 	return a;
+
+err:
+	saved_errno = errno;
+	asmase_destroy_instance(a);
+	errno = saved_errno;
+	return NULL;
 }
 
 __attribute__((visibility("default")))

@@ -192,12 +192,30 @@ enum asmase_create_flags {
 	 * Execute tracee with no environment variables.
 	 */
 	ASMASE_SANDBOX_ENVIRON = (1 << 2),
+	/*
+	 * Unmap all file mappings.
+	 */
+	ASMASE_MUNMAP_FILE = (1 << 29),
+	/*
+	 * Unmap all anonymous mappings.
+	 */
+	ASMASE_MUNMAP_ANON = (1 << 30),
+	/*
+	 * Unmap the heap.
+	 */
+	ASMASE_MUNMAP_HEAP = (1 << 31),
 };
 
 /*
  * Enable all sandboxing flags.
  */
 #define ASMASE_SANDBOX_ALL ((1 << 3) - 1)
+
+/*
+ * Unmap all memory.
+ */
+#define ASMASE_MUNMAP_ALL (ASMASE_MUNMAP_FILE | ASMASE_MUNMAP_ANON |	\
+			   ASMASE_MUNMAP_HEAP)
 
 /**
  * asmase_create_instance() - Create a new asmase instance.
