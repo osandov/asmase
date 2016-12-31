@@ -4,7 +4,7 @@ import os
 import signal
 import unittest
 
-from tests.asmase import AsmaseTestCase, instance as _instance
+from tests.asmase import AsmaseTestCase
 
 
 class TestSandbox(AsmaseTestCase):
@@ -13,7 +13,7 @@ class TestSandbox(AsmaseTestCase):
         self.instance = None
 
     def _test_fds(self, flags):
-        with _instance(flags) as instance:
+        with asmase.Instance(flags) as instance:
             pid = instance.getpid()
             self.assertEqual(os.listdir('/proc/{}/fd'.format(pid)), [])
 
@@ -22,7 +22,7 @@ class TestSandbox(AsmaseTestCase):
         self._test_fds(asmase.ASMASE_SANDBOX_ALL)
 
     def _test_syscalls(self, flags):
-        with _instance(flags) as instance:
+        with asmase.Instance(flags) as instance:
             wstatus = instance.execute_code(self.assembler.assemble_code('nop'))
             self.assertTrue(os.WIFSTOPPED(wstatus))
             self.assertEqual(os.WSTOPSIG(wstatus), signal.SIGTRAP)
@@ -51,11 +51,11 @@ class TestSandbox(AsmaseTestCase):
         return data.split(b'\0')
 
     def _test_environ(self, flags):
-        with _instance(flags) as instance:
+        with asmase.Instance(flags) as instance:
             self.assertFalse(self.get_environ(instance))
 
     def test_environ(self):
-        with _instance() as instance:
+        with asmase.Instance() as instance:
             self.assertTrue(self.get_environ(instance))
         self._test_environ(asmase.ASMASE_SANDBOX_ENVIRON)
         self._test_environ(asmase.ASMASE_SANDBOX_ALL)

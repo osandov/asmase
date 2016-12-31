@@ -4,10 +4,10 @@ import signal
 import sys
 import unittest
 
-from tests.asmase import AsmaseTestCase
+from tests.asmase import AsmaseInstanceTestCase
 
 
-class TestInstance(AsmaseTestCase):
+class TestInstance(AsmaseInstanceTestCase):
     def test_get_register_sets(self):
         regsets = self.instance.get_register_sets()
         self.instance.get_registers(regsets)

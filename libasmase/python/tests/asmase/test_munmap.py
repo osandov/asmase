@@ -1,7 +1,7 @@
 import asmase
 import re
 
-from tests.asmase import AsmaseTestCase, instance as _instance
+from tests.asmase import AsmaseTestCase
 
 
 proc_maps_re = re.compile(r'[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +(.*)')
@@ -21,7 +21,7 @@ class TestMunmap(AsmaseTestCase):
         return l
 
     def test_file(self):
-        with _instance(asmase.ASMASE_MUNMAP_FILE) as instance:
+        with asmase.Instance(asmase.ASMASE_MUNMAP_FILE) as instance:
             paths = self.get_maps(instance)
             self.assertTrue(any(path.startswith('/memfd:asmase_tracee') for path in paths))
             file_paths = [path for path in paths
@@ -30,15 +30,15 @@ class TestMunmap(AsmaseTestCase):
             self.assertFalse(file_paths)
 
     def test_anon(self):
-        with _instance(asmase.ASMASE_MUNMAP_ANON) as instance:
+        with asmase.Instance(asmase.ASMASE_MUNMAP_ANON) as instance:
             self.assertNotIn('', self.get_maps(instance))
 
     def test_heap(self):
-        with _instance(asmase.ASMASE_MUNMAP_HEAP) as instance:
+        with asmase.Instance(asmase.ASMASE_MUNMAP_HEAP) as instance:
             self.assertNotIn('[heap]', self.get_maps(instance))
 
     def _test_all(self, flags):
-        with _instance(flags) as instance:
+        with asmase.Instance(flags) as instance:
             paths = self.get_maps(instance)
             for i in range(len(paths) - 1, -1, -1):
                 if paths[i].startswith('[') and paths[i] != '[heap]':

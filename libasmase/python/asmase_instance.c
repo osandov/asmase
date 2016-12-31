@@ -393,6 +393,17 @@ static PyObject *Instance_read_memory(Instance *self, PyObject *args,
 	return bytes;
 }
 
+static PyObject *Instance_enter(Instance *self)
+{
+	Py_INCREF(self);
+	return (PyObject *)self;
+}
+
+static PyObject *Instance_exit(Instance *self, PyObject *args)
+{
+	return Instance_destroy(self);
+}
+
 static PyMethodDef Instance_methods[] = {
 	{"destroy", (PyCFunction)Instance_destroy, METH_NOARGS,
 	 "destroy()\n\n"
@@ -427,6 +438,8 @@ static PyMethodDef Instance_methods[] = {
 	 "Arguments:\n"
 	 "addr -- memory address to read from\n"
 	 "len -- amount of memory to read"},
+	{"__enter__", (PyCFunction)Instance_enter, METH_NOARGS},
+	{"__exit__", (PyCFunction)Instance_exit, METH_VARARGS},
 	{}
 };
 
