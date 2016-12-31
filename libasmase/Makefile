@@ -3,31 +3,28 @@ ARCH := x86
 LLVM_CONFIG ?= llvm-config
 
 CPPFLAGS := -Iinclude -Iarch/$(ARCH)/include -D_GNU_SOURCE -DLIBEXEC=\"/usr/libexec\"
-CFLAGS := -std=gnu11 -Wall -Werror -O2 $(CPPFLAGS)
-CXXFLAGS := -std=c++11 -Wall -Werror -O2 $(CPPFLAGS)
-LDFLAGS := `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support`
+COMMON_FLAGS := -Wall -Werror -O2 -fpic -fvisibility=hidden $(CPPFLAGS)
+CFLAGS := -std=gnu11 $(COMMON_FLAGS)
+CXXFLAGS := -std=c++11 $(COMMON_FLAGS)
+LDFLAGS := -fpic -fvisibility=hidden -pie -Wl,-E -ldl -lseccomp
+LDFLAGS += `$(LLVM_CONFIG) --ldflags --libs $(ARCH) support`
 LDFLAGS += `$(LLVM_CONFIG) --system-libs 2>/dev/null`
 
 OBJS := assembler.o \
 	libasmase.o \
 	registers.o \
+	tracee.o \
 	arch/$(ARCH)/arch.o
 
-.PHONY: all
-all: libasmase.so asmase_tracee
-
-asmase_tracee: tracee.c
-	$(CC) $(CFLAGS) -o $@ $^ -lseccomp
-
 libasmase.so: $(OBJS)
-	$(CC) $(LDFLAGS) -shared -o $@ $^
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 assembler.o: assembler.cpp
-	$(CXX) $(CXXFLAGS) -fpic -c -o $@ $<
+	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -fpic -c -o $@ $<
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f libasmase.so asmase_tracee $(OBJS)
+	rm -f libasmase.so $(OBJS)

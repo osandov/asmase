@@ -21,8 +21,10 @@
 
 #include <assert.h>
 #include <dirent.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdarg.h>
@@ -40,9 +42,23 @@
 
 #include "internal.h"
 
+static char libasmase_path[PATH_MAX];
+
+int main(int argc, char **argv);
+
 __attribute__((visibility("default")))
 int libasmase_init(void)
 {
+	Dl_info info;
+
+	if (!dladdr(main, &info)) {
+		errno = ENOEXEC;
+		return -1;
+	}
+
+	if (!realpath(info.dli_fname, libasmase_path))
+		return -1;
+
 	libasmase_assembler_init();
 	return 0;
 }
@@ -66,22 +82,6 @@ static int create_memfd(struct asmase_instance *a)
 	}
 
 	return 0;
-}
-
-static char *tracee_path(void)
-{
-	const char *libexec;
-	char *path;
-	int ret;
-
-	libexec = getenv("ASMASE_LIBEXEC");
-	if (!libexec)
-		libexec = LIBEXEC;
-
-	ret = asprintf(&path, "%s/asmase_tracee", libexec);
-	if (ret == -1)
-		return NULL;
-	return path;
 }
 
 static char **argv_alloc(void)
@@ -173,22 +173,17 @@ err:
 
 static pid_t exec_tracee(struct asmase_instance *a, int flags)
 {
-	char *path;
 	char **argv, **envp;
 	char *empty_environ[] = {NULL};
 	pid_t pid = -1;
 
-	path = tracee_path();
-	if (!path)
-		goto out;
-
 	argv = tracee_argv(a, flags);
 	if (!argv)
-		goto out_path;
+		goto out;
 
 	envp = (flags & ASMASE_SANDBOX_ENVIRON) ? empty_environ : environ;
 
-	errno = posix_spawn(&pid, path, NULL, NULL, argv, envp);
+	errno = posix_spawn(&pid, libasmase_path, NULL, NULL, argv, envp);
 	if (errno) {
 		pid = -1;
 		goto out_argv;
@@ -196,8 +191,6 @@ static pid_t exec_tracee(struct asmase_instance *a, int flags)
 
 out_argv:
 	argv_free(argv);
-out_path:
-	free(path);
 out:
 	return pid;
 }
