@@ -15,6 +15,11 @@ module = Extension(
     libraries=['asmase'],
 )
 
-setup(name='asmase',
-      ext_modules=[module],
-      test_suite='tests')
+setup(
+    name='asmase',
+    entry_points={
+        'console_scripts': ['asmase=cli.__main__:main'],
+    },
+    ext_modules=[module],
+    test_suite='tests',
+)
