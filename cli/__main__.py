@@ -1,6 +1,5 @@
 import asmase
 import inspect
-import readline
 import sys
 
 from gpl import COPYING, WARRANTY
@@ -19,28 +18,51 @@ For help, type `:help'.
 
 class Asmase:
     def __init__(self, assembler, instance):
+        # Stack of file iterators being read from.
+        self._files = []
+        self._linenos = []
+
         self.assembler = assembler
         self.instance = instance
         self.lexer = lexer.Lexer()
         self.parser = parser.Parser()
+
+    def readline(self):
+        while True:
+            try:
+                if self._files:
+                    file_iter = self._files[-1]
+                    line = next(file_iter)
+                    if line.endswith('\n'):
+                        line = line[:-1]
+                    self._linenos[-1] += 1
+                    return line, file_iter.name, self._linenos[-1]
+                else:
+                    return input('asmase> '), '<stdin>', 1
+            except (EOFError, StopIteration):
+                if self._files:
+                    del self._files[-1]
+                    del self._linenos[-1]
+                else:
+                    raise EOFError
 
     def main_loop(self):
         print(NOTICE, end='')
 
         while True:
             try:
-                line = input('asmase> ')
+                line, filename, lineno = self.readline()
             except EOFError:
                 return
 
             if line.startswith(':'):
-                self.handle_command(line)
+                self.handle_command(line, filename, lineno)
             else:
-                self.handle_asm(line)
+                self.handle_asm(line, filename, lineno)
 
-    def handle_asm(self, s):
+    def handle_asm(self, line, filename, lineno):
         try:
-            code = self.assembler.assemble_code(s)
+            code = self.assembler.assemble_code(line, filename, lineno)
         except asmase.AssemblerDiagnostic as e:
             sys.stderr.write(str(e))
             return
@@ -49,12 +71,21 @@ class Asmase:
             return
 
         code_bytes = ', '.join('0x{:02x}'.format(b) for b in code)
-        print('{} = [{}]'.format(s, code_bytes))
+        print('{} = [{}]'.format(line, code_bytes))
 
         self.instance.execute_code(code)
 
-    def handle_command(self, s):
-        command = self.parser.parse(s, lexer=self.lexer)
+    def handle_command(self, line, filename, lineno):
+        try:
+            command = self.parser.parse(line, lexer=self.lexer)
+        except (lexer.LexerError, parser.ParserError) as e:
+            if e.pos is None:
+                e.pos = len(line) + 1
+            print(f'{filename}:{lineno}:{e.pos}: error: {e.msg}',
+                  line, ' ' * (e.pos - 1) + '^',
+                  sep='\n', file=sys.stderr)
+            return
+
         handler = getattr(self, 'command_' + command.name)
         handler(*command.args)
 

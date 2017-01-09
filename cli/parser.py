@@ -4,11 +4,23 @@ import ply.yacc as yacc
 from lexer import tokens
 
 
+class ParserError(Exception):
+    def __init__(self, pos, msg):
+        self.pos = pos
+        self.msg = msg
+
+
 Command = namedtuple('Command', ['name', 'args'])
 Identifier = namedtuple('Identifier', ['name'])
 
 
 def Parser():
+    def p_error(p):
+        if p is None:
+            raise ParserError(None, 'unexpected EOL while parsing')
+        else:
+            raise ParserError(p.lexpos + 1, 'unexpected token')
+
     def p_command(p):
         """
         command : ':' ID identifier_list
