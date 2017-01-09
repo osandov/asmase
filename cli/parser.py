@@ -1,7 +1,7 @@
 from collections import namedtuple
 import ply.yacc as yacc
 
-from lexer import tokens
+from cli.lexer import tokens
 
 
 class ParserError(Exception):
