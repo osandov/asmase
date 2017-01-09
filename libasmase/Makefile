@@ -19,12 +19,6 @@ OBJS := assembler.o \
 libasmase.so: $(OBJS)
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
-assembler.o: assembler.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS)
-
-%.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS)
-
 .PHONY: clean
 clean:
 	rm -f libasmase.so $(OBJS)
