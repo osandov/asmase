@@ -1,5 +1,6 @@
 import asmase
 import inspect
+import readline
 import sys
 
 from gpl import COPYING, WARRANTY
