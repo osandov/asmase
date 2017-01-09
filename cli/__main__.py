@@ -7,13 +7,14 @@ import lexer
 import parser
 
 
-NOTICE = """\
-asmase {version} Copyright (C) 2013-2017 Omar Sandoval
+ASMASE_VERSION = '0.2'
+NOTICE = f"""\
+asmase {ASMASE_VERSION} Copyright (C) 2013-2017 Omar Sandoval
 This program comes with ABSOLUTELY NO WARRANTY; for details type ":warranty".
 This is free software, and you are welcome to redistribute it
 under certain conditions; type ":copying" for details.
 For help, type ":help".
-""".format(version=0.2)
+"""
 
 
 class Asmase:
@@ -70,8 +71,8 @@ class Asmase:
         if not code:
             return
 
-        code_bytes = ', '.join('0x{:02x}'.format(b) for b in code)
-        print('{} = [{}]'.format(line, code_bytes))
+        code_bytes = ', '.join(f'0x{b:02x}' for b in code)
+        print(f'{line} = [{code_bytes}]')
 
         self.instance.execute_code(code)
 
