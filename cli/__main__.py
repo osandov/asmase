@@ -9,10 +9,10 @@ import parser
 
 NOTICE = """\
 asmase {version} Copyright (C) 2013-2017 Omar Sandoval
-This program comes with ABSOLUTELY NO WARRANTY; for details type `:warranty'.
+This program comes with ABSOLUTELY NO WARRANTY; for details type ":warranty".
 This is free software, and you are welcome to redistribute it
-under certain conditions; type `:copying' for details.
-For help, type `:help'.
+under certain conditions; type ":copying" for details.
+For help, type ":help".
 """.format(version=0.2)
 
 
@@ -86,8 +86,18 @@ class Asmase:
                   sep='\n', file=sys.stderr)
             return
 
-        handler = getattr(self, 'command_' + command.name)
-        handler(*command.args)
+        try:
+            handler = getattr(self, 'command_' + command.name)
+        except AttributeError:
+            print(f'unknown command ":{command.name}"; try ":help"',
+                  file=sys.stderr)
+            return
+
+        try:
+            handler(*command.args)
+        except TypeError:
+            usage, short, long = self.get_help(command.name)
+            print(f'usage: {usage}', file=sys.stderr)
 
     def get_help(self, command):
         doc = inspect.cleandoc(getattr(self, 'command_' + command).__doc__)
@@ -102,15 +112,15 @@ class Asmase:
 
         show help information
 
-        `:help' displays a summary of all commands. `:help command` displays
-        detailed help for `command'.
+        ":help" displays a summary of all commands. ":help command" displays
+        detailed help for "command".
         """
 
         if command is not None:
             if not isinstance(command, parser.Identifier):
-                raise ArgumentError()
+                raise TypeError()
             usage, short, long = self.get_help(command.name)
-            print('usage: ' + usage)
+            print(f'usage: {usage}')
             print(short)
             if long:
                 print()
@@ -129,16 +139,15 @@ class Asmase:
         print(inspect.cleandoc("""
         Type assembly code to assemble and run it.
 
-        Type a line beginning with a colon (`:') to execute a built-in command.
+        Type a line beginning with a colon (":") to execute a built-in command.
 
         Built-in commands:
         """))
         for name, short in commands:
-            print('  {name:{pad}} -- {short}'.format(
-                name=name, pad=pad, short=short))
+            print(f'  {name:{pad}} -- {short}')
         print()
         print(inspect.cleandoc("""
-        Type `:help command' for detailed help for a command or `:help help'
+        Type ":help command" for detailed help for a command or ":help help"
         for more information about the help system.
         """))
 
