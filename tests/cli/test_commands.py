@@ -1,3 +1,5 @@
+import tempfile
+
 import cli
 from cli.gpl import COPYING, WARRANTY
 from cli.parser import Identifier

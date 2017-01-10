@@ -19,7 +19,7 @@ For help, type ":help".
 
 class Asmase:
     def __init__(self, assembler, instance):
-        # Stack of file iterators being read from.
+        # Stack of (file, iter(file)) being read from.
         self._files = []
         self._linenos = []
 
@@ -32,16 +32,17 @@ class Asmase:
         while True:
             try:
                 if self._files:
-                    file_iter = self._files[-1]
+                    file, file_iter = self._files[-1]
                     line = next(file_iter)
                     if line.endswith('\n'):
                         line = line[:-1]
                     self._linenos[-1] += 1
-                    yield line, file_iter.name, self._linenos[-1]
+                    yield line, file.name, self._linenos[-1]
                 else:
                     yield input('asmase> '), '<stdin>', 1
             except (EOFError, StopIteration):
                 if self._files:
+                    self._files[-1][0].close()
                     del self._files[-1]
                     del self._linenos[-1]
                 else:
@@ -118,8 +119,7 @@ class Asmase:
             try:
                 usage, short, long = self.get_help(command.name)
             except AttributeError:
-                print(f'unknown command ":{command.name}"; try ":help"',
-                      file=sys.stderr)
+                print(f'help: {command.name}: Unknown command', file=sys.stderr)
                 return
             print(f'usage: {usage}')
             print(short)
@@ -160,6 +160,32 @@ class Asmase:
         Display conditions for redistributing copies of asmase.
         """
         print(COPYING, end='')
+
+    def command_source(self, path):
+        """:source "path"
+
+        load commands from a file
+
+        Redirect input to another file as if that file's contents were inserted
+        into the input stream at the current position.
+        """
+        if not isinstance(path, str):
+            raise TypeError()
+
+        if len(self._files) >= 100:
+            print('source: Maximum source file depth exceeded', file=sys.stderr)
+            return
+
+        try:
+            f = open(path, 'r')
+        except OSError as e:
+            if e.filename is None:
+                print(f'source: {e.strerror}', file=sys.stderr)
+            else:
+                print(f'source: {e.filename!r}: {e.strerror}', file=sys.stderr)
+            return
+        self._files.append((f, iter(f)))
+        self._linenos.append(0)
 
     def command_warranty(self):
         """:warranty

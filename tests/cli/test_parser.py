@@ -15,11 +15,26 @@ class TestParser(unittest.TestCase):
     def test_no_args(self):
         self.assertEqual(self.parse(':test'), parser.Command(name='test', args=[]))
 
-    def test_identifier_args(self):
-        args = [parser.Identifier('foo')]
-        self.assertEqual(self.parse(':test foo'),
-                         parser.Command(name='test', args=args))
+    def test_identifier(self):
+        self.assertEqual(
+            self.parse(':test foo'),
+            parser.Command(name='test', args=[parser.Identifier('foo')]))
 
-        args.append(parser.Identifier('bar'))
-        self.assertEqual(self.parse(':test foo bar'),
-                         parser.Command(name='test', args=args))
+    def test_string(self):
+        self.assertEqual(
+            self.parse(':test "foo bar"'),
+            parser.Command(name='test', args=['foo bar']))
+
+        self.assertEqual(
+            self.parse(r':test "foo\tbar"'),
+            parser.Command(name='test', args=['foo	bar']))
+
+        self.assertEqual(
+            self.parse(r':test "\"foo\"bar\""'),
+            parser.Command(name='test', args=['"foo"bar"']))
+
+    def test_all(self):
+        args = [parser.Identifier('foo'), 'bar']
+        self.assertEqual(
+            self.parse(':test foo "bar"'),
+            parser.Command(name='test', args=args))

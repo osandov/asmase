@@ -1,3 +1,4 @@
+import codecs
 import ply.lex as lex
 
 
@@ -9,6 +10,7 @@ class LexerError(Exception):
 
 tokens = (
     'ID',
+    'STRING',
 )
 
 
@@ -19,6 +21,14 @@ def Lexer():
     t_ignore = ' \t'
 
     t_ID = r'[a-zA-Z_][a-zA-Z_0-9]*'
+
+    def t_STRING(t):
+        r'"(\\.|[^"\\])*"'
+        try:
+            t.value = codecs.escape_decode(t.value[1:-1].encode())[0].decode()
+        except ValueError as e:
+            raise LexerError(t.lexpos + 1, str(e))
+        return t
 
     literals = ':'
 

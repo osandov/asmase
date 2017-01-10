@@ -23,7 +23,7 @@ def Parser():
 
     def p_command(p):
         """
-        command : ':' ID identifier_list
+        command : ':' ID argument_list
                 | ':' ID
         """
         if len(p) == 4:
@@ -31,10 +31,10 @@ def Parser():
         else:
             p[0] = Command(name=p[2], args=[])
 
-    def p_identifier_list(p):
+    def p_argument_list(p):
         """
-        identifier_list : identifier_list identifier
-                        | identifier
+        argument_list : argument_list argument
+                      | argument
         """
         if len(p) == 2:
             p[0] = [p[1]]
@@ -42,10 +42,23 @@ def Parser():
             p[0] = p[1].copy()
             p[0].append(p[2])
 
+    def p_argument(p):
+        """
+        argument : identifier
+                 | expression
+        """
+        p[0] = p[1]
+
     def p_identifier(p):
-        """
-        identifier : ID
-        """
+        "identifier : ID"
         p[0] = Identifier(p[1])
+
+    def p_expression(p):
+        "expression : string_expression"
+        p[0] = p[1]
+
+    def p_string_expression(p):
+        "string_expression : STRING"
+        p[0] = p[1]
 
     return yacc.yacc()
