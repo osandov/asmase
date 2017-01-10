@@ -28,7 +28,7 @@ class Asmase:
         self.lexer = lexer.Lexer()
         self.parser = parser.Parser()
 
-    def readline(self):
+    def readlines(self):
         while True:
             try:
                 if self._files:
@@ -37,25 +37,20 @@ class Asmase:
                     if line.endswith('\n'):
                         line = line[:-1]
                     self._linenos[-1] += 1
-                    return line, file_iter.name, self._linenos[-1]
+                    yield line, file_iter.name, self._linenos[-1]
                 else:
-                    return input('asmase> '), '<stdin>', 1
+                    yield input('asmase> '), '<stdin>', 1
             except (EOFError, StopIteration):
                 if self._files:
                     del self._files[-1]
                     del self._linenos[-1]
                 else:
-                    raise EOFError
+                    return
 
     def main_loop(self):
         print(NOTICE, end='')
 
-        while True:
-            try:
-                line, filename, lineno = self.readline()
-            except EOFError:
-                return
-
+        for line, filename, lineno in self.readlines():
             if line.startswith(':'):
                 self.handle_command(line, filename, lineno)
             else:
