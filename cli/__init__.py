@@ -115,7 +115,12 @@ class Asmase:
         if command is not None:
             if not isinstance(command, parser.Identifier):
                 raise TypeError()
-            usage, short, long = self.get_help(command.name)
+            try:
+                usage, short, long = self.get_help(command.name)
+            except AttributeError:
+                print(f'unknown command ":{command.name}"; try ":help"',
+                      file=sys.stderr)
+                return
             print(f'usage: {usage}')
             print(short)
             if long:
