@@ -47,6 +47,7 @@ PyInit_asmase(void)
 	PyModule_AddIntMacro(m, ASMASE_REGISTERS_FLOATING_POINT_STATUS);
 	PyModule_AddIntMacro(m, ASMASE_REGISTERS_VECTOR);
 	PyModule_AddIntMacro(m, ASMASE_REGISTERS_VECTOR_STATUS);
+	PyModule_AddIntMacro(m, ASMASE_REGISTERS_ALL);
 
 	PyModule_AddIntMacro(m, ASMASE_REGISTER_U8);
 	PyModule_AddIntMacro(m, ASMASE_REGISTER_U16);
