@@ -103,8 +103,8 @@ DEFINE_ARCH_REGISTERS(segment,
         SEGMENT_REG_DESCRIPTOR(fs),
         SEGMENT_REG_DESCRIPTOR(gs),
 #ifdef __x86_64__
-        USER_REGS_DESCRIPTOR_U64_NAMED(fs_base, "fs.base"),
-        USER_REGS_DESCRIPTOR_U64_NAMED(gs_base, "gs.base"),
+        USER_REGS_DESCRIPTOR_U64(fs_base),
+        USER_REGS_DESCRIPTOR_U64(gs_base),
 #endif
 );
 
