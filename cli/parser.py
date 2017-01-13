@@ -12,6 +12,7 @@ class ParserError(Exception):
 
 Command = namedtuple('Command', ['name', 'args'])
 Identifier = namedtuple('Identifier', ['name'])
+Variable = namedtuple('Variable', ['name'])
 
 
 def Parser():
@@ -54,11 +55,18 @@ def Parser():
         p[0] = Identifier(p[1])
 
     def p_expression(p):
-        "expression : string_expression"
+        """
+        expression : string_expression
+                   | variable_expression
+        """
         p[0] = p[1]
 
     def p_string_expression(p):
         "string_expression : STRING"
         p[0] = p[1]
+
+    def p_variable_expression(p):
+        "variable_expression : VAR"
+        p[0] = Variable(p[1])
 
     return yacc.yacc()

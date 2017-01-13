@@ -3,7 +3,7 @@ ARCH := x86
 LLVM_CONFIG ?= llvm-config
 
 CPPFLAGS := -Iinclude -Iarch/$(ARCH)/include -D_GNU_SOURCE -DLIBEXEC=\"/usr/libexec\"
-COMMON_FLAGS := -Wall -Werror -O2 -fpic -fvisibility=hidden $(CPPFLAGS)
+COMMON_FLAGS := -Wall -Werror -O2 -fpic -fvisibility=hidden $(CPPFLAGS) -g
 CFLAGS := -std=gnu11 $(COMMON_FLAGS)
 CXXFLAGS := -std=c++11 $(COMMON_FLAGS)
 LDFLAGS := -fpic -fvisibility=hidden -pie -Wl,-E -ldl -lseccomp

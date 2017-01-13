@@ -33,6 +33,11 @@ class TestParser(unittest.TestCase):
             self.parse(r':test "\"foo\"bar\""'),
             parser.Command(name='test', args=['"foo"bar"']))
 
+    def test_var(self):
+        self.assertEqual(
+            self.parse(':test $foo'),
+            parser.Command(name='test', args=[parser.Variable('foo')]))
+
     def test_all(self):
         args = [parser.Identifier('foo'), 'bar']
         self.assertEqual(

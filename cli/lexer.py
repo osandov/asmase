@@ -11,6 +11,7 @@ class LexerError(Exception):
 tokens = (
     'ID',
     'STRING',
+    'VAR',
 )
 
 
@@ -21,6 +22,11 @@ def Lexer():
     t_ignore = ' \t'
 
     t_ID = r'[a-zA-Z_][a-zA-Z_0-9]*'
+
+    def t_VAR(t):
+        r'\$[a-zA-Z_0-9]+'
+        t.value = t.value[1:]
+        return t
 
     def t_STRING(t):
         r'"(\\.|[^"\\])*"'

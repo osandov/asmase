@@ -24,9 +24,13 @@ class Asmase:
         self._linenos = []
 
         self.assembler = assembler
-        self.instance = instance
+        self._instance = instance
         self.lexer = lexer.Lexer()
         self.parser = parser.Parser()
+
+        registers = self._instance.get_registers(asmase.ASMASE_REGISTERS_ALL)
+        self._registers = {name: reg.set for name, reg in registers.items()}
+
 
     def readlines(self):
         while True:
@@ -70,7 +74,7 @@ class Asmase:
         code_bytes = ', '.join(f'0x{b:02x}' for b in code)
         print(f'{line} = [{code_bytes}]')
 
-        self.instance.execute_code(code)
+        self._instance.execute_code(code)
 
     def handle_command(self, line, filename, lineno):
         try:
@@ -93,49 +97,85 @@ class Asmase:
         try:
             handler(*command.args)
         except TypeError:
-            usage, short, long = self.get_help(command.name)
+            usage, short, long = self._get_help(handler)
             print(f'usage: {usage}', file=sys.stderr)
 
-    def get_help(self, command):
-        doc = inspect.cleandoc(getattr(self, 'command_' + command).__doc__)
+    def _get_help(self, command):
+        doc = inspect.cleandoc(command.__doc__)
         split = doc.split('\n\n', maxsplit=2)
         if len(split) == 2:
             return split[0], split[1], None
         else:
             return split[0], split[1], split[2]
 
-    def command_help(self, command=None):
-        """:help [command]
+    _help_topics = {
+        'expressions': """
+        language used for built-in commands
+
+        Expressions can either be string literals or variables.
+
+        String literals are double-quoted and can contain escape sequences as
+        in C (e.g., "foo\\tbar").
+
+        Variables begin with a dollar sign ("$"). There is a special variable
+        for each CPU register -- e.g., on x86-64, the $rax variable always has
+        the value of the %rax register.
+        """
+    }
+
+    def command_help(self, arg=None):
+        """:help [command-or-topic]
 
         show help information
 
-        ":help" displays a summary of all commands. ":help command" displays
-        detailed help for "command".
+        ":help" displays a summary of all commands and topics. ":help foo"
+        displays detailed help for a command or topic "foo".
         """
 
-        if command is not None:
-            if not isinstance(command, parser.Identifier):
-                raise TypeError()
-            try:
-                usage, short, long = self.get_help(command.name)
-            except AttributeError:
-                print(f'help: {command.name}: Unknown command', file=sys.stderr)
-                return
-            print(f'usage: {usage}')
-            print(short)
-            if long:
-                print()
-                print(long)
+        if arg is None:
+            self._help_overview()
             return
 
+        if not isinstance(arg, parser.Identifier):
+            raise TypeError()
+
+        try:
+            command = getattr(self, 'command_' + arg.name)
+        except AttributeError:
+            pass
+        else:
+            self._help_command(command)
+            return
+
+        try:
+            print(inspect.cleandoc(self._help_topics[arg.name]))
+            return
+        except KeyError:
+            pass
+
+        print(f'help: {arg.name}: Unknown command or topic', file=sys.stderr)
+
+    def _help_command(self, command):
+        usage, short, long = self._get_help(command)
+        print(f'usage: {usage}')
+        print(short)
+        if long:
+            print()
+            print(long)
+
+    def _print_help_list(self, topics):
+        topics.sort()
+        pad = max(len(name) for name, short in topics)
+        for topic, short in topics:
+            print(f'  {topic:{pad}} -- {short}')
+
+    def _help_overview(self):
         commands = []
         for attr in dir(self):
             if attr.startswith('command_'):
                 name = attr[len('command_'):]
-                usage, short, long = self.get_help(name)
+                usage, short, long = self._get_help(getattr(self, attr))
                 commands.append((name, short))
-        commands.sort()
-        pad = max(len(name) for name, short in commands)
 
         print(inspect.cleandoc("""
         Type assembly code to assemble and run it.
@@ -144,12 +184,23 @@ class Asmase:
 
         Built-in commands:
         """))
-        for name, short in commands:
-            print(f'  {name:{pad}} -- {short}')
+        self._print_help_list(commands)
+
         print()
+
+        topics = []
+        for topic, help in self._help_topics.items():
+            short, long = inspect.cleandoc(help).split('\n\n', maxsplit=1)
+            topics.append((topic, short))
+
+        print('Help topics:')
+        self._print_help_list(topics)
+
+        print()
+
         print(inspect.cleandoc("""
-        Type ":help command" for detailed help for a command or ":help help"
-        for more information about the help system.
+        Type ":help topic" for detailed help for a topic or command or ":help
+        help" for more information about the help system.
         """))
 
     def command_copying(self):
@@ -160,6 +211,36 @@ class Asmase:
         Display conditions for redistributing copies of asmase.
         """
         print(COPYING, end='')
+
+    def command_print(self, *exprs):
+        """:print expr [expr...]
+
+        evaluate and print expressions
+
+        Evaluate the given expressions and print them. See ":help expressions"
+        for more information about expressions.
+        """
+        regsets = 0
+        for expr in exprs:
+            if isinstance(expr, parser.Variable):
+                try:
+                    regsets |= self._registers[expr.name]
+                except KeyError:
+                    print(f'print: Unknown variable {expr.name!r}',
+                            file=sys.stderr)
+                    return
+            elif not isinstance(expr, str):
+                raise TypeError
+
+        if regsets:
+            registers = self._instance.get_registers(regsets)
+
+        for i, expr in enumerate(exprs):
+            end = '\n' if i == len(exprs) - 1 else ' '
+            if isinstance(expr, parser.Variable):
+                print(registers[expr.name].value, end=end)
+            elif isinstance(expr, str):
+                print(expr, end=end)
 
     def command_source(self, path):
         """:source "path"
