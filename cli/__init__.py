@@ -1,10 +1,9 @@
 import asmase
+from collections import namedtuple
 import inspect
 import sys
 
 from cli.gpl import COPYING, WARRANTY
-import cli.lexer as lexer
-import cli.parser as parser
 
 
 ASMASE_VERSION = '0.2'
@@ -17,20 +16,25 @@ For help, type ":help".
 """
 
 
-class Asmase:
-    def __init__(self, assembler, instance):
+class CliSyntaxError(Exception):
+    def __init__(self, pos, msg):
+        self.pos = pos
+        self.msg = msg
+
+
+class AsmaseCli:
+    def __init__(self, assembler, instance, lexer, parser):
         # Stack of (file, iter(file)) being read from.
         self._files = []
         self._linenos = []
 
         self.assembler = assembler
         self._instance = instance
-        self.lexer = lexer.Lexer()
-        self.parser = parser.Parser()
+        self._lexer = lexer
+        self._parser = parser
 
         registers = self._instance.get_registers(asmase.ASMASE_REGISTERS_ALL)
         self._registers = {name: reg.set for name, reg in registers.items()}
-
 
     def readlines(self):
         while True:
@@ -38,12 +42,10 @@ class Asmase:
                 if self._files:
                     file, file_iter = self._files[-1]
                     line = next(file_iter)
-                    if line.endswith('\n'):
-                        line = line[:-1]
                     self._linenos[-1] += 1
                     yield line, file.name, self._linenos[-1]
                 else:
-                    yield input('asmase> '), '<stdin>', 1
+                    yield input('asmase> ') + '\n', '<stdin>', 1
             except (EOFError, StopIteration):
                 if self._files:
                     self._files[-1][0].close()
@@ -72,33 +74,23 @@ class Asmase:
             return
 
         code_bytes = ', '.join(f'0x{b:02x}' for b in code)
-        print(f'{line} = [{code_bytes}]')
+        print(f'{line.strip()} = [{code_bytes}]')
 
         self._instance.execute_code(code)
 
     def handle_command(self, line, filename, lineno):
+        self._lexer.begin('INITIAL')
         try:
-            command = self.parser.parse(line, lexer=self.lexer)
-        except (lexer.LexerError, parser.ParserError) as e:
+            command = self._parser.parse(line, lexer=self._lexer)
+        except CliSyntaxError as e:
             if e.pos is None:
                 e.pos = len(line) + 1
-            print(f'{filename}:{lineno}:{e.pos}: error: {e.msg}',
-                  line, ' ' * (e.pos - 1) + '^',
-                  sep='\n', file=sys.stderr)
+            print(f'{filename}:{lineno}:{e.pos}: error: {e.msg}', file=sys.stderr)
+            print(line, end='', file=sys.stderr)
+            print(' ' * (e.pos - 1) + '^', file=sys.stderr)
             return
 
-        try:
-            handler = getattr(self, 'command_' + command.name)
-        except AttributeError:
-            print(f'unknown command ":{command.name}"; try ":help"',
-                  file=sys.stderr)
-            return
-
-        try:
-            handler(*command.args)
-        except TypeError:
-            usage, short, long = self._get_help(handler)
-            print(f'usage: {usage}', file=sys.stderr)
+        _command_handlers[type(command)](self, *command)
 
     def _get_help(self, command):
         doc = inspect.cleandoc(command.__doc__)
@@ -123,7 +115,7 @@ class Asmase:
         """
     }
 
-    def command_help(self, arg=None):
+    def command_help(self, ident):
         """:help [command-or-topic]
 
         show help information
@@ -132,15 +124,12 @@ class Asmase:
         displays detailed help for a command or topic "foo".
         """
 
-        if arg is None:
+        if ident is None:
             self._help_overview()
             return
 
-        if not isinstance(arg, parser.Identifier):
-            raise TypeError()
-
         try:
-            command = getattr(self, 'command_' + arg.name)
+            command = getattr(self, 'command_' + ident)
         except AttributeError:
             pass
         else:
@@ -148,12 +137,12 @@ class Asmase:
             return
 
         try:
-            print(inspect.cleandoc(self._help_topics[arg.name]))
+            print(inspect.cleandoc(self._help_topics[ident]))
             return
         except KeyError:
             pass
 
-        print(f'help: {arg.name}: Unknown command or topic', file=sys.stderr)
+        print(f'help: {ident}: Unknown command or topic', file=sys.stderr)
 
     def _help_command(self, command):
         usage, short, long = self._get_help(command)
@@ -212,8 +201,8 @@ class Asmase:
         """
         print(COPYING, end='')
 
-    def command_print(self, *exprs):
-        """:print expr [expr...]
+    def command_print(self, exprs):
+        """:print [expr...]
 
         evaluate and print expressions
 
@@ -222,22 +211,20 @@ class Asmase:
         """
         regsets = 0
         for expr in exprs:
-            if isinstance(expr, parser.Variable):
+            if isinstance(expr, Variable):
                 try:
                     regsets |= self._registers[expr.name]
                 except KeyError:
                     print(f'print: Unknown variable {expr.name!r}',
                             file=sys.stderr)
                     return
-            elif not isinstance(expr, str):
-                raise TypeError
 
         if regsets:
             registers = self._instance.get_registers(regsets)
 
         for i, expr in enumerate(exprs):
             end = '\n' if i == len(exprs) - 1 else ' '
-            if isinstance(expr, parser.Variable):
+            if isinstance(expr, Variable):
                 print(registers[expr.name].value, end=end)
             elif isinstance(expr, str):
                 print(expr, end=end)
@@ -250,9 +237,6 @@ class Asmase:
         Redirect input to another file as if that file's contents were inserted
         into the input stream at the current position.
         """
-        if not isinstance(path, str):
-            raise TypeError()
-
         if len(self._files) >= 100:
             print('source: Maximum source file depth exceeded', file=sys.stderr)
             return
@@ -276,3 +260,31 @@ class Asmase:
         Display various kinds of warranty that you do not have.
         """
         print(WARRANTY, end='')
+
+
+# Now follows some minor insanity. The idea is that the single source of truth
+# for the built-in commands is the AsmaseCli class. So, the lexer dynamically
+# defines tokens for the built-in commands based on the defined command
+# methods. The command AST node types for the parser are also dynamically
+# created from the method signatures.
+
+# Built-in commands.
+commands = frozenset({
+    attr[8:] for attr in dir(AsmaseCli) if attr.startswith('command_')
+})
+
+# Dispatch table from command AST node type to the handler method.
+_command_handlers = {}
+
+for command in commands:
+    name = command.title()
+    handler = getattr(AsmaseCli, 'command_' + command)
+    signature = inspect.signature(handler)
+    args = list(signature.parameters)[1:]
+
+    node_type = namedtuple(name, args)
+
+    globals()[name] = node_type
+    _command_handlers[globals()[name]] = handler
+
+Variable = namedtuple('Variable', ['name'])

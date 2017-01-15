@@ -2,7 +2,6 @@ import tempfile
 
 import cli
 from cli.gpl import COPYING, WARRANTY
-from cli.parser import Identifier
 
 from tests.cli import CliTestCase, patch_stdout
 
@@ -16,18 +15,15 @@ class TestCommands(CliTestCase):
                 commands.append(name)
 
         with patch_stdout() as stdout:
-            self.cli.command_help()
+            self.cli.command_help(None)
         all_help = stdout.getvalue()
 
         for command in commands:
             with self.subTest(command=command):
                 self.assertIn(command, all_help)
                 with patch_stdout() as stdout:
-                    self.cli.command_help(Identifier(command))
+                    self.cli.command_help(command)
                 self.assertIn('usage', stdout.getvalue())
-
-        with self.assertRaises(TypeError):
-            self.cli.command_help('str')
 
     def test_copying(self):
         with patch_stdout() as stdout:

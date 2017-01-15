@@ -9,7 +9,9 @@ import cli
 class CliTestCase(AsmaseInstanceTestCase):
     def setUp(self):
         super().setUp()
-        self.cli = cli.Asmase(self.assembler, self.instance)
+        self.cli = cli.AsmaseCli(assembler=self.assembler,
+                                 instance=self.instance,
+                                 lexer=None, parser=None)
 
 
 def patch_stdout():

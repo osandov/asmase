@@ -3,6 +3,8 @@ import asmase
 import readline
 
 import cli
+import cli.lexer
+import cli.parser
 
 
 def main():
@@ -12,7 +14,10 @@ def main():
 
     assembler = asmase.Assembler()
     with asmase.Instance(asmase.ASMASE_MUNMAP_ALL) as instance:
-        cli.Asmase(assembler, instance).main_loop()
+        cli.AsmaseCli(assembler=assembler,
+                      instance=instance,
+                      lexer=cli.lexer.Lexer(),
+                      parser=cli.parser.Parser()).main_loop()
 
 
 if __name__ == '__main__':

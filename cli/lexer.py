@@ -1,41 +1,59 @@
 import codecs
 import ply.lex as lex
+from ply.lex import TOKEN
+
+import cli
+from cli import CliSyntaxError
 
 
-class LexerError(Exception):
-    def __init__(self, pos, msg):
-        self.pos = pos
-        self.msg = msg
+command_tokens = {':' + command: command.upper() for command in cli.commands}
 
 
 tokens = (
+    'NEWLINE',
     'ID',
     'STRING',
     'VAR',
+) + tuple(sorted(command_tokens.values()))
+
+
+states = (
+    ('args', 'exclusive'),
 )
 
 
 def Lexer():
-    def t_error(t):
-        raise LexerError(t.lexpos + 1, 'illegal character {!r}'.format(t.value[0]))
+    def t_ANY_error(t):
+        raise CliSyntaxError(t.lexpos + 1, f'illegal character {t.value[0]!r}')
 
-    t_ignore = ' \t'
+    t_ANY_ignore = ' \t'
 
-    t_ID = r'[a-zA-Z_][a-zA-Z_0-9]*'
+    t_ANY_NEWLINE = r'\n'
 
-    def t_VAR(t):
-        r'\$[a-zA-Z_0-9]+'
-        t.value = t.value[1:]
+    # In the INITIAL state, we are looking for a command name starting with
+    # ':'. We then transition immediately into the args state.
+    def t_COMMAND(t):
+        r':[a-zA-Z_0-9]+'
+        try:
+            t.type = command_tokens[t.value]
+        except KeyError:
+            raise CliSyntaxError(t.lexpos + 1, f'unknown command {t.value!r}')
+        t.lexer.begin('args')
         return t
 
-    def t_STRING(t):
+    t_args_ID = r'[a-zA-Z_][a-zA-Z_0-9]*'
+
+    def t_args_STRING(t):
         r'"(\\.|[^"\\])*"'
         try:
             t.value = codecs.escape_decode(t.value[1:-1].encode())[0].decode()
         except ValueError as e:
-            raise LexerError(t.lexpos + 1, str(e))
+            raise CliSyntaxError(t.lexpos + 1, str(e))
         return t
 
-    literals = ':'
+    def t_args_VAR(t):
+        r'\$[a-zA-Z_0-9]+'
+        t.value = t.value[1:]
+        return t
 
     return lex.lex()
