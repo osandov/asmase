@@ -223,11 +223,12 @@ class AsmaseCli:
             registers = self._instance.get_registers(regsets)
 
         for i, expr in enumerate(exprs):
-            end = '\n' if i == len(exprs) - 1 else ' '
+            end = '' if i == len(exprs) - 1 else ' '
             if isinstance(expr, Variable):
                 print(registers[expr.name].value, end=end)
-            elif isinstance(expr, str):
+            elif isinstance(expr, (int, str)):
                 print(expr, end=end)
+        print()
 
     def command_source(self, path):
         """:source "path"

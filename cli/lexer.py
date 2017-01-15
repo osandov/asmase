@@ -12,6 +12,7 @@ command_tokens = {':' + command: command.upper() for command in cli.commands}
 tokens = (
     'NEWLINE',
     'ID',
+    'INT',
     'STRING',
     'VAR',
 ) + tuple(sorted(command_tokens.values()))
@@ -42,6 +43,16 @@ def Lexer():
         return t
 
     t_args_ID = r'[a-zA-Z_][a-zA-Z_0-9]*'
+
+    def t_args_INT(t):
+        r'(0x)?[0-9]+'
+        if t.value.startswith('0x'):
+            t.value = int(t.value, 16)
+        elif t.value.startswith('0'):
+            t.value = int(t.value, 8)
+        else:
+            t.value = int(t.value, 10)
+        return t
 
     def t_args_STRING(t):
         r'"(\\.|[^"\\])*"'

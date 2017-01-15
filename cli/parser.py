@@ -98,8 +98,15 @@ def Parser():
 
     def p_expression(p):
         """
-        expression : STRING
+        expression : literal_expression
                    | variable_expression
+        """
+        p[0] = p[1]
+
+    def p_literal_expression(p):
+        """
+        literal_expression : INT
+                           | STRING
         """
         p[0] = p[1]
 

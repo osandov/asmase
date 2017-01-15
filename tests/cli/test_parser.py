@@ -53,6 +53,11 @@ class TestParser(unittest.TestCase):
         with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):
             self.parse(':warranty foo\n')
 
+    def test_int(self):
+        self.assertEqual(self.parse(':print 10\n'), cli.Print([10]))
+        self.assertEqual(self.parse(':print 0x10\n'), cli.Print([0x10]))
+        self.assertEqual(self.parse(':print 010\n'), cli.Print([0o10]))
+
     def test_string(self):
         self.assertEqual(self.parse(':source "foo bar"\n'),
                          cli.Source('foo bar'))
