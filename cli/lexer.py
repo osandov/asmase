@@ -11,6 +11,14 @@ command_tokens = {':' + command: command.upper() for command in cli.commands}
 
 tokens = (
     'NEWLINE',
+    'LEFT_OP',
+    'RIGHT_OP',
+    'LE_OP',
+    'GE_OP',
+    'EQ_OP',
+    'NE_OP',
+    'AND_OP',
+    'OR_OP',
     'ID',
     'INT',
     'STRING',
@@ -41,6 +49,17 @@ def Lexer():
             raise CliSyntaxError(t.lexpos + 1, f'unknown command {t.value!r}')
         t.lexer.begin('args')
         return t
+
+    literals = '!%&()*+-/<>^|~'
+
+    t_ANY_LEFT_OP = r'<<'
+    t_ANY_RIGHT_OP = r'>>'
+    t_ANY_LE_OP = r'<='
+    t_ANY_GE_OP = r'>='
+    t_ANY_EQ_OP = r'=='
+    t_ANY_NE_OP = r'!='
+    t_ANY_AND_OP = r'&&'
+    t_ANY_OR_OP = r'\|\|'
 
     t_args_ID = r'[a-zA-Z_][a-zA-Z_0-9]*'
 

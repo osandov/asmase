@@ -62,7 +62,7 @@ def Parser():
         """
         print : PRINT error NEWLINE
         """
-        raise CliSyntaxError(p[2].lexpos + 1, 'expected expression')
+        raise CliSyntaxError(p[2].lexpos + 1, 'expected primary expression')
 
     def p_source(p):
         "source : SOURCE STRING NEWLINE"
@@ -88,30 +88,79 @@ def Parser():
 
     def p_expression_list(p):
         """
-        expression_list : expression_list expression
-                        | expression
+        expression_list : expression_list primary_expression
+                        | primary_expression
         """
         if len(p) == 2:
             p[0] = [p[1]]
         else:
             p[0] = p[1] + [p[2]]
 
+    precedence = (
+        ('left', 'OR_OP'),
+        ('left', 'AND_OP'),
+        ('left', '|'),
+        ('left', '^'),
+        ('left', '&'),
+        ('left', 'EQ_OP', 'NE_OP'),
+        ('left', '<', '>', 'LE_OP', 'GE_OP'),
+        ('left', 'LEFT_OP', 'RIGHT_OP'),
+        ('left', '+', '-'),
+        ('left', '*', '/', '%'),
+        ('right', 'UPLUS', 'UMINUS', '!', '~'),
+    )
+
     def p_expression(p):
         """
-        expression : literal_expression
-                   | variable_expression
+        expression : primary_expression
         """
         p[0] = p[1]
 
+    def p_binary_expression(p):
+        """
+        expression : expression '+' expression
+                   | expression '-' expression
+                   | expression '*' expression
+                   | expression '/' expression
+                   | expression '%' expression
+                   | expression LEFT_OP expression
+                   | expression RIGHT_OP expression
+                   | expression '<' expression
+                   | expression '>' expression
+                   | expression LE_OP expression
+                   | expression GE_OP expression
+                   | expression EQ_OP expression
+                   | expression NE_OP expression
+                   | expression '&' expression
+                   | expression '^' expression
+                   | expression '|' expression
+                   | expression AND_OP expression
+                   | expression OR_OP expression
+        """
+        p[0] = cli.BinaryOp(p[2], p[1], p[3])
+
+    def p_unary_expression(p):
+        """
+        primary_expression : '+' expression %prec UPLUS
+                           | '-' expression %prec UMINUS
+                           | '!' expression
+                           | '~' expression
+        """
+        p[0] = cli.UnaryOp(p[1], p[2])
+
     def p_literal_expression(p):
         """
-        literal_expression : INT
+        primary_expression : INT
                            | STRING
         """
         p[0] = p[1]
 
     def p_variable_expression(p):
-        "variable_expression : VAR"
+        "primary_expression : VAR"
         p[0] = cli.Variable(p[1])
+
+    def p_parenthetical_expression(p):
+        "primary_expression : '(' expression ')'"
+        p[0] = p[2]
 
     return yacc.yacc()

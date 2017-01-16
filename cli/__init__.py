@@ -1,6 +1,8 @@
 import asmase
 from collections import namedtuple
 import inspect
+import numbers
+import operator
 import sys
 
 from cli.gpl import COPYING, WARRANTY
@@ -104,7 +106,12 @@ class AsmaseCli:
         'expressions': """
         language used for built-in commands
 
-        Expressions can either be string literals or variables.
+        Built-in commands support an expression mini-language similar to C
+        syntax. Expressions can be literals, variables, or combinations
+        involving unary and/or binary operators.
+
+        Integer literals can be specified in decimal, hexadecimal (e.g., 0xff),
+        or octal (e.g., 0644).
 
         String literals are double-quoted and can contain escape sequences as
         in C (e.g., "foo\\tbar").
@@ -112,6 +119,22 @@ class AsmaseCli:
         Variables begin with a dollar sign ("$"). There is a special variable
         for each CPU register -- e.g., on x86-64, the $rax variable always has
         the value of the %rax register.
+
+        All of the expected arithmetic, logical, and bitwise operators from C
+        are also supported. They have the same precedence as in C. The string
+        formatting operator "%" from Python is also supported.
+
+        Note that arguments to a command must be "primary expressions" -- that
+        is, literals, variables, unary expressions, or parenthetical
+        expressions. This may cause surprises, as in the following transcript:
+
+            asmase> :print 10 - 5
+            10 -5
+
+        The intended expression is as follows:
+
+            asmase> :print (10 - 5)
+            5
         """
     }
 
@@ -209,26 +232,41 @@ class AsmaseCli:
         Evaluate the given expressions and print them. See ":help expressions"
         for more information about expressions.
         """
-        regsets = 0
-        for expr in exprs:
-            if isinstance(expr, Variable):
-                try:
-                    regsets |= self._registers[expr.name]
-                except KeyError:
-                    print(f'print: Unknown variable {expr.name!r}',
-                            file=sys.stderr)
-                    return
+        try:
+            regsets = self._expression_list_regsets(exprs)
+        except KeyError as e:
+            print(f'print: Unknown variable {e.args[0]!r}',
+                  file=sys.stderr)
+            return
 
         if regsets:
             registers = self._instance.get_registers(regsets)
+        else:
+            registers = None
 
-        for i, expr in enumerate(exprs):
-            end = '' if i == len(exprs) - 1 else ' '
-            if isinstance(expr, Variable):
-                print(registers[expr.name].value, end=end)
-            elif isinstance(expr, (int, str)):
-                print(expr, end=end)
-        print()
+        try:
+            values = [str(eval_expr(expr, registers)) for expr in exprs]
+        except (TypeError, ZeroDivisionError) as e:
+            print('print:', e, file=sys.stderr)
+            return
+        print(' '.join(values))
+
+    def _expression_list_regsets(self, exprs):
+        regsets = 0
+        for expr in exprs:
+            regsets |= self._walk_regsets(expr)
+        return regsets
+
+    def _walk_regsets(self, expr):
+        if isinstance(expr, Variable):
+            return self._registers[expr.name]
+        elif isinstance(expr, UnaryOp):
+            return self._walk_regsets(expr.expr)
+        elif isinstance(expr, BinaryOp):
+            return self._walk_regsets(expr.left) | self._walk_regsets(expr.right)
+        else:
+            assert isinstance(expr, (int, str))
+            return 0
 
     def command_source(self, path):
         """:source "path"
@@ -288,4 +326,53 @@ for command in commands:
     globals()[name] = node_type
     _command_handlers[globals()[name]] = handler
 
+BinaryOp = namedtuple('BinaryOp', ['op', 'left', 'right'])
+UnaryOp = namedtuple('UnaryOp', ['op', 'expr'])
 Variable = namedtuple('Variable', ['name'])
+
+
+unary_operators = {
+        '+': operator.pos,
+        '-': operator.neg,
+        '!': operator.not_,
+        '~': operator.invert,
+}
+
+
+binary_operators = {
+    '+': operator.add,
+    '-': operator.sub,
+    '*': operator.mul,
+    '/': lambda a, b: operator.floordiv(a, b)
+                      if isinstance(a, numbers.Integral)
+                      and isinstance(b, numbers.Integral)
+                      else operator.truediv(a, b),
+    '%': operator.mod,
+    '<<': operator.lshift,
+    '>>': operator.rshift,
+    '<': operator.lt,
+    '<=': operator.le,
+    '>': operator.gt,
+    '>=': operator.ge,
+    '==': operator.eq,
+    '!=': operator.ne,
+    '&': operator.and_,
+    '^': operator.xor,
+    '|': operator.or_,
+    '&&': lambda a, b: a and b,
+    '||': lambda a, b: a or b,
+}
+
+
+def eval_expr(expr, registers=None):
+    if isinstance(expr, Variable):
+        return registers[expr.name].value
+    elif isinstance(expr, UnaryOp):
+        arg = eval_expr(expr.expr, registers)
+        return unary_operators[expr.op](arg)
+    elif isinstance(expr, BinaryOp):
+        left = eval_expr(expr.left, registers)
+        right = eval_expr(expr.right, registers)
+        return binary_operators[expr.op](left, right)
+    else:
+        return expr

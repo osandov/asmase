@@ -53,6 +53,37 @@ class TestParser(unittest.TestCase):
         with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):
             self.parse(':warranty foo\n')
 
+    def test_parenthetical(self):
+        self.assertEqual(self.parse(':print (10)\n'), cli.Print([10]))
+        self.assertEqual(self.parse(':print ((10))\n'), cli.Print([10]))
+
+    def test_unary(self):
+        for op in cli.unary_operators:
+            self.assertEqual(self.parse(f':print {op}10\n'),
+                             cli.Print([cli.UnaryOp(op, 10)]))
+
+        # Should be right-associative.
+        self.assertEqual(self.parse(':print -+10\n'),
+                         cli.Print([cli.UnaryOp('-', cli.UnaryOp('+', 10))]))
+
+    def test_binary(self):
+        for op in cli.binary_operators:
+            self.assertEqual(self.parse(f':print (1 {op} 2)\n'),
+                             cli.Print([cli.BinaryOp(op, 1, 2)]))
+
+        # Should be left-associative.
+        self.assertEqual(
+            self.parse(f':print (1 + 2 - 3)\n'),
+            cli.Print([cli.BinaryOp('-', cli.BinaryOp('+', 1, 2), 3)]))
+
+        self.assertEqual(
+            self.parse(f':print (1 + 2 * 3)\n'),
+            cli.Print([cli.BinaryOp('+', 1, cli.BinaryOp('*', 2, 3))]))
+
+        self.assertEqual(
+            self.parse(f':print (+1 * -2)\n'),
+            cli.Print([cli.BinaryOp('*', cli.UnaryOp('+', 1), cli.UnaryOp('-', 2))]))
+
     def test_int(self):
         self.assertEqual(self.parse(':print 10\n'), cli.Print([10]))
         self.assertEqual(self.parse(':print 0x10\n'), cli.Print([0x10]))
