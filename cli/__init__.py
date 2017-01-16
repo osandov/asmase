@@ -24,6 +24,10 @@ class CliSyntaxError(Exception):
         self.msg = msg
 
 
+class CliCommandError(Exception):
+    pass
+
+
 class AsmaseCli:
     def __init__(self, assembler, instance, lexer, parser):
         # Stack of (file, iter(file)) being read from.
@@ -92,7 +96,11 @@ class AsmaseCli:
             print(' ' * (e.pos - 1) + '^', file=sys.stderr)
             return
 
-        _command_handlers[type(command)](self, *command)
+        handler = _command_handlers[type(command)]
+        try:
+            handler(self, *command)
+        except CliCommandError as e:
+            print(f'{handler.__name__[8:]}: {e}', file=sys.stderr)
 
     def _get_help(self, command):
         doc = inspect.cleandoc(command.__doc__)
@@ -165,7 +173,7 @@ class AsmaseCli:
         except KeyError:
             pass
 
-        print(f'help: {ident}: Unknown command or topic', file=sys.stderr)
+        raise CliCommandError(f'{ident}: Unknown command or topic')
 
     def _help_command(self, command):
         usage, short, long = self._get_help(command)
@@ -235,9 +243,7 @@ class AsmaseCli:
         try:
             regsets = self._expression_list_regsets(exprs)
         except KeyError as e:
-            print(f'print: Unknown variable {e.args[0]!r}',
-                  file=sys.stderr)
-            return
+            raise CliCommandError(f'Unknown variable {e.args[0]!r}')
 
         if regsets:
             registers = self._instance.get_registers(regsets)
@@ -247,8 +253,7 @@ class AsmaseCli:
         try:
             values = [str(eval_expr(expr, registers)) for expr in exprs]
         except (TypeError, ZeroDivisionError) as e:
-            print('print:', e, file=sys.stderr)
-            return
+            raise CliCommandError(str(e))
         print(' '.join(values))
 
     def _expression_list_regsets(self, exprs):
@@ -277,17 +282,15 @@ class AsmaseCli:
         into the input stream at the current position.
         """
         if len(self._files) >= 100:
-            print('source: Maximum source file depth exceeded', file=sys.stderr)
-            return
+            raise CliCommandError('Maximum source file depth exceeded')
 
         try:
             f = open(path, 'r')
         except OSError as e:
             if e.filename is None:
-                print(f'source: {e.strerror}', file=sys.stderr)
+                raise CliCommandError(e.strerror)
             else:
-                print(f'source: {e.filename!r}: {e.strerror}', file=sys.stderr)
-            return
+                raise CliCommandError(f'{e.filename!r}: {e.strerror}')
         self._files.append((f, iter(f)))
         self._linenos.append(0)
 
