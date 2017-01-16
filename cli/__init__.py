@@ -30,7 +30,7 @@ class AsmaseCli:
         self._files = []
         self._linenos = []
 
-        self.assembler = assembler
+        self._assembler = assembler
         self._instance = instance
         self._lexer = lexer
         self._parser = parser
@@ -67,7 +67,7 @@ class AsmaseCli:
 
     def handle_asm(self, line, filename, lineno):
         try:
-            code = self.assembler.assemble_code(line, filename, lineno)
+            code = self._assembler.assemble_code(line, filename, lineno)
         except asmase.AssemblerDiagnostic as e:
             sys.stderr.write(str(e))
             return
