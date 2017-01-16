@@ -34,10 +34,18 @@ class TestParser(unittest.TestCase):
         self.assertEqual(self.parse(':print "a"\n'), cli.Print(["a"]))
         self.assertEqual(self.parse(':print $foo\n'),
                          cli.Print([cli.Variable('foo')]))
-        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected expression'):
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected primary expression'):
             self.parse(':print foo\n')
-        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected expression'):
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected primary expression'):
             self.parse(':print "a" b\n')
+
+    def test_quit(self):
+        self.assertEqual(self.parse(':quit\n'), cli.Quit(None))
+        self.assertEqual(self.parse(':quit 5\n'), cli.Quit(5))
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected primary expression'):
+            self.parse(':quit foo\n')
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):
+            self.parse(':quit 5 6\n')
 
     def test_source(self):
         self.assertEqual(self.parse(':source "/dev/null"\n'), cli.Source("/dev/null"))

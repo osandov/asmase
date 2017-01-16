@@ -34,6 +34,8 @@ class AsmaseCli:
         self._files = []
         self._linenos = []
 
+        self._quit = None
+
         self._assembler = assembler
         self._instance = instance
         self._lexer = lexer
@@ -43,7 +45,7 @@ class AsmaseCli:
         self._registers = {name: reg.set for name, reg in registers.items()}
 
     def readlines(self):
-        while True:
+        while self._quit is None:
             try:
                 if self._files:
                     file, file_iter = self._files[-1]
@@ -58,7 +60,7 @@ class AsmaseCli:
                     del self._files[-1]
                     del self._linenos[-1]
                 else:
-                    return
+                    self._quit = 0
 
     def main_loop(self):
         print(NOTICE, end='')
@@ -68,6 +70,7 @@ class AsmaseCli:
                 self.handle_command(line, filename, lineno)
             else:
                 self.handle_asm(line, filename, lineno)
+        return self._quit
 
     def handle_asm(self, line, filename, lineno):
         try:
@@ -272,6 +275,23 @@ class AsmaseCli:
             return [eval_expr(expr, registers) for expr in exprs]
         except (TypeError, ZeroDivisionError) as e:
             raise CliCommandError(str(e))
+
+    def command_quit(self, expr):
+        """:quit [expr]
+
+        quit the program
+
+        Quit the program immediately. The optional expression will be evaluated
+        and used as the program exit code. The default is zero.
+        """
+
+        if expr is None:
+            self._quit = 0
+        else:
+            exit_code = self.eval_expr_list([expr])[0]
+            if not isinstance(exit_code, int):
+                raise CliCommandError('Exit code must be int')
+            self._quit = exit_code
 
     def command_source(self, path):
         """:source "path"

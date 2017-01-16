@@ -15,6 +15,7 @@ def Parser():
         command : copying
                 | help
                 | print
+                | quit
                 | source
                 | warranty
         """
@@ -59,10 +60,28 @@ def Parser():
             p[0] = cli.Print(p[2])
 
     def p_print_error(p):
-        """
-        print : PRINT error NEWLINE
-        """
+        "print : PRINT error NEWLINE"
         raise CliSyntaxError(p[2].lexpos + 1, 'expected primary expression')
+
+    def p_quit(p):
+        """
+        quit : QUIT NEWLINE
+             | QUIT primary_expression NEWLINE
+        """
+        if len(p) == 3:
+            p[0] = cli.Quit(None)
+        else:
+            p[0] = cli.Quit(p[2])
+
+    def p_quit_error(p):
+        """
+        quit : QUIT error NEWLINE
+             | QUIT primary_expression error NEWLINE
+        """
+        if len(p) == 4:
+            raise CliSyntaxError(p[2].lexpos + 1, 'expected primary expression')
+        else:
+            raise CliSyntaxError(p[3].lexpos + 1, 'expected newline')
 
     def p_source(p):
         "source : SOURCE STRING NEWLINE"
