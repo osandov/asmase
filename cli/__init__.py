@@ -240,38 +240,38 @@ class AsmaseCli:
         Evaluate the given expressions and print them. See ":help expressions"
         for more information about expressions.
         """
-        try:
-            regsets = self._expression_list_regsets(exprs)
-        except KeyError as e:
-            raise CliCommandError(f'Unknown variable {e.args[0]!r}')
+        values = self.eval_expr_list(exprs)
+        print(' '.join(str(value) for value in values))
 
+    def expr_regsets(self, expr):
+        if isinstance(expr, Variable):
+            try:
+                return self._registers[expr.name]
+            except KeyError as e:
+                raise CliCommandError(f'Unknown variable {e.args[0]!r}')
+        elif isinstance(expr, UnaryOp):
+            return self.expr_regsets(expr.expr)
+        elif isinstance(expr, BinaryOp):
+            return self.expr_regsets(expr.left) | self.expr_regsets(expr.right)
+        else:
+            assert isinstance(expr, (int, str))
+            return 0
+
+    def eval_expr_list(self, exprs):
+        # First, walk the AST to figure out all of the register sets we need.
+        regsets = 0
+        for expr in exprs:
+            regsets |= self.expr_regsets(expr)
         if regsets:
             registers = self._instance.get_registers(regsets)
         else:
             registers = None
 
+        # Now we can evaluate the expressions.
         try:
-            values = [str(eval_expr(expr, registers)) for expr in exprs]
+            return [eval_expr(expr, registers) for expr in exprs]
         except (TypeError, ZeroDivisionError) as e:
             raise CliCommandError(str(e))
-        print(' '.join(values))
-
-    def _expression_list_regsets(self, exprs):
-        regsets = 0
-        for expr in exprs:
-            regsets |= self._walk_regsets(expr)
-        return regsets
-
-    def _walk_regsets(self, expr):
-        if isinstance(expr, Variable):
-            return self._registers[expr.name]
-        elif isinstance(expr, UnaryOp):
-            return self._walk_regsets(expr.expr)
-        elif isinstance(expr, BinaryOp):
-            return self._walk_regsets(expr.left) | self._walk_regsets(expr.right)
-        else:
-            assert isinstance(expr, (int, str))
-            return 0
 
     def command_source(self, path):
         """:source "path"
