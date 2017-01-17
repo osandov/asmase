@@ -16,6 +16,7 @@ def Parser():
                 | help
                 | print
                 | quit
+                | registers
                 | source
                 | warranty
         """
@@ -83,6 +84,20 @@ def Parser():
         else:
             raise CliSyntaxError(p[3].lexpos + 1, 'expected newline')
 
+    def p_registers(p):
+        """
+        registers : REGISTERS NEWLINE
+                  | REGISTERS identifier_list NEWLINE
+        """
+        if len(p) == 3:
+            p[0] = cli.Registers(None)
+        else:
+            p[0] = cli.Registers(p[2])
+
+    def p_registers_error(p):
+        "registers : REGISTERS error NEWLINE"
+        raise CliSyntaxError(p[2].lexpos + 1, 'expected identifier')
+
     def p_source(p):
         "source : SOURCE STRING NEWLINE"
         p[0] = cli.Source(p[2])
@@ -104,6 +119,16 @@ def Parser():
     def p_warranty_error(p):
         "warranty : WARRANTY error NEWLINE"
         raise CliSyntaxError(p[2].lexpos + 1, 'expected newline')
+
+    def p_identifier_list(p):
+        """
+        identifier_list : identifier_list ID
+                        | ID
+        """
+        if len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[2]]
 
     def p_expression_list(p):
         """

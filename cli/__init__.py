@@ -293,6 +293,69 @@ class AsmaseCli:
                 raise CliCommandError('Exit code must be int')
             self._quit = exit_code
 
+    def command_registers(self, idents):
+        """:registers [register-set...]
+
+        dump register contents
+
+        Print the contents of the CPU registers. The optional arguments specify
+        which registers to print as sets of related registers given below. If
+        no register sets are given, the default behavior is to print the
+        program counter, general purpose registers, and condition code
+        registers (i.e., the equivalent of running ":registers pc gp cc").
+
+        Register sets:
+          pc  -- program counter/instruction pointer
+          gp  -- general purpose registers
+          cc  -- condition code/status flag registers
+          fp  -- floating point registers
+          vec -- vector registers
+          seg -- segment registers
+          all -- all registers
+        """
+        if idents is None:
+            regsets = (asmase.ASMASE_REGISTERS_PROGRAM_COUNTER |
+                       asmase.ASMASE_REGISTERS_GENERAL_PURPOSE |
+                       asmase.ASMASE_REGISTERS_STATUS)
+        else:
+            regsets = 0
+            for regset in idents:
+                try:
+                    regsets |= self._regsets[regset]
+                except KeyError as e:
+                    raise CliCommandError(f'Unknown register set {e.args[0]!r}')
+
+        registers = self._instance.get_registers(regsets)
+        for name, value in registers.items():
+            format = self._register_type_format[value.type]
+            print(name, '=', format.format(value.value), end='')
+            if value.bits is None:
+                print()
+            else:
+                bits = ' '.join(value.bits)
+                print(f' = [ {bits} ]')
+
+    _regsets = {
+        'pc': asmase.ASMASE_REGISTERS_PROGRAM_COUNTER,
+        'gp': asmase.ASMASE_REGISTERS_GENERAL_PURPOSE,
+        'cc': asmase.ASMASE_REGISTERS_STATUS,
+        'fp': asmase.ASMASE_REGISTERS_FLOATING_POINT |
+              asmase.ASMASE_REGISTERS_FLOATING_POINT_STATUS,
+        'vec': asmase.ASMASE_REGISTERS_VECTOR |
+               asmase.ASMASE_REGISTERS_VECTOR_STATUS,
+        'seg': asmase.ASMASE_REGISTERS_SEGMENT,
+        'all': asmase.ASMASE_REGISTERS_ALL,
+    }
+
+    _register_type_format = {
+        asmase.ASMASE_REGISTER_U8: '0x{:02x}',
+        asmase.ASMASE_REGISTER_U16: '0x{:04x}',
+        asmase.ASMASE_REGISTER_U32: '0x{:08x}',
+        asmase.ASMASE_REGISTER_U64: '0x{:016x}',
+        asmase.ASMASE_REGISTER_U128: '0x{:032x}',
+        asmase.ASMASE_REGISTER_FLOAT80: '{}',
+    }
+
     def command_source(self, path):
         """:source "path"
 

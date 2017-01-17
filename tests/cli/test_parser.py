@@ -47,6 +47,13 @@ class TestParser(unittest.TestCase):
         with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):
             self.parse(':quit 5 6\n')
 
+    def test_registers(self):
+        self.assertEqual(self.parse(':registers\n'), cli.Registers(None))
+        self.assertEqual(self.parse(':registers gp\n'), cli.Registers(['gp']))
+        self.assertEqual(self.parse(':registers gp cc\n'), cli.Registers(['gp', 'cc']))
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected identifier'):
+            self.parse(':registers "gp"\n')
+
     def test_source(self):
         self.assertEqual(self.parse(':source "/dev/null"\n'), cli.Source("/dev/null"))
         with self.assertRaisesRegex(cli.CliSyntaxError, 'expected string'):
