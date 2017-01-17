@@ -3,13 +3,6 @@
 
 #include <libasmase/libasmase.h>
 
-#ifdef ASMASE_HAVE_FLOAT80
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define NO_IMPORT_ARRAY
-#define PY_ARRAY_UNIQUE_SYMBOL asmase_ARRAY_API
-#include <numpy/arrayobject.h>
-#endif
-
 typedef struct {
 	PyObject_HEAD
 	struct asmase_instance *a;
@@ -136,29 +129,6 @@ out:
 	return result;
 }
 
-#ifdef ASMASE_HAVE_FLOAT80
-static PyObject *PyLongDoubleArrType_FromLongDouble(long double value)
-{
-	PyArray_Descr *dtype = NULL;
-	PyObject *itemsize = NULL;
-	PyObject *result = NULL;
-
-	dtype = PyArray_DescrFromType(NPY_LONGDOUBLE);
-	if (!dtype)
-		goto out;
-
-	itemsize = PyLong_FromSize_t(sizeof(value));
-	if (!itemsize)
-		goto out;
-
-	result = PyArray_Scalar(&value, dtype, itemsize);
-out:
-	Py_XDECREF(itemsize);
-	Py_XDECREF(dtype);
-	return result;
-}
-#endif
-
 static PyObject *get_register_value(struct asmase_register *reg)
 {
 	PyObject *value = NULL;
@@ -181,7 +151,12 @@ static PyObject *get_register_value(struct asmase_register *reg)
 		break;
 #ifdef ASMASE_HAVE_FLOAT80
 	case ASMASE_REGISTER_FLOAT80:
-		value = PyLongDoubleArrType_FromLongDouble(reg->float80);
+		/*
+		 * XXX: we're losing precision here, but Python doesn't have a
+		 * native long double type. We could use the long double type
+		 * from numpy, but depending on numpy for that is overkill.
+		 */
+		value = PyFloat_FromDouble((double)reg->float80);
 		break;
 #endif
 	default:

@@ -2,12 +2,6 @@
 
 #include <libasmase/libasmase.h>
 
-#ifdef ASMASE_HAVE_FLOAT80
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#define PY_ARRAY_UNIQUE_SYMBOL asmase_ARRAY_API
-#include <numpy/arrayobject.h>
-#endif
-
 extern PyObject *AssemblerDiagnostic;
 extern PyTypeObject Assembler_type, Instance_type, RegisterValue_type;
 extern PyStructSequence_Desc RegisterValue_desc;
@@ -81,10 +75,6 @@ PyInit_asmase(void)
 		return NULL;
 	Py_INCREF(&RegisterValue_type);
 	PyModule_AddObject(m, "RegisterValue", (PyObject *)&RegisterValue_type);
-
-#ifdef ASMASE_HAVE_FLOAT80
-	import_array();
-#endif
 
 	return m;
 }
