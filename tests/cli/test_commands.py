@@ -25,6 +25,10 @@ class TestCommands(CliTestCase):
                     self.cli.command_help(command)
                 self.assertIn('usage', stdout.getvalue())
 
+        for topic in self.cli._help_topics:
+            with patch_stdout() as stdout:
+                self.cli.command_help(topic)
+
         with self.assertRaisesRegex(cli.CliCommandError, 'Unknown command or topic'):
             self.cli.command_help('foo')
 
