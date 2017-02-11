@@ -107,11 +107,8 @@ class AsmaseCli:
 
     def _get_help(self, command):
         doc = inspect.cleandoc(command.__doc__)
-        split = doc.split('\n\n', maxsplit=2)
-        if len(split) == 2:
-            return split[0], split[1], None
-        else:
-            return split[0], split[1], split[2]
+        usage, short, long = doc.split('\n\n', maxsplit=2)
+        return usage, short, long
 
     _help_topics = {
         'expressions': """
