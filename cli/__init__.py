@@ -16,6 +16,7 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; type ":copying" for details.
 For help, type ":help".
 """
+PROMPT = 'asmase> '
 
 
 class CliSyntaxError(Exception):
@@ -53,7 +54,7 @@ class AsmaseCli:
                     self._linenos[-1] += 1
                     yield line, file.name, self._linenos[-1]
                 else:
-                    yield input('asmase> ') + '\n', '<stdin>', 1
+                    yield input(PROMPT) + '\n', '<stdin>', 1
             except (EOFError, StopIteration):
                 if self._files:
                     self._files[-1][0].close()
