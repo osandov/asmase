@@ -25,6 +25,10 @@ class CliSyntaxError(Exception):
         self.msg = msg
 
 
+class EvalError(Exception):
+    pass
+
+
 class CliCommandError(Exception):
     pass
 
@@ -272,7 +276,7 @@ class AsmaseCli:
         # Now we can evaluate the expressions.
         try:
             return [eval_expr(expr, variables) for expr in exprs]
-        except (TypeError, ZeroDivisionError) as e:
+        except EvalError as e:
             raise CliCommandError(str(e))
 
     def command_quit(self, expr):
@@ -454,10 +458,18 @@ def eval_expr(expr, variables=None):
         return variables[expr.name]
     elif isinstance(expr, UnaryOp):
         arg = eval_expr(expr.expr, variables)
-        return unary_operators[expr.op](arg)
+        try:
+            return unary_operators[expr.op](arg)
+        except TypeError:
+            raise EvalError(f'Invalid type for {expr.op!r}: {type(arg).__name__}')
     elif isinstance(expr, BinaryOp):
         left = eval_expr(expr.left, variables)
         right = eval_expr(expr.right, variables)
-        return binary_operators[expr.op](left, right)
+        try:
+            return binary_operators[expr.op](left, right)
+        except TypeError:
+            raise EvalError(f'Invalid types for {expr.op!r}: {type(left).__name__} and {type(right).__name__}')
+        except ZeroDivisionError:
+            raise EvalError('Integer division or modulo by zero')
     else:
         return expr
