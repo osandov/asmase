@@ -264,12 +264,13 @@ class AsmaseCli:
             regsets |= self.expr_regsets(expr)
         if regsets:
             registers = self._instance.get_registers(regsets)
+            variables = {name: reg.value for name, reg in registers.items()}
         else:
-            registers = None
+            variables = None
 
         # Now we can evaluate the expressions.
         try:
-            return [eval_expr(expr, registers) for expr in exprs]
+            return [eval_expr(expr, variables) for expr in exprs]
         except (TypeError, ZeroDivisionError) as e:
             raise CliCommandError(str(e))
 
@@ -447,15 +448,15 @@ binary_operators = {
 }
 
 
-def eval_expr(expr, registers=None):
+def eval_expr(expr, variables=None):
     if isinstance(expr, Variable):
-        return registers[expr.name].value
+        return variables[expr.name]
     elif isinstance(expr, UnaryOp):
-        arg = eval_expr(expr.expr, registers)
+        arg = eval_expr(expr.expr, variables)
         return unary_operators[expr.op](arg)
     elif isinstance(expr, BinaryOp):
-        left = eval_expr(expr.left, registers)
-        right = eval_expr(expr.right, registers)
+        left = eval_expr(expr.left, variables)
+        right = eval_expr(expr.right, variables)
         return binary_operators[expr.op](left, right)
     else:
         return expr

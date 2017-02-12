@@ -122,3 +122,5 @@ class TestCommands(CliTestCase):
 
         self.assertEqual(cli.eval_expr('foo'), 'foo')
         self.assertEqual(cli.eval_expr(cli.BinaryOp('+', 'foo', 'bar')), 'foobar')
+
+        self.assertEqual(cli.eval_expr(cli.Variable('foo'), {'foo': 5}), 5)

@@ -9,7 +9,7 @@ typedef struct {
 } Instance;
 
 static PyStructSequence_Field RegisterValue_fields[] = {
-	{"value", "int or numpy float"},
+	{"value", "int or float"},
 	{"type", "type of value (asmase.ASMASE_REGISTER_*)"},
 	{"set", "register set (asmase.ASMASE_REGISTERS_*)"},
 	{"bits", "list of decoded status bits as strings"},
