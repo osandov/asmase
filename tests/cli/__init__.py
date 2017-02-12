@@ -4,6 +4,8 @@ from io import StringIO
 from tests.asmase import AsmaseInstanceTestCase
 
 import cli
+import cli.lexer
+import cli.parser
 
 
 class CliTestCase(AsmaseInstanceTestCase):
@@ -11,7 +13,8 @@ class CliTestCase(AsmaseInstanceTestCase):
         super().setUp()
         self.cli = cli.AsmaseCli(assembler=self.assembler,
                                  instance=self.instance,
-                                 lexer=None, parser=None)
+                                 lexer=cli.lexer.Lexer(),
+                                 parser=cli.parser.Parser())
 
 
 def patch_stdout():
