@@ -66,6 +66,10 @@ class AsmaseCli:
                     del self._linenos[-1]
                 else:
                     self._quit = 0
+        while self._files:
+            self._files[-1][0].close()
+            del self._files[-1]
+            del self._linenos[-1]
 
     def main_loop(self):
         print(NOTICE, end='')
