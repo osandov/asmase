@@ -104,6 +104,9 @@ class TestParser(unittest.TestCase):
         self.assertEqual(self.parse(':print 0x10\n'), cli.Print([0x10]))
         self.assertEqual(self.parse(':print 010\n'), cli.Print([0o10]))
 
+    def test_expression_list(self):
+        self.assertEqual(self.parse(':print 1 2 3\n'), cli.Print([1, 2, 3]))
+
     def test_string(self):
         self.assertEqual(self.parse(':source "foo bar"\n'),
                          cli.Source('foo bar'))
@@ -113,3 +116,19 @@ class TestParser(unittest.TestCase):
 
         self.assertEqual(self.parse(r':source "\"foo\"bar\""''\n'),
                          cli.Source('"foo"bar"'))
+
+    def test_invalid_string(self):
+        with self.assertRaises(cli.CliSyntaxError):
+            self.parse(':print "a\\xzz"\n')
+
+    def test_illegal_character(self):
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'illegal character'):
+            self.parse('?\n')
+
+    def test_unknown_command(self):
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'unknown command'):
+            self.parse(':foo\n')
+
+    def test_unexpected_eof(self):
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'unexpected EOF'):
+            self.parse(':copying')
