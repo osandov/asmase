@@ -56,6 +56,8 @@ class AsmaseCli:
                     file, file_iter = self._files[-1]
                     line = next(file_iter)
                     self._linenos[-1] += 1
+                    if not line.endswith('\n'):
+                        line += '\n'
                     yield line, file.name, self._linenos[-1]
                 else:
                     yield input(PROMPT) + '\n', '<stdin>', 1
@@ -101,8 +103,6 @@ class AsmaseCli:
         try:
             command = self._parser.parse(line, lexer=self._lexer)
         except CliSyntaxError as e:
-            if e.pos is None:
-                e.pos = len(line) + 1
             print(f'{filename}:{lineno}:{e.pos}: error: {e.msg}', file=sys.stderr)
             print(line, end='', file=sys.stderr)
             print(' ' * (e.pos - 1) + '^', file=sys.stderr)
