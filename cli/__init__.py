@@ -377,10 +377,7 @@ class AsmaseCli:
         try:
             f = open(path, 'r')
         except OSError as e:
-            if e.filename is None:
-                raise CliCommandError(e.strerror)
-            else:
-                raise CliCommandError(f'{e.filename!r}: {e.strerror}')
+            raise CliCommandError(f'{path!r}: {e.strerror}')
         self._files.append((f, iter(f)))
         self._linenos.append(0)
 
