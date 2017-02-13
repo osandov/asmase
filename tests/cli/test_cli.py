@@ -101,16 +101,14 @@ class TestCli(CliTestCase):
         self.run_cli(':print ("asdf" + 5)\n')
         self.assertEqual(self.output, ["print: Invalid types for '+': str and int\n"])
 
-    def test_asm_error(self):
-        self.run_cli('asdf\n')
-        # This might break if the LLVM diagnostic output changes, but hopefully
-        # this is generic enough that it won't happen.
-        self.assertIn('invalid instruction mnemonic', self.output[0])
-
-    def test_asm_x86(self):
+    def test_asm(self):
         self.run_cli('nop\n')
         self.assertEqual(self.output, ['nop = [0x90]\n'])
 
-    def test_registers_x86(self):
-        self.run_cli('movq $5, %rax\n:print $rax (-$rax) ($rax + 1)\n')
-        self.assertEqual(self.output[1], '5 -5 6\n')
+    def test_asm_error(self):
+        self.run_cli('foo\n')
+        self.assertEqual(self.output, ['<stdin>:1:1: error: invalid code\n'])
+
+    def test_registers(self):
+        self.run_cli(':print $r1 (-$r1) ($r1 + 1)\n')
+        self.assertEqual(self.output, ['1 -1 2\n'])

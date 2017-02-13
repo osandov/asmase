@@ -53,22 +53,6 @@ class TestCommands(CliTestCase):
             self.cli.command_print(['a', 'b'])
         self.assertEqual(stdout.getvalue(), 'a b\n')
 
-    def test_registers(self):
-        # The output is architecture-dependent, so let's just test that it
-        # doesn't crash...
-        with patch_stdout():
-            self.cli.command_registers(None)
-
-        for regset in self.cli._regsets:
-            with patch_stdout():
-                self.cli.command_registers([regset])
-
-        with patch_stdout():
-            self.cli.command_registers(list(self.cli._regsets))
-
-        with self.assertRaisesRegex(cli.CliCommandError, 'Unknown register set'):
-            self.cli.command_registers(['foo'])
-
     def test_warranty(self):
         with patch_stdout() as stdout:
             self.cli.command_warranty()

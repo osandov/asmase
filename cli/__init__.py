@@ -339,8 +339,11 @@ class AsmaseCli:
             if value.bits is None:
                 print()
             else:
-                bits = ' '.join(value.bits)
-                print(f' = [ {bits} ]')
+                if value.bits:
+                    bits = ' '.join(value.bits)
+                    print(f' = [ {bits} ]')
+                else:
+                    print(f' = [ ]')
 
     _regsets = {
         'pc': asmase.ASMASE_REGISTERS_PROGRAM_COUNTER,
