@@ -42,9 +42,21 @@ def Lexer():
     # ':'. We then transition immediately into the args state.
     def t_COMMAND(t):
         r':[a-zA-Z_0-9]+'
-        try:
-            t.type = command_tokens[t.value]
-        except KeyError:
+
+        # Naive linear search for matching commands. We won't bother with a
+        # more complicated solution until we have more commands.
+        matches = []
+        for command in command_tokens:
+            if command.startswith(t.value):
+                matches.append(command)
+        matches.sort()
+
+        if len(matches) == 1:
+            t.type = command_tokens[matches[0]]
+        elif len(matches) > 1:  # pragma: no cover
+            raise CliSyntaxError(
+                t.lexpos + 1, f"ambiguous command {t.value!r}: {', '.join(matches)}")
+        else:
             raise CliSyntaxError(t.lexpos + 1, f'unknown command {t.value!r}')
         t.lexer.begin('args')
         return t

@@ -134,6 +134,9 @@ class TestParser(unittest.TestCase):
         self.assertEqual(self.parse(r':source "\"foo\"bar\""''\n'),
                          cli.Source('"foo"bar"'))
 
+    def test_abbrev(self):
+        self.assertEqual(self.parse(':mem\n'), cli.Memory(None, None, None, None))
+
     def test_invalid_string(self):
         with self.assertRaises(cli.CliSyntaxError):
             self.parse(':print "a\\xzz"\n')

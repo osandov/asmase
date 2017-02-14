@@ -214,6 +214,7 @@ class AsmaseCli:
         Type assembly code to assemble and run it.
 
         Type a line beginning with a colon (":") to execute a built-in command.
+        Command names can be abbreviated as long as they are unambiguous.
 
         Built-in commands:
         """))
