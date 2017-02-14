@@ -29,6 +29,23 @@ class TestParser(unittest.TestCase):
         with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):
             self.parse(':help foo bar\n')
 
+    def test_memory(self):
+        self.assertEqual(self.parse(':memory\n'), cli.Memory(None, None, None, None))
+        self.assertEqual(self.parse(':memory 0\n'), cli.Memory(0, None, None, None))
+        self.assertEqual(self.parse(':memory 0 1\n'), cli.Memory(0, 1, None, None))
+        self.assertEqual(self.parse(':memory 0 1 x\n'), cli.Memory(0, 1, 'x', None))
+        self.assertEqual(self.parse(':memory 0 1 x 8\n'), cli.Memory(0, 1, 'x', 8))
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected primary expression'):
+            self.parse(':memory foo\n')
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected primary expression'):
+            self.parse(':memory 0 foo\n')
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected identifier'):
+            self.parse(':memory 0 1 "foo"\n')
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected integer'):
+            self.parse(':memory 0 1 x "foo"\n')
+        with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):
+            self.parse(':memory 0 1 x 8 "foo"\n')
+
     def test_print(self):
         self.assertEqual(self.parse(':print\n'), cli.Print([]))
         self.assertEqual(self.parse(':print "a"\n'), cli.Print(["a"]))

@@ -1,6 +1,5 @@
 import codecs
 import ply.lex as lex
-from ply.lex import TOKEN
 
 import cli
 from cli import CliSyntaxError

@@ -14,6 +14,7 @@ def Parser():
         """
         command : copying
                 | help
+                | memory
                 | print
                 | quit
                 | registers
@@ -49,6 +50,44 @@ def Parser():
             raise CliSyntaxError(p[2].lexpos + 1, 'expected identifier')
         else:
             raise CliSyntaxError(p[3].lexpos + 1, 'expected newline')
+
+    def p_memory(p):
+        """
+        memory : MEMORY NEWLINE
+               | MEMORY primary_expression NEWLINE
+               | MEMORY primary_expression primary_expression NEWLINE
+               | MEMORY primary_expression primary_expression ID NEWLINE
+               | MEMORY primary_expression primary_expression ID INT NEWLINE
+        """
+        if len(p) == 3:
+            p[0] = cli.Memory(None, None, None, None)
+        elif len(p) == 4:
+            p[0] = cli.Memory(p[2], None, None, None)
+        elif len(p) == 5:
+            p[0] = cli.Memory(p[2], p[3], None, None)
+        elif len(p) == 6:
+            p[0] = cli.Memory(p[2], p[3], p[4], None)
+        else:
+            p[0] = cli.Memory(p[2], p[3], p[4], p[5])
+
+    def p_memory_error(p):
+        """
+        memory : MEMORY error NEWLINE
+               | MEMORY primary_expression error NEWLINE
+               | MEMORY primary_expression primary_expression error NEWLINE
+               | MEMORY primary_expression primary_expression ID error NEWLINE
+               | MEMORY primary_expression primary_expression ID INT error NEWLINE
+        """
+        if len(p) == 4:
+            raise CliSyntaxError(p[2].lexpos + 1, 'expected primary expression')
+        elif len(p) == 5:
+            raise CliSyntaxError(p[3].lexpos + 1, 'expected primary expression')
+        elif len(p) == 6:
+            raise CliSyntaxError(p[4].lexpos + 1, 'expected identifier')
+        elif len(p) == 7:
+            raise CliSyntaxError(p[5].lexpos + 1, 'expected integer')
+        else:
+            raise CliSyntaxError(p[6].lexpos + 1, 'expected newline')
 
     def p_print(p):
         """

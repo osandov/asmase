@@ -1,11 +1,14 @@
 import asmase
 from collections import namedtuple
+import ctypes
 import inspect
 import numbers
 import operator
+import struct
 import sys
 
 from cli.gpl import COPYING, WARRANTY
+from cli.util import escape_character
 
 
 ASMASE_VERSION = '0.2'
@@ -17,6 +20,8 @@ under certain conditions; type ":copying" for details.
 For help, type ":help".
 """
 PROMPT = 'asmase> '
+
+sizeof_void_p = ctypes.sizeof(ctypes.c_void_p)
 
 
 class CliSyntaxError(Exception):
@@ -240,6 +245,158 @@ class AsmaseCli:
         Display conditions for redistributing copies of asmase.
         """
         print(COPYING, end='')
+
+    # [format][size] = (struct_fmt, num_columns, str_format)
+    _memory_formats = {
+        'd': {
+            1: ('=b', 8, '{:8}'),
+            2: ('=h', 8, '{:8}'),
+            4: ('=l', 4, '{:14}'),
+            8: ('=q', 2, '{:24}'),
+        },
+        'u': {
+            1: ('=B', 8, '{:8}'),
+            2: ('=H', 8, '{:8}'),
+            4: ('=L', 4, '{:14}'),
+            8: ('=Q', 2, '{:24}'),
+        },
+        'x': {
+            1: ('=B', 8, '    0x{:02x}'),
+            2: ('=H', 8, '  0x{:04x}'),
+            4: ('=L', 4, '    0x{:08x}'),
+            8: ('=Q', 2, '      0x{:016x}'),
+        },
+        'o': {
+            1: ('=B', 8, '    0{:03o}'),
+            2: ('=H', 4, '    0{:06o}'),
+            4: ('=L', 4, '  0{:011o}'),
+            8: ('=Q', 2, '  0{:022o}'),
+        },
+        't': {
+            1: ('=B', 4, '    {:08b}'),
+            2: ('=H', 2, '    {:016b}'),
+            4: ('=L', 1, '    {:032b}'),
+            8: ('=Q', 1, '  {:064b}'),
+        },
+        'f': {
+            4: ('=f', 4, '{:16g}'),
+            8: ('=d', 4, '{:16g}'),
+        },
+        'a': {
+            sizeof_void_p: ('P', 16 / sizeof_void_p, None),
+        },
+        'c': {
+            1: ('=B', 8, None),
+        },
+        's': None,
+    }
+
+    def command_memory(self, addr, repeat, format, size):
+        """:memory [addr [repeat [format [size]]]]
+
+        dump memory contents
+
+        Print the contents of memory at a given address. The memory to print is
+        divided into units of the given size -- 1, 2, 4, or 8 bytes. The number
+        of units of that size to print is also given. A memory unit may be
+        interpreted as one of several types depending on the specified format.
+
+        The address and number of repetitions may be expressions. See ":help
+        expressions" for more information about expressions.
+
+        All arguments are optional. Any omitted arguments are implicitly the
+        same as the last time the command was invoked.
+
+        Formats:
+          d -- decimal
+          u -- unsigned decimal
+          x -- unsigned hexadecimal
+          o -- unsigned octal
+          t -- unsigned binary
+          f -- floating point
+          a -- address
+          c -- character
+          s -- string
+        """
+
+        if addr is None:
+            addr = getattr(self, '_last_memory_addr', 0)
+        if repeat is None:
+            repeat = getattr(self, '_last_memory_repeat', 1)
+        if format is None:
+            format = getattr(self, '_last_memory_format', 'x')
+        if format == 's' and size is not None:
+            raise CliCommandError('Size is invalid with string format')
+        if size is None:
+            if format == 'a':
+                size = sizeof_void_p
+            elif format == 'c':
+                size = 1
+            elif format != 's':
+                size = getattr(self, '_last_memory_size', sizeof_void_p)
+
+        addr_val, repeat_val = self.eval_expr_list([addr, repeat])
+        if not isinstance(addr_val, int):
+            raise CliCommandError('Address must be integer')
+        if not isinstance(repeat_val, int):
+            raise CliCommandError('Number of repetitions must be integer')
+
+        try:
+            format_sizes = self._memory_formats[format]
+        except KeyError:
+            raise CliCommandError(f'Invalid format {format!r}')
+
+        if format == 's':
+            for i in range(repeat_val):
+                string_addr = addr_val
+                chars = []
+                while True:
+                    try:
+                        byte = self._instance.read_memory(addr_val, 1)[0]
+                    except OSError as e:
+                        if chars:
+                            print(f"0x{string_addr:x}:   \"{''.join(chars)}\"")
+                        raise CliCommandError(e.strerror)
+                    addr_val += 1
+                    if byte == 0:
+                        break
+                    else:
+                        chars.append(escape_character(byte, escape_double_quote=True, escape_backslash=True))
+                print(f"0x{string_addr:x}:   \"{''.join(chars)}\"")
+        else:
+            try:
+                struct_fmt, num_columns, str_format = format_sizes[size]
+            except KeyError:
+                raise CliCommandError(f'Invalid size {size} for format {format!r}')
+
+            try:
+                memory = self._instance.read_memory(addr_val, repeat_val * size)
+                if (len(memory) % size) != 0:
+                    memory += bytes(size - (len(memory) % size))
+            except OSError as e:
+                raise CliCommandError(e.strerror)
+
+            for i, v in enumerate(struct.iter_unpack(struct_fmt, memory)):
+                if i % num_columns == 0:
+                    if i != 0:
+                        print()
+                    print(f'0x{addr_val + (i * size):x}: ', end='')
+                if format == 'a':
+                    s = f'0x{v[0]:x}'
+                    print(f'{s:>24}', end='')
+                elif format == 'c':
+                    s = "'" + escape_character(
+                        v[0], escape_single_quote=True, escape_backslash=True) + "'"
+                    print(f'{s:>8}', end='')
+                else:
+                    print(str_format.format(v[0]), end='')
+            print()
+
+        self._last_memory_addr = addr
+        self._last_memory_repeat = repeat
+        self._last_memory_format = format
+        if size is not None:
+            self._last_memory_size = size
 
     def command_print(self, exprs):
         """:print [expr...]

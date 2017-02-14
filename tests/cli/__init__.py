@@ -1,7 +1,9 @@
 from collections import OrderedDict
+import errno
+from io import StringIO
+import os
 import unittest
 from unittest.mock import patch
-from io import StringIO
 
 import asmase
 import cli
@@ -43,9 +45,13 @@ class MockAsmaseInstance:
         return OrderedDict((name, value) for name, value in self.registers.items() if
                            value.set & regsets)
 
-    def read_memory(self, addr, len):
-        assert addr == 0x80000000
-        return bytes(self.stack[:len])
+    def read_memory(self, addr, len_):
+        assert len(self.stack) == 4096
+        if 0x80000000 <= addr < 0x80001000:
+            i = addr - 0x80000000
+            return bytes(self.stack[i:i + len_])
+        else:
+            raise OSError(errno.EFAULT, os.strerror(errno.EFAULT))
 
     def execute_code(self, code):
         assert code == b'\x90'
