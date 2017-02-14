@@ -16,6 +16,9 @@ class TestParser(unittest.TestCase):
         self.assertIsNotNone(command)
         return command
 
+    def test_repeat(self):
+        self.assertEqual(self.parse(':\n'), cli.Repeat())
+
     def test_copying(self):
         self.assertEqual(self.parse(':copying\n'), cli.Copying())
         with self.assertRaisesRegex(cli.CliSyntaxError, 'expected newline'):

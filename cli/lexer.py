@@ -22,6 +22,7 @@ tokens = (
     'INT',
     'STRING',
     'VAR',
+    'REPEAT',
 ) + tuple(sorted(command_tokens.values()))
 
 
@@ -41,7 +42,11 @@ def Lexer():
     # In the INITIAL state, we are looking for a command name starting with
     # ':'. We then transition immediately into the args state.
     def t_COMMAND(t):
-        r':[a-zA-Z_0-9]+'
+        r':[a-zA-Z_0-9]*'
+
+        if t.value == ':':
+            t.type = 'REPEAT'
+            return t
 
         # Naive linear search for matching commands. We won't bother with a
         # more complicated solution until we have more commands.

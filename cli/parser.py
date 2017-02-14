@@ -12,7 +12,8 @@ def Parser():
 
     def p_command(p):
         """
-        command : copying
+        command : repeat
+                | copying
                 | help
                 | memory
                 | print
@@ -22,6 +23,10 @@ def Parser():
                 | warranty
         """
         p[0] = p[1]
+
+    def p_repeat(p):
+        "repeat : REPEAT NEWLINE"
+        p[0] = cli.Repeat()
 
     def p_copying(p):
         "copying : COPYING NEWLINE"

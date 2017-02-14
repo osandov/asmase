@@ -112,3 +112,11 @@ class TestCli(CliTestCase):
     def test_registers(self):
         self.run_cli(':print $r1 (-$r1) ($r1 + 1)\n')
         self.assertEqual(self.output, ['1 -1 2\n'])
+
+    def test_repeat_none(self):
+        self.run_cli(':\n')
+        self.assertEqual(self.output, ['<stdin>:1: error: no last command\n'])
+
+    def test_repeat(self):
+        self.run_cli(':print $r1\n:\n')
+        self.assertEqual(self.output, ['1\n', '1\n'])

@@ -113,11 +113,19 @@ class AsmaseCli:
             print(' ' * (e.pos - 1) + '^', file=sys.stderr)
             return
 
+        if isinstance(command, Repeat):
+            try:
+                command = self._last_command
+            except AttributeError:
+                print(f'{filename}:{lineno}: error: no last command')
+                return
+
         handler = _command_handlers[type(command)]
         try:
             handler(self, *command)
         except CliCommandError as e:
             print(f'{handler.__name__[8:]}: {e}', file=sys.stderr)
+        self._last_command = command
 
     def _get_help(self, command):
         doc = inspect.cleandoc(command.__doc__)
@@ -215,6 +223,7 @@ class AsmaseCli:
 
         Type a line beginning with a colon (":") to execute a built-in command.
         Command names can be abbreviated as long as they are unambiguous.
+        Additionally, ":" by itself repeats the last executed command.
 
         Built-in commands:
         """))
@@ -564,6 +573,8 @@ commands = frozenset({
 
 # Dispatch table from command AST node type to the handler method.
 _command_handlers = {}
+
+Repeat = namedtuple('Repeat', [])
 
 for command in commands:
     name = command.title()
