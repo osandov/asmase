@@ -117,7 +117,7 @@ class AsmaseCli:
             try:
                 command = self._last_command
             except AttributeError:
-                print(f'{filename}:{lineno}: error: no last command')
+                print(f'{filename}:{lineno}: error: no last command', file=sys.stderr)
                 return
 
         handler = _command_handlers[type(command)]
