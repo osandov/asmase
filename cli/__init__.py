@@ -193,9 +193,8 @@ class AsmaseCli:
         usage, short, long = self._get_help(command)
         print(f'usage: {usage}')
         print(short)
-        if long:
-            print()
-            print(long)
+        print()
+        print(long)
 
     def _print_help_list(self, topics):
         topics.sort()
