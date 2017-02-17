@@ -2,6 +2,8 @@ from collections import OrderedDict
 import errno
 from io import StringIO
 import os
+import signal
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -9,6 +11,7 @@ import asmase
 import cli
 import cli.lexer
 import cli.parser
+from cli import NOTICE, PROMPT
 
 
 class MockAsmaseAssembler:
@@ -40,6 +43,8 @@ class MockAsmaseInstance:
             ('vcc', asmase.RegisterValue([0, asmase.ASMASE_REGISTER_U32, asmase.ASMASE_REGISTERS_VECTOR_STATUS, []])),
         ])
         self.stack = bytearray(4096)
+        self.wstatus = (signal.SIGTRAP << 8) | 0x7f
+        self.killed = False
 
     def get_registers(self, regsets):
         return OrderedDict((name, value) for name, value in self.registers.items() if
@@ -54,17 +59,41 @@ class MockAsmaseInstance:
             raise OSError(errno.EFAULT, os.strerror(errno.EFAULT))
 
     def execute_code(self, code):
+        if self.killed:
+            raise OSError(errno.ESRCH, os.strerror(errno.ESRCH))
         assert code == b'\x90'
+        return self.wstatus
 
 
 class CliTestCase(unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.assembler = MockAsmaseAssembler()
         self.instance = MockAsmaseInstance()
         self.cli = cli.AsmaseCli(assembler=self.assembler,
                                  instance=self.instance,
                                  lexer=cli.lexer.Lexer(),
                                  parser=cli.parser.Parser())
+
+    def run_cli(self, stdin):
+        old_stdin = sys.stdin
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+
+        sys.stdin = StringIO(stdin)
+        sys.stdout = sys.stderr = output = StringIO()
+
+        try:
+            return self.cli.main_loop()
+        finally:
+            sys.stdin = old_stdin
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+            output_lines = output.getvalue().split(PROMPT)
+            self.assertEqual(output_lines[0], NOTICE)
+            self.assertEqual(output_lines[-1], '')
+            self.output = output_lines[1:-1]
 
 
 def patch_stdout():

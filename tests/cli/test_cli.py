@@ -1,36 +1,13 @@
 from contextlib import contextmanager
-from io import StringIO
-import sys
+import signal
 import tempfile
 
 from tests.cli import CliTestCase, patch_stdout
-
-from cli import NOTICE, PROMPT
 
 
 class TestCli(CliTestCase):
     def setUp(self):
         super().setUp()
-
-    def run_cli(self, stdin):
-        old_stdin = sys.stdin
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-
-        sys.stdin = StringIO(stdin)
-        sys.stdout = sys.stderr = output = StringIO()
-
-        try:
-            return self.cli.main_loop()
-        finally:
-            sys.stdin = old_stdin
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-
-            output_lines = output.getvalue().split(PROMPT)
-            self.assertEqual(output_lines[0], NOTICE)
-            self.assertEqual(output_lines[-1], '')
-            self.output = output_lines[1:-1]
 
     def test_eof(self):
         ret = self.run_cli('')
@@ -120,3 +97,33 @@ class TestCli(CliTestCase):
     def test_repeat(self):
         self.run_cli(':print $r1\n:\n')
         self.assertEqual(self.output, ['1\n', '1\n'])
+
+    def test_wstatus_exited(self):
+        self.instance.wstatus = 1 << 8
+        self.run_cli('nop\n')
+        self.assertEqual(self.output, ['nop = [0x90]\ntracee exited with status 1\n'])
+
+    def test_wstatus_signaled(self):
+        self.instance.wstatus = signal.SIGTERM
+        self.run_cli('nop\n')
+        self.assertEqual(self.output, ['nop = [0x90]\ntracee was terminated (SIGTERM)\n'])
+
+    def test_wstatus_stopped(self):
+        self.instance.wstatus = (signal.SIGINT << 8) | 0x7f
+        self.run_cli('nop\n')
+        self.assertEqual(self.output, ['nop = [0x90]\ntracee was stopped (SIGINT)\n'])
+
+    def test_wstatus_continued(self):
+        self.instance.wstatus = 0xffff
+        self.run_cli('nop\n')
+        self.assertEqual(self.output, ['nop = [0x90]\ntracee was continued\n'])
+
+    def test_wstatus_invalid(self):
+        self.instance.wstatus = 0xfffff
+        self.run_cli('nop\n')
+        self.assertEqual(self.output, ['nop = [0x90]\ntracee disappeared\n'])
+
+    def test_killed(self):
+        self.instance.killed = True
+        self.run_cli('nop\n')
+        self.assertEqual(self.output, ['nop = [0x90]\nerror: No such process\n'])

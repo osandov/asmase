@@ -4,6 +4,8 @@ import ctypes
 import inspect
 import numbers
 import operator
+import os
+import signal
 import struct
 import sys
 
@@ -101,7 +103,25 @@ class AsmaseCli:
         code_bytes = ', '.join(f'0x{b:02x}' for b in code)
         print(f'{line.strip()} = [{code_bytes}]')
 
-        self._instance.execute_code(code)
+        try:
+            wstatus = self._instance.execute_code(code)
+        except OSError as e:
+            print(f'error: {e.strerror}', file=sys.stderr)
+            return
+
+        if os.WIFEXITED(wstatus):
+            print(f'tracee exited with status {os.WEXITSTATUS(wstatus)}', file=sys.stderr)
+        elif os.WIFSIGNALED(wstatus):
+            sig = os.WTERMSIG(wstatus)
+            print(f'tracee was terminated ({signal.Signals(sig).name})', file=sys.stderr)
+        elif os.WIFSTOPPED(wstatus):
+            sig = os.WSTOPSIG(wstatus)
+            if sig != signal.SIGTRAP:
+                print(f'tracee was stopped ({signal.Signals(sig).name})', file=sys.stderr)
+        elif os.WIFCONTINUED(wstatus):
+            print(f'tracee was continued', file=sys.stderr)
+        else:
+            print(f'tracee disappeared', file=sys.stderr)
 
     def handle_command(self, line, filename, lineno):
         self._lexer.begin('INITIAL')
