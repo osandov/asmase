@@ -190,7 +190,15 @@ error_code AssemblerContext::assembleCode(const char *filename, int line,
   MCCodeEmitter *codeEmitter =
     target->createMCCodeEmitter(*instrInfo, *subtargetInfo, mcCtx);
 #endif
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
+
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
+  MCTargetOptions targetOptions;
+#endif
+
+#if LLVM_VERSION_MAJOR >= 5
+  MCAsmBackend *MAB =
+    target->createMCAsmBackend(*registerInfo, tripleName, mcpu, targetOptions);
+#elif LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
   MCAsmBackend *MAB =
     target->createMCAsmBackend(*registerInfo, tripleName, mcpu);
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 2
@@ -216,7 +224,6 @@ error_code AssemblerContext::assembleCode(const char *filename, int line,
     createMCAsmParser(srcMgr, mcCtx, *streamer, *asmInfo)};
 
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
-  MCTargetOptions targetOptions;
   OwningPtr<MCTargetAsmParser> TAP{
     target->createMCAsmParser(*subtargetInfo, *parser, *instrInfo,
         targetOptions)};
