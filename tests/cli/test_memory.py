@@ -304,7 +304,7 @@ r"""0x80000000:   "hello, world"
         self.instance.stack[2] = 2
         self.instance.stack[3] = 3
 
-        self._memory(cli.Variable('sp'), cli.Variable('r1'), 'x', 1)
+        self._memory(('variable', 'sp'), ('variable', 'r1'), 'x', 1)
         self.assertEqual(self.output,
             "0x80000000:     0x00\n")
 

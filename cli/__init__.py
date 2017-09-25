@@ -133,16 +133,16 @@ class AsmaseCli:
             print(' ' * (e.pos - 1) + '^', file=sys.stderr)
             return
 
-        if isinstance(command, Repeat):
+        if command[0] == 'repeat':
             try:
                 command = self._last_command
             except AttributeError:
                 print(f'{filename}:{lineno}: error: no last command', file=sys.stderr)
                 return
 
-        handler = _command_handlers[type(command)]
+        handler = getattr(self, 'command_' + command[0])
         try:
-            handler(self, *command)
+            handler(*command[1:])
         except CliCommandError as e:
             print(f'{handler.__name__[8:]}: {e}', file=sys.stderr)
         self._last_command = command
@@ -439,18 +439,19 @@ class AsmaseCli:
         print(' '.join(str(value) for value in values))
 
     def expr_regsets(self, expr):
-        if isinstance(expr, Variable):
+        if isinstance(expr, (int, str)):
+            return 0
+        elif expr[0] == 'variable':
             try:
-                return self._registers[expr.name]
+                return self._registers[expr[1]]
             except KeyError as e:
                 raise CliCommandError(f'Unknown variable {e.args[0]!r}')
-        elif isinstance(expr, UnaryOp):
-            return self.expr_regsets(expr.expr)
-        elif isinstance(expr, BinaryOp):
-            return self.expr_regsets(expr.left) | self.expr_regsets(expr.right)
+        elif expr[0] == 'unary_op':
+            return self.expr_regsets(expr[2])
+        elif expr[0] == 'binary_op':
+            return self.expr_regsets(expr[2]) | self.expr_regsets(expr[3])
         else:
-            assert isinstance(expr, (int, str))
-            return 0
+            assert False
 
     def eval_expr_list(self, exprs):
         # First, walk the AST to figure out all of the register sets we need.
@@ -580,36 +581,10 @@ class AsmaseCli:
         print(WARRANTY, end='')
 
 
-# Now follows some minor insanity. The idea is that the single source of truth
-# for the built-in commands is the AsmaseCli class. So, the lexer dynamically
-# defines tokens for the built-in commands based on the defined command
-# methods. The command AST node types for the parser are also dynamically
-# created from the method signatures.
-
-# Built-in commands.
-commands = frozenset({
+# Set of all commands, used by the lexer to dynamically define tokens.
+COMMANDS = frozenset({
     attr[8:] for attr in dir(AsmaseCli) if attr.startswith('command_')
 })
-
-# Dispatch table from command AST node type to the handler method.
-_command_handlers = {}
-
-Repeat = namedtuple('Repeat', [])
-
-for command in commands:
-    name = command.title()
-    handler = getattr(AsmaseCli, 'command_' + command)
-    signature = inspect.signature(handler)
-    args = list(signature.parameters)[1:]
-
-    node_type = namedtuple(name, args)
-
-    globals()[name] = node_type
-    _command_handlers[globals()[name]] = handler
-
-BinaryOp = namedtuple('BinaryOp', ['op', 'left', 'right'])
-UnaryOp = namedtuple('UnaryOp', ['op', 'expr'])
-Variable = namedtuple('Variable', ['name'])
 
 
 unary_operators = {
@@ -646,22 +621,26 @@ binary_operators = {
 
 
 def eval_expr(expr, variables=None):
-    if isinstance(expr, Variable):
-        return variables[expr.name]
-    elif isinstance(expr, UnaryOp):
-        arg = eval_expr(expr.expr, variables)
+    if isinstance(expr, (int, str)):
+        return expr
+    elif expr[0] == 'variable':
+        return variables[expr[1]]
+    elif expr[0] == 'unary_op':
+        op = expr[1]
+        arg = eval_expr(expr[2], variables)
         try:
-            return unary_operators[expr.op](arg)
+            return unary_operators[op](arg)
         except TypeError:
-            raise EvalError(f'Invalid type for {expr.op!r}: {type(arg).__name__}')
-    elif isinstance(expr, BinaryOp):
-        left = eval_expr(expr.left, variables)
-        right = eval_expr(expr.right, variables)
+            raise EvalError(f'Invalid type for {op!r}: {type(arg).__name__}')
+    elif expr[0] == 'binary_op':
+        op = expr[1]
+        left = eval_expr(expr[2], variables)
+        right = eval_expr(expr[3], variables)
         try:
-            return binary_operators[expr.op](left, right)
+            return binary_operators[op](left, right)
         except TypeError:
-            raise EvalError(f'Invalid types for {expr.op!r}: {type(left).__name__} and {type(right).__name__}')
+            raise EvalError(f'Invalid types for {op!r}: {type(left).__name__} and {type(right).__name__}')
         except ZeroDivisionError:
             raise EvalError('Integer division or modulo by zero')
     else:
-        return expr
+        assert False

@@ -26,11 +26,11 @@ def Parser():
 
     def p_repeat(p):
         "repeat : REPEAT NEWLINE"
-        p[0] = cli.Repeat()
+        p[0] = ('repeat',)
 
     def p_copying(p):
         "copying : COPYING NEWLINE"
-        p[0] = cli.Copying()
+        p[0] = ('copying',)
 
     def p_copying_error(p):
         "copying : COPYING error NEWLINE"
@@ -42,9 +42,9 @@ def Parser():
              | HELP ID NEWLINE
         """
         if len(p) == 3:
-            p[0] = cli.Help(None)
+            p[0] = ('help', None)
         else:
-            p[0] = cli.Help(p[2])
+            p[0] = ('help', p[2])
 
     def p_help_error(p):
         """
@@ -65,15 +65,15 @@ def Parser():
                | MEMORY primary_expression primary_expression ID INT NEWLINE
         """
         if len(p) == 3:
-            p[0] = cli.Memory(None, None, None, None)
+            p[0] = ('memory', None, None, None, None)
         elif len(p) == 4:
-            p[0] = cli.Memory(p[2], None, None, None)
+            p[0] = ('memory', p[2], None, None, None)
         elif len(p) == 5:
-            p[0] = cli.Memory(p[2], p[3], None, None)
+            p[0] = ('memory', p[2], p[3], None, None)
         elif len(p) == 6:
-            p[0] = cli.Memory(p[2], p[3], p[4], None)
+            p[0] = ('memory', p[2], p[3], p[4], None)
         else:
-            p[0] = cli.Memory(p[2], p[3], p[4], p[5])
+            p[0] = ('memory', p[2], p[3], p[4], p[5])
 
     def p_memory_error(p):
         """
@@ -100,9 +100,9 @@ def Parser():
               | PRINT expression_list NEWLINE
         """
         if len(p) == 3:
-            p[0] = cli.Print([])
+            p[0] = ('print', [])
         else:
-            p[0] = cli.Print(p[2])
+            p[0] = ('print', p[2])
 
     def p_print_error(p):
         "print : PRINT error NEWLINE"
@@ -114,9 +114,9 @@ def Parser():
              | QUIT primary_expression NEWLINE
         """
         if len(p) == 3:
-            p[0] = cli.Quit(None)
+            p[0] = ('quit', None)
         else:
-            p[0] = cli.Quit(p[2])
+            p[0] = ('quit', p[2])
 
     def p_quit_error(p):
         """
@@ -134,9 +134,9 @@ def Parser():
                   | REGISTERS identifier_list NEWLINE
         """
         if len(p) == 3:
-            p[0] = cli.Registers(None)
+            p[0] = ('registers', None)
         else:
-            p[0] = cli.Registers(p[2])
+            p[0] = ('registers', p[2])
 
     def p_registers_error(p):
         "registers : REGISTERS error NEWLINE"
@@ -144,7 +144,7 @@ def Parser():
 
     def p_source(p):
         "source : SOURCE STRING NEWLINE"
-        p[0] = cli.Source(p[2])
+        p[0] = ('source', p[2])
 
     def p_source_error(p):
         """
@@ -158,7 +158,7 @@ def Parser():
 
     def p_warranty(p):
         "warranty : WARRANTY NEWLINE"
-        p[0] = cli.Warranty()
+        p[0] = ('warranty',)
 
     def p_warranty_error(p):
         "warranty : WARRANTY error NEWLINE"
@@ -225,7 +225,7 @@ def Parser():
                    | expression AND_OP expression
                    | expression OR_OP expression
         """
-        p[0] = cli.BinaryOp(p[2], p[1], p[3])
+        p[0] = ('binary_op', p[2], p[1], p[3])
 
     def p_unary_expression(p):
         """
@@ -234,7 +234,7 @@ def Parser():
                            | '!' expression
                            | '~' expression
         """
-        p[0] = cli.UnaryOp(p[1], p[2])
+        p[0] = ('unary_op', p[1], p[2])
 
     def p_literal_expression(p):
         """
@@ -245,7 +245,7 @@ def Parser():
 
     def p_variable_expression(p):
         "primary_expression : VAR"
-        p[0] = cli.Variable(p[1])
+        p[0] = ('variable', p[1])
 
     def p_parenthetical_expression(p):
         "primary_expression : '(' expression ')'"

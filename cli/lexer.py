@@ -5,7 +5,7 @@ import cli
 from cli import CliSyntaxError
 
 
-command_tokens = {':' + command: command.upper() for command in cli.commands}
+command_tokens = {':' + command: command.upper() for command in cli.COMMANDS}
 
 
 tokens = (
