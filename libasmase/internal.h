@@ -1,7 +1,7 @@
 /*
  * Internal libasmase interface.
  *
- * Copyright (C) 2016 Omar Sandoval
+ * Copyright (C) 2016-2017 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -26,9 +26,9 @@
 #include <sys/types.h>
 #include <linux/elf.h>
 
-#include <libasmase/libasmase.h>
+#include "libasmase.h"
 
-#include "arch.h"
+#include ARCH_HEADER
 
 void libasmase_assembler_init(void);
 

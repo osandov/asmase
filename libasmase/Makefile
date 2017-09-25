@@ -2,8 +2,8 @@ ARCH := x86
 
 LLVM_CONFIG ?= llvm-config
 
-CPPFLAGS := -Iinclude -Iarch/$(ARCH)/include -D_GNU_SOURCE -DLIBEXEC=\"/usr/libexec\"
-COMMON_FLAGS := -Wall -Werror -O2 -fpic -fvisibility=hidden $(CPPFLAGS) -g
+CPPFLAGS := -D_GNU_SOURCE -DARCH_HEADER=\"$(ARCH).h\"
+COMMON_FLAGS := -Wall -Werror -O2 -fpic -fvisibility=hidden -g
 CFLAGS := -std=gnu11 $(COMMON_FLAGS)
 CXXFLAGS := -std=c++11 $(COMMON_FLAGS)
 LDFLAGS := -fpic -fvisibility=hidden -pie -Wl,-E -ldl -lseccomp
@@ -14,7 +14,7 @@ OBJS := assembler.o \
 	libasmase.o \
 	registers.o \
 	tracee.o \
-	arch/$(ARCH)/arch.o
+	$(ARCH).o
 
 libasmase.so: $(OBJS)
 	$(CXX) -o $@ $^ $(LDFLAGS)

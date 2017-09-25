@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <Python.h>
 
-#include <libasmase/libasmase.h>
+#include <libasmase.h>
 
 typedef struct {
 	PyObject_HEAD

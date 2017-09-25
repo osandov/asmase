@@ -1,6 +1,6 @@
 #include <Python.h>
 
-#include <libasmase/assembler.h>
+#include <libasmase.h>
 
 typedef struct {
 	PyObject_HEAD

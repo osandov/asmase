@@ -1,7 +1,7 @@
 /*
- * libasmase interface.
+ * libasmase interactive assembly language library.
  *
- * Copyright (C) 2016 Omar Sandoval
+ * Copyright (C) 2016-2017 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -22,13 +22,36 @@
 #ifndef LIBASMASE_H
 #define LIBASMASE_H
 
+#ifdef __cplusplus
+#include <cstddef>
+#include <cstdint>
+#else
 #include <stddef.h>
 #include <stdint.h>
+#endif
 #include <sys/types.h>
 #include <sys/uio.h>
 
-#include <libasmase/arch.h>
-#include <libasmase/assembler.h>
+#ifdef __x86_64__
+#define ASMASE_HAVE_INT128 1
+#define ASMASE_HAVE_FLOAT80 1
+#endif
+
+#ifdef __i386__
+#define ASMASE_HAVE_FLOAT80 1
+#endif
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define ASMASE_LITTLE_ENDIAN 1
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define ASMASE_BIG_ENDIAN 1
+#else /* __ORDER_PDP_ENDIAN__? */
+#error
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * libasmase_init() - Initialize libasmase.
@@ -313,5 +336,44 @@ ssize_t asmase_readv_memory(const struct asmase_instance *a,
  */
 ssize_t asmase_read_memory(const struct asmase_instance *a, void *buf,
 			   void *addr, size_t len);
+
+struct asmase_assembler;
+
+/**
+ * asmase_create_assembler() - Create a new assembler.
+ *
+ * Return: New assembler.
+ */
+struct asmase_assembler *asmase_create_assembler(void);
+
+/**
+ * asmase_destroy_assembler() - Free all resources associated with an assembler.
+ *
+ * @as: Assembler to destroy.
+ */
+void asmase_destroy_assembler(struct asmase_assembler *as);
+
+/**
+ * asmase_assemble_code() - Assemble some assembly code to machine code.
+ *
+ * @as: Assembler.
+ * @filename: Filename for diagnostics.
+ * @line: Line number for diagnostics.
+ * @asm_code: Assembly code.
+ * @out: Allocated output buffer; must be freed with free().
+ * @len: Length of the output buffer.
+ *
+ * Return: 0 if the code was successfully assembled, in which case @out will
+ * contain the assembled machine code; 1 if there was an error with the assembly
+ * code, in which case @out will contain a diagnostic message; or -1 if there
+ * was an internal error, in which case @out will be NULL.
+ */
+int asmase_assemble_code(const struct asmase_assembler *as,
+			 const char *filename, int line, const char *asm_code,
+			 char **out, size_t *len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LIBASMASE_H */

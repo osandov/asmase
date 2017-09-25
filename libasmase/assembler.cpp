@@ -1,7 +1,7 @@
 /*
  * Assembler implementation built on the LLVM MC layer.
  *
- * Copyright (C) 2013-2016 Omar Sandoval
+ * Copyright (C) 2013-2017 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -9,12 +9,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * asmase is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -50,8 +50,6 @@ using namespace llvm;
 #include <cstdlib>
 #include <cstring>
 
-#include <libasmase/assembler.h>
-
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
 #include <system_error>
 #include <memory>
@@ -60,6 +58,8 @@ using std::error_category;
 using std::system_category;
 #define OwningPtr std::unique_ptr
 #endif
+
+#include "libasmase.h"
 
 /* The reserved size of the output SmallString. */
 static const int OUTPUT_BUFFER_SIZE = 4096;

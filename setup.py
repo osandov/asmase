@@ -10,7 +10,7 @@ module = Extension(
         'python/asmase_assembler.c',
         'python/asmase_instance.c'
     ],
-    include_dirs=['libasmase/include', numpy.get_include()],
+    include_dirs=['libasmase', numpy.get_include()],
     library_dirs=['libasmase'],
     libraries=['asmase'],
 )

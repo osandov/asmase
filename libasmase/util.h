@@ -1,7 +1,7 @@
 /*
- * Useful macros (mostly copied from the Linux kernel).
+ * Useful macros and helper functions (mostly copied from the Linux kernel).
  *
- * Copyright (C) 2016 Omar Sandoval
+ * Copyright (C) 2016-2017 Omar Sandoval
  *
  * This file is part of asmase.
  *

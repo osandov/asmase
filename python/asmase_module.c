@@ -1,6 +1,6 @@
 #include <Python.h>
 
-#include <libasmase/libasmase.h>
+#include <libasmase.h>
 
 extern PyObject *AssemblerDiagnostic;
 extern PyTypeObject Assembler_type, Instance_type, RegisterValue_type;
