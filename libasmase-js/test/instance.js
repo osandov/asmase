@@ -27,6 +27,10 @@ describe('Instance', function() {
     }
   });
 
+  it('should handle invalid instance flags', function() {
+    (() => new Instance(0xffffffff)).should.throw(Error, 'EINVAL');
+  });
+
   describe('#getPid()', function() {
     it('should return a valid PID', function() {
       const pid = this.instance.getPid();
