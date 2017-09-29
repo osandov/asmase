@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <libasmase.h>
 #include <nan.h>
+#include <sys/wait.h>
 
 class Instance : public Nan::ObjectWrap {
 public:
@@ -186,6 +187,33 @@ err:
     free(regs);
   }
 
+  static v8::Local<v8::Object> WstatusObject(int wstatus) {
+    v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+    const char *state;
+    if (WIFEXITED(wstatus)) {
+      state = "exited";
+      Nan::Set(obj, Nan::New("exitstatus").ToLocalChecked(),
+               Nan::New(WEXITSTATUS(wstatus)));
+    } else if (WIFSIGNALED(wstatus)) {
+      state = "signaled";
+      Nan::Set(obj, Nan::New("termsig").ToLocalChecked(),
+               Nan::New(WTERMSIG(wstatus)));
+      Nan::Set(obj, Nan::New("coredump").ToLocalChecked(),
+               Nan::New<v8::Boolean>(WCOREDUMP(wstatus)));
+    } else if (WIFSTOPPED(wstatus)) {
+      state = "stopped";
+      Nan::Set(obj, Nan::New("stopsig").ToLocalChecked(),
+               Nan::New(WSTOPSIG(wstatus)));
+    } else if (WIFCONTINUED(wstatus)) {
+      state = "continued";
+    } else {
+      assert(false);
+    }
+    Nan::Set(obj, Nan::New("state").ToLocalChecked(),
+             Nan::New(state).ToLocalChecked());
+    return obj;
+  }
+
   static NAN_METHOD(ExecuteCode) {
     Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
     if (!node::Buffer::HasInstance(info[0])) {
@@ -200,7 +228,7 @@ err:
       Nan::ThrowError(Nan::ErrnoException(errno));
       return;
     }
-    info.GetReturnValue().Set(Nan::New(wstatus));
+    info.GetReturnValue().Set(WstatusObject(wstatus));
   }
 
   static NAN_METHOD(ReadMemory) {
