@@ -216,29 +216,15 @@ enum asmase_create_flags {
 	 */
 	ASMASE_SANDBOX_ENVIRON = (1 << 2),
 	/*
-	 * Unmap all file mappings.
+	 * Unmap as much memory as possible.
 	 */
-	ASMASE_MUNMAP_FILE = (1 << 29),
-	/*
-	 * Unmap all anonymous mappings.
-	 */
-	ASMASE_MUNMAP_ANON = (1 << 30),
-	/*
-	 * Unmap the heap.
-	 */
-	ASMASE_MUNMAP_HEAP = (1 << 31),
+	ASMASE_SANDBOX_MUNMAP = (1 << 3),
 };
 
 /*
  * Enable all sandboxing flags.
  */
-#define ASMASE_SANDBOX_ALL ((1 << 3) - 1)
-
-/*
- * Unmap all memory.
- */
-#define ASMASE_MUNMAP_ALL (ASMASE_MUNMAP_FILE | ASMASE_MUNMAP_ANON |	\
-			   ASMASE_MUNMAP_HEAP)
+#define ASMASE_SANDBOX_ALL ((1 << 4) - 1)
 
 /**
  * asmase_create_instance() - Create a new asmase instance.

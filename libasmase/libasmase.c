@@ -158,7 +158,7 @@ static char **tracee_argv(const struct asmase_instance *a, int flags)
 		if (ret == -1)
 			goto err;
 
-		if (flags & ASMASE_MUNMAP_ALL) {
+		if (flags & ASMASE_SANDBOX_MUNMAP) {
 			ret = argv_appendf(&argv, &argc, "--allow-munmap");
 			if (ret == -1)
 				goto err;
@@ -238,30 +238,22 @@ struct proc_map {
 
 static int do_munmap_tracee(struct asmase_instance *a,
 			    struct asmase_assembler *as,
-			    struct proc_map *maps, int flags)
+			    struct proc_map *maps)
 {
 	struct proc_map *map;
 	int ret;
 
 	for (map = maps; map; map = map->next) {
-		int mask;
 		char *out;
 		size_t len;
 
-		if (map->path) {
-			if (strstartswith(map->path, "/memfd:asmase_tracee"))
-				mask = 0;
-			else if (map->path[0] == '/')
-				mask = ASMASE_MUNMAP_FILE;
-			else if (strcmp(map->path, "[heap]") == 0)
-				mask = ASMASE_MUNMAP_HEAP;
-			else
-				mask = 0;
-		} else {
-			mask = ASMASE_MUNMAP_ANON;
-		}
-
-		if (flags & mask) {
+		/*
+		 * Unmap anonymous mappings, file mappings (except the shared
+		 * memfd), and the heap.
+		 */
+		if (!map->path || strcmp(map->path, "[heap]") == 0 ||
+		    (map->path[0] == '/' &&
+		     !strstartswith(map->path, "/memfd:asmase_tracee"))) {
 			ret = arch_assemble_munmap(as, map->start,
 						   map->end - map->start, &out, &len);
 			if (ret == -1)
@@ -277,7 +269,7 @@ static int do_munmap_tracee(struct asmase_instance *a,
 	return 0;
 }
 
-static int munmap_tracee(struct asmase_instance *a, int flags)
+static int munmap_tracee(struct asmase_instance *a)
 {
 	struct asmase_assembler *as;
 	struct proc_map *maps = NULL, *tail;
@@ -343,7 +335,7 @@ static int munmap_tracee(struct asmase_instance *a, int flags)
 		goto out;
 	}
 
-	ret = do_munmap_tracee(a, as, maps, flags);
+	ret = do_munmap_tracee(a, as, maps);
 
 out:
 	while (maps) {
@@ -366,7 +358,7 @@ struct asmase_instance *asmase_create_instance(int flags)
 	struct asmase_instance *a;
 	int saved_errno;
 
-	if (flags & ~(ASMASE_SANDBOX_ALL | ASMASE_MUNMAP_ALL)) {
+	if (flags & ~(ASMASE_SANDBOX_ALL)) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -390,8 +382,8 @@ struct asmase_instance *asmase_create_instance(int flags)
 	if (attach_to_tracee(a) == -1)
 		goto err;
 
-	if (flags & ASMASE_MUNMAP_ALL) {
-		if (munmap_tracee(a, flags & ASMASE_MUNMAP_ALL) == -1)
+	if (flags & ASMASE_SANDBOX_MUNMAP) {
+		if (munmap_tracee(a) == -1)
 			goto err;
 	}
 
