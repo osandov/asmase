@@ -1,1 +1,2 @@
-/asmase_tracee
+*.o
+*.so

@@ -109,7 +109,7 @@ struct asmase_status_register_bits {
  */
 static inline uint8_t
 asmase_status_register_value(const struct asmase_status_register_bits *bits,
-			     uintmax_t value)
+			     uint64_t value)
 {
 	return (value >> bits->shift) & bits->mask;
 }
@@ -125,7 +125,7 @@ asmase_status_register_value(const struct asmase_status_register_bits *bits,
  * failure.
  */
 char *asmase_status_register_format(const struct asmase_status_register_bits *bits,
-				    uintmax_t value);
+				    uint64_t value);
 
 /**
  * enum asmase_register_type - Types of registers.

@@ -1,8 +1,0 @@
-*.o
-*.so
-*.pyc
-__pycache__
-*.egg-info
-/build
-/.coverage
-/htmlcov

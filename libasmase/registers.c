@@ -33,7 +33,7 @@
 
 __attribute__((visibility("default")))
 char *asmase_status_register_format(const struct asmase_status_register_bits *bits,
-				    uintmax_t value)
+				    uint64_t value)
 {
 	uint8_t bits_value;
 	char *str;
