@@ -15,12 +15,18 @@ chai.Assertion.addMethod('bit', function(bit) {
 
 const UINT64_MAX_PLUS_ONE = '0x10000000000000000';
 
+const exitCode = {
+  x64: ('movq $231, %rax\n' +
+        'movq $99, %rdi\n' +
+        'syscall'),
+}[process.arch];
+
 describe('Instance', function() {
   beforeEach(function() {
     this.assembler = new Assembler();
     this.instance = new Instance();
     this.executeCode = function(code) {
-      this.instance.executeCode(this.assembler.assembleCode(code));
+      return this.instance.executeCode(this.assembler.assembleCode(code));
     }
     this.getFsw = function() {
       return this.instance.getRegisters(RegisterSet.FLOATING_POINT_STATUS).fsw;
@@ -59,6 +65,27 @@ describe('Instance', function() {
         }
       }
       actualRegSets.should.equal(regSets);
+    });
+  });
+
+  describe('#executeCode()', function() {
+    it('should handle normal case', function() {
+      this.executeCode('nop').should.eql({state: 'stopped', stopsig: signals.SIGTRAP});
+    });
+    it('should ignore SIGWICH', function() {
+      process.kill(this.instance.getPid(), 'SIGWINCH');
+      this.executeCode('nop').should.eql({state: 'stopped', stopsig: signals.SIGTRAP});
+    });
+    it('should handle SIGTERM', function() {
+      process.kill(this.instance.getPid());
+      this.executeCode('nop').should.eql({state: 'stopped', stopsig: signals.SIGTERM});
+    });
+    it('should handle SIGKILL', function() {
+      process.kill(this.instance.getPid(), 'SIGKILL');
+      this.executeCode('nop').should.eql({state: 'signaled', termsig: signals.SIGKILL, 'coredump': false});
+    });
+    it('should handle exit', function() {
+      this.executeCode(exitCode).should.eql({state: 'exited', exitstatus: 99});
     });
   });
 
@@ -499,11 +526,6 @@ describe('Instance', function() {
       ],
       SANDBOX_SYSCALLS: [
         ['should prevent syscalls', function(instance, assembler) {
-          const exitCode = {
-            x64: ('movq $231, %rax\n' +
-              'movq $0, %rbx\n' +
-              'syscall'),
-          }[process.arch];
           const wstatus = instance.executeCode(assembler.assembleCode(exitCode));
           wstatus.should.eql({state: 'stopped', stopsig: signals.SIGSYS});
           ('/proc/' + instance.getPid().toString()).should.be.a.directory();

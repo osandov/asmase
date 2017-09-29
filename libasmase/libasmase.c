@@ -434,11 +434,8 @@ int asmase_execute_code(const struct asmase_instance *a,
 	if (sret == -1)
 		return -1;
 
-	if (arch_set_tracee_program_counter(a->pid, a->memfd_addr) == -1)
-		return -1;
-
-	if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1)
-		return -1;
+	if (arch_set_tracee_program_counter(a->pid, a->memfd_addr) == 0)
+		ptrace(PTRACE_CONT, a->pid, NULL, NULL);
 
 	if (waitpid(a->pid, wstatus, 0) == -1)
 		return -1;
