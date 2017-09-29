@@ -1,7 +1,8 @@
-const {Assembler, Instance, RegisterSet} = require('..');
+const {Assembler, Instance, InstanceFlag, RegisterSet} = require('..');
 const BigNum = require('bignum');
 const chai = require('chai');
 const should = chai.should();
+const signals = require('os').constants.signals;
 chai.use(require('chai-fs'));
 
 chai.Assertion.addMethod('bit', function(bit) {
@@ -30,7 +31,7 @@ describe('Instance', function() {
     it('should return a valid PID', function() {
       const pid = this.instance.getPid();
       pid.should.be.a('number');
-      ('/proc/' + pid).should.be.a.directory();
+      ('/proc/' + pid.toString()).should.be.a.directory();
     });
   });
 
@@ -69,7 +70,7 @@ describe('Instance', function() {
   });
 
   if (process.arch === 'x64') {
-    describe('on x86_64', function() {
+    describe('x86_64', function() {
       it('should support general purpose registers', function() {
         const regNames = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi', 'rdi',
                           'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15'];
@@ -482,4 +483,72 @@ describe('Instance', function() {
       });
     });
   }
+
+  describe('sandboxing', function() {
+    const mapsRe = '^[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +';
+    const cases = {
+      SANDBOX_FDS: [
+        ['should close all file descriptors', function(instance) {
+          const fd_dir = '/proc/' + instance.getPid().toString() + '/fd';
+          fd_dir.should.be.a.directory().and.empty;
+        }],
+      ],
+      SANDBOX_SYSCALLS: [
+        ['should prevent syscalls', function(instance, assembler) {
+          const exitCode = {
+            x64: ('movq $231, %rax\n' +
+              'movq $0, %rbx\n' +
+              'syscall'),
+          }[process.arch];
+          const wstatus = instance.executeCode(assembler.assembleCode(exitCode));
+          wstatus.should.eql({state: 'stopped', stopsig: signals.SIGSYS});
+          ('/proc/' + instance.getPid().toString()).should.be.a.directory();
+        }],
+      ],
+      SANDBOX_ENVIRON: [
+        ['should remove all environment variables', function(instance) {
+          const environ = '/proc/' + instance.getPid().toString() + '/environ';
+          environ.should.be.a.file().and.empty;
+        }],
+      ],
+      SANDBOX_MUNMAP: [
+        ['should unmap anonymous mappings', function(instance) {
+          const maps = '/proc/' + instance.getPid().toString() + '/maps';
+          const regexp = new RegExp(mapsRe + '$', 'm');
+          maps.should.be.a.file().and.not.have.contents.that.match(regexp);
+        }],
+        ['should unmap the heap', function(instance) {
+          const maps = '/proc/' + instance.getPid().toString() + '/maps';
+          const regexp = new RegExp(mapsRe + '\\[heap\\]', 'm');
+          maps.should.be.a.file().and.not.have.contents.that.match(regexp);
+        }],
+        ['should unmap file mappings', function(instance) {
+          const maps = '/proc/' + instance.getPid().toString() + '/maps';
+          const regexp = new RegExp(mapsRe + '\\/(?!memfd:asmase_tracee)', 'm');
+          maps.should.be.a.file().and.not.have.contents.that.match(regexp);
+        }],
+      ],
+    };
+
+    for (const flag in cases) {
+      if (cases.hasOwnProperty(flag)) {
+        describe(flag, function() {
+          for (let i = 0; i < cases[flag].length; i++) {
+            it(cases[flag][i][0], function() {
+              cases[flag][i][1](new Instance(InstanceFlag[flag]), this.assembler);
+            });
+          }
+        });
+      }
+    }
+    describe('SANDBOX_ALL', function() {
+      for (const flag in cases) {
+        for (let i = 0; i < cases[flag].length; i++) {
+          it(cases[flag][i][0], function() {
+            cases[flag][i][1](new Instance(InstanceFlag.SANDBOX_ALL), this.assembler);
+          });
+        }
+      }
+    });
+  });
 });
