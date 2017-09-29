@@ -534,7 +534,8 @@ describe('Instance', function() {
       SANDBOX_ENVIRON: [
         ['should remove all environment variables', function(instance) {
           const environ = '/proc/' + instance.getPid().toString() + '/environ';
-          environ.should.be.a.file().and.empty;
+          // Can't use .and.empty becase st_size is always 0 for proc
+          environ.should.be.a.file().with.content('');
         }],
       ],
       SANDBOX_MUNMAP: [
