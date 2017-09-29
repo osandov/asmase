@@ -1,6 +1,7 @@
 const {Assembler, Instance, InstanceFlag, RegisterSet} = require('..');
 const BigNum = require('bignum');
 const chai = require('chai');
+const fs = require('fs');
 const should = chai.should();
 const signals = require('os').constants.signals;
 chai.use(require('chai-fs'));
@@ -35,6 +36,34 @@ describe('Instance', function() {
 
   it('should handle invalid instance flags', function() {
     (() => new Instance(0xffffffff)).should.throw(Error, 'EINVAL');
+  });
+
+  it('should unmap all memory', function() {
+    const maps = '/proc/' + this.instance.getPid().toString() + '/maps';
+    const mapsContents = fs.readFileSync(maps).toString();
+    const regexp = /^[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +(.*)$/mg;
+    const matches = [];
+    let match;
+    while ((match = regexp.exec(mapsContents)) !== null) {
+      if (!match[1].startsWith('/memfd:asmase') && match[1] !== '[vsyscall]') {
+        matches.push(match[1]);
+      }
+    }
+    matches.should.eql([]);
+  });
+
+  /*
+  it('should clear the environment', function() {
+    const environ = '/proc/' + this.instance.getPid().toString() + '/environ';
+    // Can't use .and.empty becase st_size is always 0 for proc
+    environ.should.be.a.file().with.content('');
+  });
+  */
+
+  it('should clear the command line', function() {
+    const cmdlin = '/proc/' + this.instance.getPid().toString() + '/cmdline';
+    // Can't use .and.empty becase st_size is always 0 for proc
+    cmdlin.should.be.a.file().with.content('');
   });
 
   describe('#getPid()', function() {
@@ -512,69 +541,61 @@ describe('Instance', function() {
         const mem = this.instance.readMemory(rsp.toString(), 13);
         mem.should.eql(Buffer.from('hello, world!'));
       });
+
+      it('should initialize all registers', function() {
+        const zeroRegs = ['rax', 'rcx', 'rdx', 'rbx', 'rbp', 'rsi', 'rdi',
+                          'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
+                          'ds', 'es', 'fs', 'gs', 'fsw', 'fip', 'fdp', 'fop'];
+        for (let i = 0; i < 8; i++) {
+          zeroRegs.push('mm' + i.toString());
+        }
+        for (let i = 0; i < 16; i++) {
+          zeroRegs.push('xmm' + i.toString());
+        }
+        const regSets = this.instance.getRegisterSets();
+        const regs = this.instance.getRegisters(regSets);
+        for (let i = 0; i < zeroRegs.length; i++) {
+          regs[zeroRegs[i]].value.toNumber().should.equal(0);
+        }
+        for (let i = 0; i < 8; i++) {
+          regs['R' + i.toString()].value.should.equal(0);
+        }
+        (regs.eflags.value.toNumber() & 0xcd5).should.equal(0);
+        regs.fcw.value.toNumber().should.equal(0x37f);
+        regs.ftw.value.toNumber().should.equal(0xffff);
+        regs.mxcsr.value.toNumber().should.equal(0x1f80);
+      });
     });
   }
 
   describe('sandboxing', function() {
     const mapsRe = '^[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +';
     const cases = {
-      SANDBOX_FDS: [
-        ['should close all file descriptors', function(instance) {
-          const fd_dir = '/proc/' + instance.getPid().toString() + '/fd';
-          fd_dir.should.be.a.directory().and.empty;
-        }],
-      ],
-      SANDBOX_SYSCALLS: [
-        ['should prevent syscalls', function(instance, assembler) {
-          const wstatus = instance.executeCode(assembler.assembleCode(exitCode));
-          wstatus.should.eql({state: 'stopped', stopsig: signals.SIGSYS});
-          ('/proc/' + instance.getPid().toString()).should.be.a.directory();
-        }],
-      ],
-      SANDBOX_ENVIRON: [
-        ['should remove all environment variables', function(instance) {
-          const environ = '/proc/' + instance.getPid().toString() + '/environ';
-          // Can't use .and.empty becase st_size is always 0 for proc
-          environ.should.be.a.file().with.content('');
-        }],
-      ],
-      SANDBOX_MUNMAP: [
-        ['should unmap anonymous mappings', function(instance) {
-          const maps = '/proc/' + instance.getPid().toString() + '/maps';
-          const regexp = new RegExp(mapsRe + '$', 'm');
-          maps.should.be.a.file().and.not.have.contents.that.match(regexp);
-        }],
-        ['should unmap the heap', function(instance) {
-          const maps = '/proc/' + instance.getPid().toString() + '/maps';
-          const regexp = new RegExp(mapsRe + '\\[heap\\]', 'm');
-          maps.should.be.a.file().and.not.have.contents.that.match(regexp);
-        }],
-        ['should unmap file mappings', function(instance) {
-          const maps = '/proc/' + instance.getPid().toString() + '/maps';
-          const regexp = new RegExp(mapsRe + '\\/(?!memfd:asmase_tracee)', 'm');
-          maps.should.be.a.file().and.not.have.contents.that.match(regexp);
-        }],
-      ],
+      SANDBOX_FDS: ['should close all file descriptors', function(instance) {
+        const fd_dir = '/proc/' + instance.getPid().toString() + '/fd';
+        fd_dir.should.be.a.directory().and.empty;
+      }],
+      SANDBOX_SYSCALLS: ['should prevent syscalls', function(instance, assembler) {
+        const wstatus = instance.executeCode(assembler.assembleCode(exitCode));
+        wstatus.should.eql({state: 'stopped', stopsig: signals.SIGSYS});
+        ('/proc/' + instance.getPid().toString()).should.be.a.directory();
+      }],
     };
 
     for (const flag in cases) {
       if (cases.hasOwnProperty(flag)) {
         describe(flag, function() {
-          for (let i = 0; i < cases[flag].length; i++) {
-            it(cases[flag][i][0], function() {
-              cases[flag][i][1](new Instance(InstanceFlag[flag]), this.assembler);
-            });
-          }
+          it(cases[flag][0], function() {
+            cases[flag][1](new Instance(InstanceFlag[flag]), this.assembler);
+          });
         });
       }
     }
     describe('SANDBOX_ALL', function() {
       for (const flag in cases) {
-        for (let i = 0; i < cases[flag].length; i++) {
-          it(cases[flag][i][0], function() {
-            cases[flag][i][1](new Instance(InstanceFlag.SANDBOX_ALL), this.assembler);
-          });
-        }
+        it(cases[flag][0], function() {
+          cases[flag][1](new Instance(InstanceFlag.SANDBOX_ALL), this.assembler);
+        });
       }
     });
   });

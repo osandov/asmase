@@ -27,7 +27,5 @@ exports.RegisterType = Object.freeze({
 exports.InstanceFlag = Object.freeze({
   SANDBOX_FDS: (1 << 0),
   SANDBOX_SYSCALLS: (1 << 1),
-  SANDBOX_ENVIRON: (1 << 2),
-  SANDBOX_MUNMAP: (1 << 3),
-  SANDBOX_ALL: ((1 << 4) - 1),
+  SANDBOX_ALL: ((1 << 2) - 1),
 });

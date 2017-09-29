@@ -31,6 +31,70 @@
 
 DEFINE_ARCH_TRAP_INSTRUCTION({0xcc});
 
+int arch_initialize_tracee_regs(pid_t pid, void *pc, void *sp)
+{
+#ifdef __x86_64__
+	struct user_regs_struct regs;
+	struct user_fpregs_struct fpregs;
+	struct iovec iov = {
+		.iov_base = &fpregs,
+		.iov_len = sizeof(fpregs),
+	};
+
+	if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1)
+		return -1;
+
+	regs.r15 = 0;
+	regs.r14 = 0;
+	regs.r13 = 0;
+	regs.r12 = 0;
+	regs.rbp = 0;
+	regs.rbx = 0;
+	regs.r11 = 0;
+	regs.r10 = 0;
+	regs.r9 = 0;
+	regs.r8 = 0;
+	regs.rax = 0;
+	regs.rcx = 0;
+	regs.rdx = 0;
+	regs.rsi = 0;
+	regs.rdi = 0;
+	regs.rip = (unsigned long long)pc;
+	regs.eflags &= ~(X86_EFLAGS_CF | X86_EFLAGS_PF | X86_EFLAGS_AF |
+			 X86_EFLAGS_ZF | X86_EFLAGS_SF | X86_EFLAGS_DF |
+			 X86_EFLAGS_OF);
+	regs.rsp = (unsigned long long)sp;
+
+	if (ptrace(PTRACE_SETREGS, pid, NULL, &regs) == -1)
+		return -1;
+
+	if (ptrace(PTRACE_GETREGSET, pid, NT_FPREGSET, &iov) == -1)
+		return -1;
+
+	/* Emulate finit. */
+	fpregs.cwd = 0x37f;
+	fpregs.swd = 0;
+	fpregs.ftw = 0;
+	fpregs.fop = 0;
+	fpregs.rip = 0;
+	fpregs.rdp = 0;
+	/*
+	 * Default mxcsr value according to the Intel Instruction Set Reference
+	 * (see LDMXCSR).
+	 */
+	fpregs.mxcsr = 0x1f80;
+	memset(fpregs.st_space, 0, sizeof(fpregs.st_space));
+	memset(fpregs.xmm_space, 0, sizeof(fpregs.xmm_space));
+
+	if (ptrace(PTRACE_SETREGSET, pid, NT_FPREGSET, &iov) == -1)
+		return -1;
+
+	return 0;
+#else
+#error "TODO"
+#endif
+}
+
 int arch_set_tracee_program_counter(pid_t pid, void *pc)
 {
 	struct user_regs_struct regs;
@@ -169,7 +233,7 @@ DEFINE_ARCH_REGISTERS(status,
 );
 
 #ifdef __x86_64__
-#define FPREGSET ARCH_PTRACE_NT_PRFPREG
+#define FPREGSET ARCH_PTRACE_NT_FPREGSET
 #else
 #define FPREGSET ARCH_PTRACE_NT_PRXFPREG
 #endif

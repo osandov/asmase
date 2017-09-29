@@ -22,15 +22,16 @@
 #ifndef LIBASMASE_INTERNAL_H
 #define LIBASMASE_INTERNAL_H
 
+#include <elf.h>
 #include <stddef.h>
 #include <sys/types.h>
-#include <linux/elf.h>
 
 #include "libasmase.h"
 
 #include ARCH_HEADER
 
 void libasmase_assembler_init(void);
+void tracee(int memfd, size_t memfd_size, int flags) __attribute__((noreturn));
 
 struct asmase_instance {
 	/**
@@ -57,6 +58,7 @@ struct asmase_instance {
 extern const unsigned char arch_trap_instruction[];
 extern const size_t arch_trap_instruction_len;
 
+int arch_initialize_tracee_regs(pid_t pid, void *pc, void *sp);
 int arch_set_tracee_program_counter(pid_t pid, void *pc);
 
 int arch_assemble_munmap(struct asmase_assembler *as,

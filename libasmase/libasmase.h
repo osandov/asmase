@@ -211,20 +211,12 @@ enum asmase_create_flags {
 	 * Don't allow any syscalls.
 	 */
 	ASMASE_SANDBOX_SYSCALLS = (1 << 1),
-	/*
-	 * Execute tracee with no environment variables.
-	 */
-	ASMASE_SANDBOX_ENVIRON = (1 << 2),
-	/*
-	 * Unmap as much memory as possible.
-	 */
-	ASMASE_SANDBOX_MUNMAP = (1 << 3),
 };
 
 /*
  * Enable all sandboxing flags.
  */
-#define ASMASE_SANDBOX_ALL ((1 << 4) - 1)
+#define ASMASE_SANDBOX_ALL ((1 << 2) - 1)
 
 /**
  * asmase_create_instance() - Create a new asmase instance.

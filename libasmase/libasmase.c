@@ -20,14 +20,11 @@
  */
 
 #include <assert.h>
-#include <dirent.h>
-#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <spawn.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,41 +39,29 @@
 
 #include "internal.h"
 
-static char libasmase_path[PATH_MAX];
+#ifndef MFD_CLOEXEC
+#define MFD_CLOEXEC 0x0001U
+#endif
 
-int main(int argc, char **argv);
+/* 64k per tracee by default; 4k for code, the rest for the stack. */
+#define MEMFD_SIZE 65536
+#define CODE_MAX_SIZE 4096
 
 __attribute__((visibility("default")))
 int libasmase_init(void)
 {
-	Dl_info info;
-
-	if (!dladdr(main, &info)) {
-		errno = ENOEXEC;
-		return -1;
-	}
-
-	if (!realpath(info.dli_fname, libasmase_path))
-		return -1;
-
 	libasmase_assembler_init();
 	return 0;
 }
 
 static int create_memfd(struct asmase_instance *a)
 {
-	void *memfd_addr = NULL;
-
-	a->memfd_size = sysconf(_SC_PAGESIZE);
-	a->memfd = syscall(SYS_memfd_create, "asmase_tracee", 0);
+	a->memfd_size = MEMFD_SIZE;
+	a->memfd = syscall(SYS_memfd_create, "asmase", MFD_CLOEXEC);
 	if (a->memfd == -1)
 		return -1;
 
-	/*
-	 * The tracee will fill in the address that it mapped the memfd into
-	 * when it's done setting up.
-	 */
-	if (pwrite(a->memfd, &memfd_addr, sizeof(memfd_addr), 0) == -1) {
+	if (ftruncate(a->memfd, a->memfd_size) == -1) {
 		close(a->memfd);
 		return -1;
 	}
@@ -84,115 +69,15 @@ static int create_memfd(struct asmase_instance *a)
 	return 0;
 }
 
-static char **argv_alloc(void)
+static pid_t fork_tracee(struct asmase_instance *a, int flags)
 {
-	char **argv;
-
-	argv = malloc(sizeof(char *));
-	if (argv)
-		argv[0] = NULL;
-	return argv;
-}
-
-static void argv_free(char **argv)
-{
-	int i;
-
-	for (i = 0; argv[i]; i++)
-		free(argv[i]);
-	free(argv);
-}
-
-static int argv_appendf(char ***argv, int *argc, const char *format, ...)
-{
-	va_list ap;
-	char **tmp;
-	char *arg;
-	int ret;
-
-	tmp = realloc(*argv, sizeof(char *) * (*argc + 2));
-	if (!tmp)
-		return -1;
-	*argv = tmp;
-
-	va_start(ap, format);
-	ret = vasprintf(&arg, format, ap);
-	if (ret == -1)
-		return -1;
-
-	(*argv)[(*argc)++] = arg;
-	(*argv)[*argc] = NULL;
-	return 0;
-}
-
-static char **tracee_argv(const struct asmase_instance *a, int flags)
-{
-	char **argv;
-	int argc = 0;
-	int ret;
-
-	argv = argv_alloc();
-	if (!argv)
-		return NULL;
-
-	ret = argv_appendf(&argv, &argc, "asmase_tracee");
-	if (ret == -1)
-		goto err;
-
-	ret = argv_appendf(&argv, &argc, "--memfd=%d", a->memfd);
-	if (ret == -1)
-		goto err;
-
-	ret = argv_appendf(&argv, &argc, "--memfd-size=%zu", a->memfd_size);
-	if (ret == -1)
-		goto err;
-
-	if (flags & ASMASE_SANDBOX_FDS) {
-		ret = argv_appendf(&argv, &argc, "--close-fds");
-		if (ret == -1)
-			goto err;
-	}
-
-	if (flags & ASMASE_SANDBOX_SYSCALLS) {
-		ret = argv_appendf(&argv, &argc, "--seccomp");
-		if (ret == -1)
-			goto err;
-
-		if (flags & ASMASE_SANDBOX_MUNMAP) {
-			ret = argv_appendf(&argv, &argc, "--allow-munmap");
-			if (ret == -1)
-				goto err;
-		}
-	}
-
-	return argv;
-err:
-	argv_free(argv);
-	return NULL;
-}
-
-static pid_t exec_tracee(struct asmase_instance *a, int flags)
-{
-	char **argv, **envp;
-	char *empty_environ[] = {NULL};
 	pid_t pid = -1;
 
-	argv = tracee_argv(a, flags);
-	if (!argv)
-		goto out;
-
-	envp = (flags & ASMASE_SANDBOX_ENVIRON) ? empty_environ : environ;
-
-	errno = posix_spawn(&pid, libasmase_path, NULL, NULL, argv, envp);
-	if (errno) {
-		pid = -1;
-		goto out_argv;
-	}
-
-out_argv:
-	argv_free(argv);
-out:
-	return pid;
+	pid = fork();
+	if (pid == 0)
+		tracee(a->memfd, a->memfd_size, flags); /* Doesn't return. */
+	else
+		return pid;
 }
 
 static int attach_to_tracee(struct asmase_instance *a)
@@ -213,6 +98,10 @@ static int attach_to_tracee(struct asmase_instance *a)
 			return -1;
 		}
 
+		/*
+		 * The tracee will fill in the address that it mapped the memfd
+		 * into when it's done setting up.
+		 */
 		sret = pread(a->memfd, &a->memfd_addr, sizeof(a->memfd_addr), 0);
 		if (sret == -1)
 			return -1;
@@ -236,56 +125,29 @@ struct proc_map {
 	struct proc_map *next;
 };
 
-static int do_munmap_tracee(struct asmase_instance *a,
-			    struct asmase_assembler *as,
-			    struct proc_map *maps)
+static void free_proc_maps(struct proc_map *maps)
 {
-	struct proc_map *map;
-	int ret;
+	while (maps) {
+		struct proc_map *next = maps->next;
 
-	for (map = maps; map; map = map->next) {
-		char *out;
-		size_t len;
-
-		/*
-		 * Unmap anonymous mappings, file mappings (except the shared
-		 * memfd), and the heap.
-		 */
-		if (!map->path || strcmp(map->path, "[heap]") == 0 ||
-		    (map->path[0] == '/' &&
-		     !strstartswith(map->path, "/memfd:asmase_tracee"))) {
-			ret = arch_assemble_munmap(as, map->start,
-						   map->end - map->start, &out, &len);
-			if (ret == -1)
-				return -1;
-
-			ret = asmase_execute_code(a, out, len, NULL);
-			free(out);
-			if (ret == -1)
-				return -1;
-		}
+		free(maps->path);
+		free(maps);
+		maps = next;
 	}
-
-	return 0;
 }
 
-static int munmap_tracee(struct asmase_instance *a)
+static struct proc_map *read_proc_maps(pid_t pid)
 {
-	struct asmase_assembler *as;
-	struct proc_map *maps = NULL, *tail;
-	FILE *file = NULL;
+	FILE *file;
 	char path[50];
-	int ret = -1;
+	struct proc_map *maps = NULL, *tail;
+	int ret;
 
-	as = asmase_create_assembler();
-	if (!as)
-		goto out;
-
-	snprintf(path, sizeof(path), "/proc/%ld/maps", (long)a->pid);
+	snprintf(path, sizeof(path), "/proc/%ld/maps", (long)pid);
 
 	file = fopen(path, "r");
 	if (!file)
-		goto out;
+		return NULL;
 
 	for (;;) {
 		struct proc_map *map;
@@ -298,10 +160,8 @@ static int munmap_tracee(struct asmase_instance *a)
 			break;
 
 		map = malloc(sizeof(*map));
-		if (!map) {
-			ret = -1;
-			goto out;
-		}
+		if (!map)
+			goto err;
 		map->start = start;
 		map->end = end;
 		map->path = NULL;
@@ -317,38 +177,123 @@ static int munmap_tracee(struct asmase_instance *a)
 		if (ret == EOF) {
 			if (!ferror(file))
 				errno = EINVAL;
-			ret = -1;
-			goto out;
+			goto err;
 		}
 
 		c = fgetc(file);
 		if (c == EOF) {
 			if (!ferror(file))
 				errno = EINVAL;
-			ret = -1;
-			goto out;
+			goto err;
 		}
 		assert(c == '\n');
 	}
-	if (ferror(file)) {
+	if (ferror(file))
+		goto err;
+
+	fclose(file);
+	return maps;
+
+err:
+	free_proc_maps(maps);
+	fclose(file);
+	return NULL;
+}
+
+/*
+ * Unmap everything expect for the memfd and the vsyscall, which apparently
+ * can't be unmapped.
+ */
+static bool should_munmap(struct proc_map *map)
+{
+	return (!map->path ||
+		(map->path[0] != '/' && strcmp(map->path, "[vsyscall]") != 0) ||
+		(map->path[0] == '/' && !strstartswith(map->path, "/memfd:asmase")));
+}
+
+static int do_munmap_tracee(struct asmase_instance *a,
+			    struct asmase_assembler *as,
+			    struct proc_map *maps)
+{
+	struct proc_map *map;
+	int ret;
+
+	for (map = maps; map; map = map->next) {
+		char *out;
+		size_t len;
+
+		if (should_munmap(map)) {
+			ret = arch_assemble_munmap(as, map->start,
+						   map->end - map->start, &out, &len);
+			if (ret == -1)
+				return -1;
+
+			ret = asmase_execute_code(a, out, len, NULL);
+			free(out);
+			if (ret == -1)
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int check_munmap(struct proc_map *maps)
+{
+	struct proc_map *map;
+
+	for (map = maps; map; map = map->next) {
+		if (should_munmap(map)) {
+			/*
+			 * Ugly overloading of this errno but it's at least
+			 * unique.
+			 */
+			errno = EADDRINUSE;
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int munmap_tracee(struct asmase_instance *a)
+{
+	struct asmase_assembler *as;
+	struct proc_map *maps = NULL;
+	int saved_errno;
+	int ret;
+
+	as = asmase_create_assembler();
+	if (!as) {
+		ret = -1;
+		goto out;
+	}
+
+	maps = read_proc_maps(a->pid);
+	if (!maps) {
 		ret = -1;
 		goto out;
 	}
 
 	ret = do_munmap_tracee(a, as, maps);
+	if (ret == -1)
+		goto out;
+
+	free_proc_maps(maps);
+	maps = read_proc_maps(a->pid);
+	if (!maps) {
+		ret = -1;
+		goto out;
+	}
+
+	ret = check_munmap(maps);
 
 out:
-	while (maps) {
-		struct proc_map *next = maps->next;
-
-		free(maps->path);
-		free(maps);
-		maps = next;
-	}
-	if (file)
-		fclose(file);
+	saved_errno = errno;
+	free_proc_maps(maps);
 	if (as)
 		asmase_destroy_assembler(as);
+	errno = saved_errno;
 	return ret;
 }
 
@@ -357,6 +302,7 @@ struct asmase_instance *asmase_create_instance(int flags)
 {
 	struct asmase_instance *a;
 	int saved_errno;
+	void *sp;
 
 	if (flags & ~(ASMASE_SANDBOX_ALL)) {
 		errno = EINVAL;
@@ -372,7 +318,7 @@ struct asmase_instance *asmase_create_instance(int flags)
 		return NULL;
 	}
 
-	a->pid = exec_tracee(a, flags);
+	a->pid = fork_tracee(a, flags);
 	if (a->pid == -1) {
 		close(a->memfd);
 		free(a);
@@ -382,10 +328,13 @@ struct asmase_instance *asmase_create_instance(int flags)
 	if (attach_to_tracee(a) == -1)
 		goto err;
 
-	if (flags & ASMASE_SANDBOX_MUNMAP) {
-		if (munmap_tracee(a) == -1)
-			goto err;
-	}
+	if (munmap_tracee(a) == -1)
+		goto err;
+
+	/* Assumes a stack which grows down. */
+	sp = (char *)a->memfd_addr + a->memfd_size - sizeof(long);
+	if (arch_initialize_tracee_regs(a->pid, a->memfd_addr, sp) == -1)
+		goto err;
 
 	return a;
 
@@ -425,7 +374,7 @@ int asmase_execute_code(const struct asmase_instance *a,
 
 	overflow = __builtin_add_overflow(len, arch_trap_instruction_len,
 					  &total_len);
-	if (overflow || total_len >= a->memfd_size) {
+	if (overflow || total_len > CODE_MAX_SIZE) {
 		errno = E2BIG;
 		return -1;
 	}
@@ -434,9 +383,15 @@ int asmase_execute_code(const struct asmase_instance *a,
 	if (sret == -1)
 		return -1;
 
-	if (arch_set_tracee_program_counter(a->pid, a->memfd_addr) == 0)
-		ptrace(PTRACE_CONT, a->pid, NULL, NULL);
+	if (arch_set_tracee_program_counter(a->pid, a->memfd_addr) == -1) {
+		if (errno == ESRCH)
+			goto wait;
+		return -1;
+	}
+	if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1 && errno != ESRCH)
+		return -1;
 
+wait:
 	if (waitpid(a->pid, wstatus, 0) == -1)
 		return -1;
 

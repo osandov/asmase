@@ -27,7 +27,7 @@
 DEFINE_ARCH_PTRACE_REGSETS2(
 	struct user_regs_struct, NT_PRSTATUS,
 #ifdef __x86_64__
-	struct user_fpregs_struct, NT_PRFPREG
+	struct user_fpregs_struct, NT_FPREGSET
 #else
 	struct user_fpxregs_struct, NT_PRXFPREG
 #endif

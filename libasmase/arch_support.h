@@ -32,10 +32,11 @@
  * Architecture support requires defining a few things:
  *
  * 1. The architecture trap instruction (DEFINE_ARCH_TRAP_INSTRUCTION()).
- * 2. A function to set the program counter of a tracee.
- * 3. A function to assemble a call to the munmap() syscall.
- * 4. The architecture ptrace register sets (DEFINE_ARCH_PTRACE_REGSETS<n>()).
- * 5. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
+ * 2. A function to initialize all registers.
+ * 3. A function to set the program counter of a tracee.
+ * 4. A function to assemble a call to the munmap() syscall.
+ * 5. The architecture ptrace register sets (DEFINE_ARCH_PTRACE_REGSETS<n>()).
+ * 6. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
  *    REGISTER_DESCRIPTOR()).
  */
 
