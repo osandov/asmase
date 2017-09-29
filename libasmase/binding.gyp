@@ -5,12 +5,10 @@
       'sources': ['src/main.cc'],
       'include_dirs': [
         '<!(node -e "require(\'nan\')")',
-        '../libasmase'
       ],
-      'link_settings': {
-        'libraries': ['-lasmase'],
-        'ldflags': ['-L../../libasmase']
-      }
+      'dependencies': [
+        'libasmase/libasmase.gyp:libasmase'
+      ]
     }
   ]
 }

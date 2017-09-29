@@ -26,9 +26,9 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#include "libasmase.h"
+#include <libasmase.h>
 
-#include ARCH_HEADER
+#include "x86.h"
 
 void libasmase_assembler_init(void);
 void tracee(int memfd, size_t memfd_size, int flags) __attribute__((noreturn));

@@ -1,2 +1,2 @@
-*.o
-*.so
+/build
+/node_modules

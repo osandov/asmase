@@ -59,7 +59,7 @@ using std::system_category;
 #define OwningPtr std::unique_ptr
 #endif
 
-#include "libasmase.h"
+#include <libasmase.h>
 
 /* The reserved size of the output SmallString. */
 static const int OUTPUT_BUFFER_SIZE = 4096;

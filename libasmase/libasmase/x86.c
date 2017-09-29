@@ -467,31 +467,31 @@ DEFINE_ARCH_REGISTERS(vector,
 );
 
 DEFINE_STATUS_REGISTER_BITS(mxcsr,
-    /* Exceptions */
-    STATUS_REGISTER_FLAG("EF=IE", 0), /* Invalid operation */
-    STATUS_REGISTER_FLAG("EF=DE", 1), /* Denormalized operand */
-    STATUS_REGISTER_FLAG("EF=ZE", 2), /* Zero-divide */
-    STATUS_REGISTER_FLAG("EF=OE", 3), /* Overflow */
-    STATUS_REGISTER_FLAG("EF=UE", 4), /* Underflow */
-    STATUS_REGISTER_FLAG("EF=PE", 5), /* Precision */
+	/* Exceptions */
+	STATUS_REGISTER_FLAG("EF=IE", 0), /* Invalid operation */
+	STATUS_REGISTER_FLAG("EF=DE", 1), /* Denormalized operand */
+	STATUS_REGISTER_FLAG("EF=ZE", 2), /* Zero-divide */
+	STATUS_REGISTER_FLAG("EF=OE", 3), /* Overflow */
+	STATUS_REGISTER_FLAG("EF=UE", 4), /* Underflow */
+	STATUS_REGISTER_FLAG("EF=PE", 5), /* Precision */
 
-    STATUS_REGISTER_FLAG("DAZ", 6), /* Denormals are zero */
+	STATUS_REGISTER_FLAG("DAZ", 6), /* Denormals are zero */
 
-    /* Exception enables */
-    STATUS_REGISTER_FLAG("EM=IM", 7), /* Invalid operation */
-    STATUS_REGISTER_FLAG("EM=DM", 8), /* Denormalized operand */
-    STATUS_REGISTER_FLAG("EM=ZM", 9), /* Zero-divide */
-    STATUS_REGISTER_FLAG("EM=OM", 10), /* Overflow */
-    STATUS_REGISTER_FLAG("EM=UM", 11), /* Underflow */
-    STATUS_REGISTER_FLAG("EM=PM", 12), /* Precision */
+	/* Exception enables */
+	STATUS_REGISTER_FLAG("EM=IM", 7), /* Invalid operation */
+	STATUS_REGISTER_FLAG("EM=DM", 8), /* Denormalized operand */
+	STATUS_REGISTER_FLAG("EM=ZM", 9), /* Zero-divide */
+	STATUS_REGISTER_FLAG("EM=OM", 10), /* Overflow */
+	STATUS_REGISTER_FLAG("EM=UM", 11), /* Underflow */
+	STATUS_REGISTER_FLAG("EM=PM", 12), /* Precision */
 
-    /*
-     * Rounding mode: to nearest, toward negative infinity, toward positive
-     * infinity, or toward zero
-     */
-    STATUS_REGISTER_BIT_VALUES("RC", 13, 0x3, "RN", "R-", "R+", "RZ"),
+	/*
+	* Rounding mode: to nearest, toward negative infinity, toward positive
+	* infinity, or toward zero
+	*/
+	STATUS_REGISTER_BIT_VALUES("RC", 13, 0x3, "RN", "R-", "R+", "RZ"),
 
-    STATUS_REGISTER_FLAG("FZ", 15), /* Flush to zero */
+	STATUS_REGISTER_FLAG("FZ", 15), /* Flush to zero */
 );
 
 DEFINE_ARCH_REGISTERS(vector_status,

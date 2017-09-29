@@ -52,13 +52,11 @@ describe('Instance', function() {
     matches.should.eql([]);
   });
 
-  /*
   it('should clear the environment', function() {
     const environ = '/proc/' + this.instance.getPid().toString() + '/environ';
     // Can't use .and.empty becase st_size is always 0 for proc
     environ.should.be.a.file().with.content('');
   });
-  */
 
   it('should clear the command line', function() {
     const cmdlin = '/proc/' + this.instance.getPid().toString() + '/cmdline';
