@@ -73,7 +73,9 @@ private:
       info.GetReturnValue().Set(Nan::NewBuffer(out, len).ToLocalChecked());
       // The new Buffer now owns out.
     } else if (ret == 1) {
-      Nan::ThrowError(out);
+      const int argc = 1;
+      v8::Local<v8::Value> argv[argc] = {Nan::New(out).ToLocalChecked()};
+      Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AssemblerError), argc, argv).ToLocalChecked());
       free(out);
     } else {
       Nan::ThrowError(Nan::ErrnoException(errno));

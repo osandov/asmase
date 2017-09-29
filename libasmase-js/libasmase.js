@@ -1,5 +1,6 @@
-const {Assembler, Instance} = require('bindings')('binding.node');
+const {Assembler, AssemblerError, Instance} = require('bindings')('binding.node');
 exports.Assembler = Assembler;
+exports.AssemblerError = AssemblerError;
 exports.Instance = Instance;
 
 exports.RegisterSet = Object.freeze({

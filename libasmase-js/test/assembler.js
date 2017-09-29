@@ -1,4 +1,4 @@
-const {Assembler} = require('..');
+const {Assembler, AssemblerError} = require('..');
 const should = require('chai').should();
 
 const CODE_TEST_CASES = {
@@ -20,11 +20,11 @@ describe('Assembler', function() {
     }
 
     it('should throw a diagnostic on bad assembly', function() {
-      (() => (new Assembler()).assembleCode('foo')).should.throw(Error);
+      (() => (new Assembler()).assembleCode('foo')).should.throw(AssemblerError);
     });
 
     it('should include a filename and line number in diagnostics', function() {
-      (() => (new Assembler()).assembleCode('foo', 'test.s', 2)).should.throw(Error, 'test.s:2');
+      (() => (new Assembler()).assembleCode('foo', 'test.s', 2)).should.throw(AssemblerError, 'test.s:2');
     });
   });
 });
