@@ -29,7 +29,8 @@
 
 #include "internal.h"
 
-DEFINE_ARCH_TRAP_INSTRUCTION({0xcc});
+const unsigned char arch_trap_instruction[] = {0xcc};
+const size_t arch_trap_instruction_len = sizeof(arch_trap_instruction);
 
 int arch_initialize_tracee_regs(pid_t pid, void *pc, void *sp)
 {

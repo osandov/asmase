@@ -31,7 +31,7 @@
 /*
  * Architecture support requires defining a few things:
  *
- * 1. The architecture trap instruction (DEFINE_ARCH_TRAP_INSTRUCTION()).
+ * 1. A trap instruction (arch_trap_instruction{,_len}).
  * 2. A function to initialize all registers.
  * 3. A function to set the program counter of a tracee.
  * 4. A function to assemble a call to the munmap() syscall.
@@ -39,16 +39,6 @@
  * 6. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
  *    REGISTER_DESCRIPTOR()).
  */
-
-/**
- * DEFINE_ARCH_TRAP_INSTRUCTION() - Define the architecture trap instruction.
- *
- * @bytes: Array initializer containing the bytes of the trap instruction.
- */
-#define DEFINE_ARCH_TRAP_INSTRUCTION(bytes)			\
-	const unsigned char arch_trap_instruction[] = bytes;	\
-	const size_t arch_trap_instruction_len =		\
-		ARRAY_SIZE(arch_trap_instruction)
 
 struct arch_register_descriptor {
 	const char *name;
