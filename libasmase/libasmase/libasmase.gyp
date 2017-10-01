@@ -25,7 +25,6 @@
         'ldflags': ['<!(llvm-config --ldflags)'],
         'libraries': [
           '<!(llvm-config --libs)',
-          '-lseccomp'
         ]
       }
     }

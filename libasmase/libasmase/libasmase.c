@@ -288,6 +288,63 @@ out:
 	return ret;
 }
 
+static int seccomp_tracee(struct asmase_instance *a)
+{
+	FILE *file;
+	char buf[50];
+	bool no_new_privs = false, seccomp = false;
+	int ret;
+
+	ret = asmase_execute_code(a, (char *)arch_seccomp_code,
+				  arch_seccomp_code_len, NULL);
+	if (ret == -1)
+		return -1;
+
+	snprintf(buf, sizeof(buf), "/proc/%ld/status", (long)a->pid);
+
+	file = fopen(buf, "r");
+	if (!file)
+		return -1;
+
+	for (;;) {
+		int status;
+
+		if (!fgets(buf, sizeof(buf), file))
+			break;
+
+		ret = sscanf(buf, "NoNewPrivs: %d", &status);
+		if (ret == EOF)
+			break;
+		if (ret == 1) {
+			no_new_privs = status;
+			continue;
+		}
+
+		ret = sscanf(buf, "Seccomp: %d", &status);
+		if (ret == EOF)
+			break;
+		if (ret == 1) {
+			seccomp = status == 2;
+			continue;
+		}
+	}
+	if (ferror(file)) {
+		ret = -1;
+		goto out;
+	}
+
+	if (!no_new_privs || !seccomp) {
+		errno = EPERM;
+		ret = -1;
+		goto out;
+	}
+
+	ret = 0;
+out:
+	fclose(file);
+	return ret;
+}
+
 __attribute__((visibility("default")))
 struct asmase_instance *asmase_create_instance(int flags)
 {
@@ -319,11 +376,17 @@ struct asmase_instance *asmase_create_instance(int flags)
 	if (attach_to_tracee(a) == -1)
 		goto err;
 
+	/* Assumes a stack which grows down. */
+	sp = (char *)a->memfd_addr + a->memfd_size;
+	if (arch_initialize_tracee_regs(a->pid, a->memfd_addr, sp) == -1)
+		goto err;
+
 	if (munmap_tracee(a) == -1)
 		goto err;
 
-	/* Assumes a stack which grows down. */
-	sp = (char *)a->memfd_addr + a->memfd_size;
+	if ((flags & ASMASE_SANDBOX_SYSCALLS) && seccomp_tracee(a) == -1)
+		goto err;
+
 	if (arch_initialize_tracee_regs(a->pid, a->memfd_addr, sp) == -1)
 		goto err;
 

@@ -58,6 +58,9 @@ struct asmase_instance {
 extern const unsigned char arch_trap_instruction[];
 extern const size_t arch_trap_instruction_len;
 
+extern const unsigned char arch_seccomp_code[];
+extern const size_t arch_seccomp_code_len;
+
 int arch_initialize_tracee_regs(pid_t pid, void *pc, void *sp);
 int arch_set_tracee_program_counter(pid_t pid, void *pc);
 

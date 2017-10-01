@@ -21,7 +21,6 @@
 
 #include <dirent.h>
 #include <errno.h>
-#include <seccomp.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -105,24 +104,6 @@ static void close_all_fds(void)
 	closedir(dir);
 }
 
-static void seccomp_all(void)
-{
-	scmp_filter_ctx ctx;
-
-	ctx = seccomp_init(SCMP_ACT_TRAP);
-	if (!ctx)
-		_exit(EXIT_FAILURE);
-
-	/* We munmap() everything after this. */
-	if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(munmap), 0))
-		_exit(EXIT_FAILURE);
-
-	if (seccomp_load(ctx))
-		_exit(EXIT_FAILURE);
-
-	seccomp_release(ctx);
-}
-
 void tracee(int memfd, size_t memfd_size, int flags)
 {
 	void *memfd_addr;
@@ -137,19 +118,12 @@ void tracee(int memfd, size_t memfd_size, int flags)
 	if (flags & ASMASE_SANDBOX_FDS)
 		close_all_fds();
 
-	if (flags & ASMASE_SANDBOX_SYSCALLS)
-		seccomp_all();
-
 	/*
 	 * This serves two purposes: it tells the tracer where we mapped the
 	 * memfd and it lets the tracer know that we're done setting up.
 	 */
 	*(void **)memfd_addr = memfd_addr;
 
-	/*
-	 * If seccomp is enabled, we'll get SIGSYS instead of SIGTRAP; that's
-	 * okay.
-	 */
 	raise(SIGTRAP);
 
 	/* We shouldn't make it here. */
