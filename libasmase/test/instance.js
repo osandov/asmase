@@ -258,6 +258,7 @@ describe('Instance', function() {
       });
 
       it('should support the x87 data registers', function() {
+        this.executeCode('subq $8, %rsp');
         for (let i = 7; i >= 0; i--) {
           this.executeCode('movq $' + i + ', (%rsp)\n' + 
                            'fildq (%rsp)');
@@ -332,6 +333,8 @@ describe('Instance', function() {
 
       it('should support x87 status word exceptions', function() {
         let fsw;
+
+        this.executeCode('subq $8, %rsp');
 
         this.checkFswException = function(code, bits) {
           this.executeCode('finit');
@@ -431,7 +434,8 @@ describe('Instance', function() {
           return this.instance.getRegisters(RegisterSet.VECTOR_STATUS).mxcsr.value.toNumber();
         }
 
-        this.executeCode('movl $0xffff, %eax\n' +
+        this.executeCode('subq $4, %rsp\n' +
+                         'movl $0xffff, %eax\n' +
                          'movl %eax, (%rsp)\n' +
                          'ldmxcsr (%rsp)');
         this.getMxcsr().should.equal(0xffff);

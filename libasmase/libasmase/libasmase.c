@@ -323,7 +323,7 @@ struct asmase_instance *asmase_create_instance(int flags)
 		goto err;
 
 	/* Assumes a stack which grows down. */
-	sp = (char *)a->memfd_addr + a->memfd_size - sizeof(long);
+	sp = (char *)a->memfd_addr + a->memfd_size;
 	if (arch_initialize_tracee_regs(a->pid, a->memfd_addr, sp) == -1)
 		goto err;
 
