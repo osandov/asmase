@@ -212,7 +212,6 @@ static bool should_munmap(struct proc_map *map)
 }
 
 static int do_munmap_tracee(struct asmase_instance *a,
-			    struct asmase_assembler *as,
 			    struct proc_map *maps)
 {
 	struct proc_map *map;
@@ -223,8 +222,9 @@ static int do_munmap_tracee(struct asmase_instance *a,
 		size_t len;
 
 		if (should_munmap(map)) {
-			ret = arch_assemble_munmap(as, map->start,
-						   map->end - map->start, &out, &len);
+			ret = arch_assemble_munmap(map->start,
+						   map->end - map->start, &out,
+						   &len);
 			if (ret == -1)
 				return -1;
 
@@ -258,16 +258,9 @@ static int check_munmap(struct proc_map *maps)
 
 static int munmap_tracee(struct asmase_instance *a)
 {
-	struct asmase_assembler *as;
 	struct proc_map *maps = NULL;
 	int saved_errno;
 	int ret;
-
-	as = asmase_create_assembler();
-	if (!as) {
-		ret = -1;
-		goto out;
-	}
 
 	maps = read_proc_maps(a->pid);
 	if (!maps) {
@@ -275,7 +268,7 @@ static int munmap_tracee(struct asmase_instance *a)
 		goto out;
 	}
 
-	ret = do_munmap_tracee(a, as, maps);
+	ret = do_munmap_tracee(a, maps);
 	if (ret == -1)
 		goto out;
 
@@ -291,8 +284,6 @@ static int munmap_tracee(struct asmase_instance *a)
 out:
 	saved_errno = errno;
 	free_proc_maps(maps);
-	if (as)
-		asmase_destroy_assembler(as);
 	errno = saved_errno;
 	return ret;
 }

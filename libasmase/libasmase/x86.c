@@ -114,32 +114,29 @@ int arch_set_tracee_program_counter(pid_t pid, void *pc)
 	return 0;
 }
 
-int arch_assemble_munmap(struct asmase_assembler *as,
-			 unsigned long munmap_start, unsigned long munmap_len,
+int arch_assemble_munmap(unsigned long munmap_start, unsigned long munmap_len,
 			 char **out, size_t *len)
 {
-	char code[200];
-	int ret;
-
-	snprintf(code, sizeof(code),
 #ifdef __x86_64__
-		 "movq $%lu, %%rdi\n"
-		 "movq $%lu, %%rsi\n"
-		 "movq $%d, %%rax\n"
-		 "syscall\n",
+	unsigned char code[] = {
+		0x48, 0xbf, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* movq $0, %rdi */
+		0x48, 0xbe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* movq $0, %rsi */
+		0x48, 0xc7, 0xc0, 0x0b, 0x00, 0x00, 0x00,			/* movq $SYS_munmap, %rax */
+		0x0f, 0x05,							/* syscall */
+	};
+	/* Fill in actual values for %rdi and %rsi. */
+	memcpy(&code[2], &munmap_start, 8);
+	memcpy(&code[12], &munmap_len, 8);
 #else
-		 "movl $%lu, %%ebx\n"
-		 "movl $%lu, %%eci\n"
-		 "movl $%d, %%eax\n"
-		 "int $0x80\n",
+#error
 #endif
-		 munmap_start, munmap_len, SYS_munmap);
 
-	ret = asmase_assemble_code(as, "arch_assemble_munmap", 1, code, out,
-				   len);
-	assert(ret != 1);
-
-	return ret;
+	*len = sizeof(code);
+	*out = malloc(*len);
+	if (!*out)
+		return -1;
+	memcpy(*out, code, *len);
+	return 0;
 }
 
 const struct arch_register_descriptor arch_program_counter_reg =
