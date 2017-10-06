@@ -31,14 +31,9 @@
 /*
  * Architecture support requires defining a few things:
  *
- * 1. A trap instruction (arch_trap_instruction{,_len}).
- * 2. Code to enable seccomp. I.e., machine code equivalent to
- *        prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
- *        struct sock_filter filter = BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_TRAP);
- *        struct sock_fprog prog = { .len = 1, .filter = &filter };
- *        seccomp(SECCOMP_SET_MODE_FILTER, 0, &prog);
- *    (arch_seccomp_code{,_len}).
- * 3. A function to initialize all registers.
+ * 1. A fixed address where the memfd should be mapped (MEMFD_ADDR).
+ * 2. A trap instruction (arch_trap_instruction{,_len}).
+ * 3. Code to bootstrap the tracee (arch_bootstrap_code{,_len}).
  * 4. A function to set the program counter of a tracee.
  * 5. A function to assemble a call to the munmap() syscall.
  * 6. The architecture ptrace register sets (DEFINE_ARCH_PTRACE_REGSETS<n>()).

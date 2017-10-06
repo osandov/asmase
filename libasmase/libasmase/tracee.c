@@ -57,19 +57,7 @@ static void reset_signals(void)
 		_exit(EXIT_FAILURE);
 }
 
-static void *mmap_memfd(int memfd, size_t size)
-{
-	void *addr;
-
-	addr = mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED,
-		    memfd, 0);
-	if (addr == MAP_FAILED)
-		_exit(EXIT_FAILURE);
-	close(memfd);
-	return addr;
-}
-
-static void close_all_fds(void)
+static void close_fds(int memfd)
 {
 	DIR *dir;
 
@@ -79,7 +67,7 @@ static void close_all_fds(void)
 
 	for (;;) {
 		struct dirent *dirent;
-		long fd;
+		int fd;
 
 		errno = 0;
 		dirent = readdir(dir);
@@ -95,7 +83,7 @@ static void close_all_fds(void)
 		if (errno)
 			_exit(EXIT_FAILURE);
 
-		if (fd != dirfd(dir))
+		if (fd != memfd && fd != dirfd(dir))
 			close(fd);
 	}
 	if (errno)
@@ -104,28 +92,36 @@ static void close_all_fds(void)
 	closedir(dir);
 }
 
-void tracee(int memfd, size_t memfd_size, int flags)
+void tracee(int memfd, int flags)
 {
-	void *memfd_addr;
+	void *temp;
 
 	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
 		_exit(EXIT_FAILURE);
 
 	reset_signals();
 
-	memfd_addr = mmap_memfd(memfd, memfd_size);
-
 	if (flags & ASMASE_SANDBOX_FDS)
-		close_all_fds();
+		close_fds(memfd);
+
+	BUILD_BUG_ON(MEMFD_ADDR & (MEMFD_SIZE - 1));
 
 	/*
-	 * This serves two purposes: it tells the tracer where we mapped the
-	 * memfd and it lets the tracer know that we're done setting up.
+	 * The temporary mapping must be aligned to MEMFD_SIZE so that it either
+	 * doesn't overlap the final mapping at all or is exactly the same
+	 * mapping.
 	 */
-	*(void **)memfd_addr = memfd_addr;
+	temp = mmap(NULL, 2 * MEMFD_SIZE, PROT_NONE,
+		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (temp == MAP_FAILED)
+		_exit(EXIT_FAILURE);
+	temp = (void *)(round_up((uintptr_t)temp, MEMFD_SIZE));
 
-	raise(SIGTRAP);
+	temp = mmap(temp, MEMFD_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC,
+		    MAP_SHARED | MAP_FIXED, memfd, 0);
+	if (temp == MAP_FAILED)
+		_exit(EXIT_FAILURE);
 
-	/* We shouldn't make it here. */
-	_exit(EXIT_FAILURE);
+	memcpy(temp, arch_bootstrap_code, arch_bootstrap_code_len);
+	((arch_bootstrap_func)temp)(memfd, flags & ASMASE_SANDBOX_SYSCALLS);
 }

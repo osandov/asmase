@@ -559,9 +559,6 @@ describe('Instance', function() {
         for (let i = 0; i < zeroRegs.length; i++) {
           regs[zeroRegs[i]].value.toNumber().should.equal(0);
         }
-        for (let i = 0; i < 8; i++) {
-          regs['R' + i.toString()].value.should.equal(0);
-        }
         (regs.eflags.value.toNumber() & 0xcd5).should.equal(0);
         regs.fcw.value.toNumber().should.equal(0x37f);
         regs.ftw.value.toNumber().should.equal(0xffff);

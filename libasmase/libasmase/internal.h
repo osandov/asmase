@@ -28,10 +28,11 @@
 
 #include <libasmase.h>
 
+#include "asm.h"
 #include "x86.h"
 
 void libasmase_assembler_init(void);
-void tracee(int memfd, size_t memfd_size, int flags) __attribute__((noreturn));
+void tracee(int memfd, int flags) __attribute__((noreturn));
 
 struct asmase_instance {
 	/**
@@ -43,23 +44,45 @@ struct asmase_instance {
 	 * @memfd: memfd mapped into the tracee.
 	 */
 	int memfd;
-
-	/**
-	 * @memfd_size: size of the memfd mapping.
-	 */
-	size_t memfd_size;
-
-	/**
-	 * @memfd_addr: address of the memfd mapping in the tracee.
-	 */
-	void *memfd_addr;
 };
 
+/**
+ * arch_trap_instruction - machine code to raise SIGTRAP
+ */
 extern const unsigned char arch_trap_instruction[];
 extern const size_t arch_trap_instruction_len;
 
-extern const unsigned char arch_seccomp_code[];
-extern const size_t arch_seccomp_code_len;
+/**
+ * arch_bootstrap_code - machine code to bootstrap a new tracee
+ *
+ * This should be a position-independent function which doesn't return and takes
+ * the arguments specified by arch_bootstrap_func.
+ *
+ * Before a tracee process can be used, it must:
+ * 1. Map the memfd at MEMFD_ADDR.
+ * 2. Close the memfd.
+ * 3. Reset the instruction pointer and stack pointer to lie within the memfd
+ *    mapping.
+ * 4. Unmap all memory other than the memfd mapping.
+ * 5. Optionally set up seccomp.
+ * 6. Reset all registers, either to 0 or to some other clean state.
+ *
+ * Before calling the bootstrap code, the tracee copies the code into the memfd
+ * and maps the memfd at an initial location. Because the final location (i.e.,
+ * MEMFD_ADDR) might already be occupied by another mapping in the process, the
+ * initial location may not be the same as the final location. If it is not,
+ * then the tracee guarantees that it does not overlap with the final location.
+ * Therefore, the bootstrap code can always safely map the memfd at MEMFD_ADDR
+ * with MAP_FIXED and then jump to the memfd mapping, preserving the instruction
+ * pointer's current offset from the beginning of the bootstrap code.
+ */
+extern const unsigned char arch_bootstrap_code[];
+extern const size_t arch_bootstrap_code_len;
+
+/**
+ * arch_bootstrap_func - function signature of arch_bootstrap_code
+ */
+typedef void (*arch_bootstrap_func)(int memfd, bool seccomp) __attribute__((noreturn));
 
 int arch_initialize_tracee_regs(pid_t pid, void *pc, void *sp);
 int arch_set_tracee_program_counter(pid_t pid, void *pc);

@@ -8,7 +8,8 @@
         'libasmase.c',
         'registers.c',
         'tracee.c',
-        'x86.c'
+        'x86.c',
+        'x86_64.S'
       ],
       'defines': [
         '_GNU_SOURCE'
