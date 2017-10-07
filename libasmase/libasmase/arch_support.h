@@ -29,11 +29,10 @@
  *
  * 1. A fixed address where the memfd should be mapped (MEMFD_ADDR).
  * 2. A type for storing register values (struct arch_regs).
- * 3. A function to get the register values (arch_get_regs()).
- * 4. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
+ * 3. A function to get the register values of a tracee (arch_get_regs()).
+ * 4. A function to set the register values of a tracee (arch_set_regs()).
+ * 5. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
  *    REGISTER_DESCRIPTOR()).
- * 5. A function to set the program counter of a tracee
- *    (arch_set_tracee_program_counter()).
  * 6. A trap instruction (arch_trap_instruction{,_len}).
  * 7. Code to bootstrap the tracee (arch_bootstrap_code{,_len}).
  */

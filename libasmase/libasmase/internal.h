@@ -106,8 +106,7 @@ extern const size_t arch_bootstrap_code_len;
 typedef void (*arch_bootstrap_func)(int memfd, bool seccomp) __attribute__((noreturn));
 
 int arch_get_regs(pid_t pid, struct arch_regs *regs);
-
-int arch_set_tracee_program_counter(pid_t pid, void *pc);
+int arch_set_regs(pid_t pid, const struct arch_regs *regs);
 
 extern const struct arch_register_descriptor arch_program_counter_reg;
 

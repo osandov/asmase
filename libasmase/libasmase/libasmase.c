@@ -19,6 +19,7 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -304,6 +305,26 @@ pid_t asmase_getpid(const struct asmase_instance *a)
 	return a->pid;
 }
 
+static int reset_tracee_program_counter(struct asmase_instance *a)
+{
+	char *dst = (char *)&a->regs + arch_program_counter_reg.offset;
+
+	switch (arch_program_counter_reg.type) {
+	case ASMASE_REGISTER_U32:
+		*(uint32_t *)dst = (uint32_t)MEMFD_ADDR;
+		break;
+	case ASMASE_REGISTER_U64:
+		*(uint64_t *)dst = (uint64_t)MEMFD_ADDR;
+		break;
+	default:
+		assert(false && "Invalid program counter type");
+		errno = EINVAL;
+		return -1;
+	}
+
+	return arch_set_regs(a->pid, &a->regs);
+}
+
 __attribute__((visibility("default")))
 int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len,
 			int *wstatus)
@@ -327,7 +348,7 @@ int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len,
 	if (sret == -1)
 		return -1;
 
-	if (arch_set_tracee_program_counter(a->pid, (void *)MEMFD_ADDR) == -1) {
+	if (reset_tracee_program_counter(a) == -1) {
 		if (errno == ESRCH)
 			goto wait;
 		return -1;

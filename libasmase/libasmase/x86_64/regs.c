@@ -46,16 +46,18 @@ int arch_get_regs(pid_t pid, struct arch_regs *regs)
 	return 0;
 }
 
-int arch_set_tracee_program_counter(pid_t pid, void *pc)
+int arch_set_regs(pid_t pid, const struct arch_regs *regs)
 {
-	struct user_regs_struct regs;
+	struct iovec iov;
 
-	if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1)
+	iov.iov_base = (void *)&regs->regs;
+	iov.iov_len = sizeof(regs->regs);
+	if (ptrace(PTRACE_SETREGSET, pid, NT_PRSTATUS, &iov) == -1)
 		return -1;
 
-	regs.rip = (unsigned long long)pc;
-
-	if (ptrace(PTRACE_SETREGS, pid, NULL, &regs) == -1)
+	iov.iov_base = (void *)&regs->fpregs;
+	iov.iov_len = sizeof(regs->fpregs);
+	if (ptrace(PTRACE_SETREGSET, pid, NT_FPREGSET, &iov) == -1)
 		return -1;
 
 	return 0;
