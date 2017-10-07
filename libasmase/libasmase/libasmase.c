@@ -91,6 +91,9 @@ static int attach_to_tracee(struct asmase_instance *a)
 	if (ptrace(PTRACE_SETOPTIONS, a->pid, NULL, PTRACE_O_EXITKILL) == -1)
 		return -1;
 
+	if (arch_get_regs(a->pid, &a->regs) == -1)
+		return -1;
+
 	return 0;
 }
 
@@ -302,8 +305,8 @@ pid_t asmase_getpid(const struct asmase_instance *a)
 }
 
 __attribute__((visibility("default")))
-int asmase_execute_code(const struct asmase_instance *a,
-			const char *code, size_t len, int *wstatus)
+int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len,
+			int *wstatus)
 {
 	struct iovec iov[] = {
 		{(void *)code, len},
@@ -334,6 +337,9 @@ int asmase_execute_code(const struct asmase_instance *a,
 
 wait:
 	if (waitpid(a->pid, wstatus, 0) == -1)
+		return -1;
+
+	if (arch_get_regs(a->pid, &a->regs) == -1 && errno != ESRCH)
 		return -1;
 
 	return 0;

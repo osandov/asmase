@@ -1,7 +1,7 @@
 /*
  * Architecture-independent part of getting register values.
  *
- * Copyright (C) 2016 Omar Sandoval
+ * Copyright (C) 2016-2017 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -19,15 +19,10 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ptrace.h>
-#include <sys/uio.h>
-#include <sys/user.h>
 
 #include "internal.h"
 
@@ -149,31 +144,21 @@ static int for_each_reg_set(int reg_sets,
 }
 
 struct get_registers_data {
-	struct arch_ptrace_regsets regsets;
-	bool need_regset[ARCH_NUM_PTRACE_REGSETS];
-
+	const void *buf;
 	struct asmase_register *regs;
-	size_t num_regs;
 	size_t i;
 };
 
-static int prepare_regs(enum asmase_register_set set,
-			const struct arch_register_descriptor *regs,
-			size_t num_regs, void *arg)
+static int count_regs(enum asmase_register_set set,
+		      const struct arch_register_descriptor *regs,
+		      size_t num_regs, void *arg)
 {
-	struct get_registers_data *data = arg;
-	size_t i;
-
-	data->num_regs += num_regs;
-
-	for (i = 0; i < num_regs; i++)
-		data->need_regset[regs[i].ptrace_regset] = true;
-
+	*(size_t *)arg += num_regs;
 	return 0;
 }
 
 void default_copy_register(const struct arch_register_descriptor *desc,
-			   void *dst, void *src)
+			   void *dst, const struct arch_regs *src)
 {
 	memcpy(dst, ((char *)src) + desc->offset, desc->size);
 }
@@ -181,7 +166,7 @@ void default_copy_register(const struct arch_register_descriptor *desc,
 static inline void copy_register(enum asmase_register_set set,
 				 struct asmase_register *reg,
 				 const struct arch_register_descriptor *desc,
-				 void *buf)
+				 const void *buf)
 {
 	reg->name = desc->name;
 	reg->set = set;
@@ -196,14 +181,10 @@ static int emit_regs(enum asmase_register_set set,
 		     size_t num_regs, void *arg)
 {
 	struct get_registers_data *data = arg;
-	void *buf;
 	size_t i;
 
-	for (i = 0; i < num_regs; i++) {
-		buf = ((char *)&data->regsets +
-		       arch_ptrace_regset_offsetof(regs[i].ptrace_regset));
-		copy_register(set, &data->regs[data->i++], &regs[i], buf);
-	}
+	for (i = 0; i < num_regs; i++)
+		copy_register(set, &data->regs[data->i++], &regs[i], data->buf);
 
 	return 0;
 }
@@ -212,40 +193,25 @@ __attribute__((visibility("default")))
 int asmase_get_registers(const struct asmase_instance *a, int reg_sets,
 			 struct asmase_register **regs, size_t *num_regs)
 {
-	struct get_registers_data data = {};
-	size_t i;
+	struct get_registers_data data = {
+		.buf = &a->regs,
+	};
 
 	if (reg_sets & ~ASMASE_REGISTERS_ALL) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	for_each_reg_set(reg_sets, prepare_regs, &data);
+	*num_regs = 0;
+	for_each_reg_set(reg_sets, count_regs, num_regs);
 
-	for (i = 0; i < ARCH_NUM_PTRACE_REGSETS; i++) {
-		struct iovec iov;
-		long ret;
-
-		if (!data.need_regset[i])
-			continue;
-
-		iov.iov_base = ((char *)&data.regsets +
-				arch_ptrace_regset_offsetof(i));
-		iov.iov_len = arch_ptrace_regset_sizeof(i);
-		ret = ptrace(PTRACE_GETREGSET, a->pid, arch_ptrace_regset_nt(i),
-			     &iov);
-		if (ret == -1)
-			return ret;
-	}
-
-	data.regs = malloc(sizeof(*data.regs) * data.num_regs);
+	data.regs = malloc(sizeof(*data.regs) * *num_regs);
 	if (!data.regs)
 		return -1;
 
 	for_each_reg_set(reg_sets, emit_regs, &data);
 
 	*regs = data.regs;
-	*num_regs = data.num_regs;
 
 	return 0;
 }

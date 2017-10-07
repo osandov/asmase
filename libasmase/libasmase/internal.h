@@ -22,14 +22,19 @@
 #ifndef LIBASMASE_INTERNAL_H
 #define LIBASMASE_INTERNAL_H
 
+#include "arch.h"
+/* 64k per tracee by default; 4k for code, the rest for the stack. */
+#define MEMFD_SIZE 65536
+#define CODE_MAX_SIZE 4096
+
+#ifndef __ASSEMBLER__
 #include <elf.h>
 #include <stddef.h>
 #include <sys/types.h>
 
 #include <libasmase.h>
 
-#include "asm.h"
-#include "x86.h"
+#include "util.h"
 
 void libasmase_assembler_init(void);
 void tracee(int memfd, int flags) __attribute__((noreturn));
@@ -44,6 +49,22 @@ struct asmase_instance {
 	 * @memfd: memfd mapped into the tracee.
 	 */
 	int memfd;
+
+	/**
+	 * @regs: buffer of register values
+	 */
+	struct arch_regs regs;
+};
+
+struct arch_register_descriptor {
+	const char *name;
+	size_t offset;
+	size_t size;
+	const struct asmase_status_register_bits *status_bits;
+	size_t num_status_bits;
+	enum asmase_register_type type;
+	void (*copy_register_fn)(const struct arch_register_descriptor *,
+				 void *, const struct arch_regs *);
 };
 
 /**
@@ -84,11 +105,9 @@ extern const size_t arch_bootstrap_code_len;
  */
 typedef void (*arch_bootstrap_func)(int memfd, bool seccomp) __attribute__((noreturn));
 
-int arch_initialize_tracee_regs(pid_t pid, void *pc, void *sp);
-int arch_set_tracee_program_counter(pid_t pid, void *pc);
+int arch_get_regs(pid_t pid, struct arch_regs *regs);
 
-int arch_assemble_munmap(unsigned long munmap_start, unsigned long munmap_len,
-			 char **out, size_t *len);
+int arch_set_tracee_program_counter(pid_t pid, void *pc);
 
 extern const struct arch_register_descriptor arch_program_counter_reg;
 
@@ -109,5 +128,6 @@ extern const struct arch_register_descriptor arch_vector_regs[];
 extern const size_t arch_num_vector_regs;
 extern const struct arch_register_descriptor arch_vector_status_regs[];
 extern const size_t arch_num_vector_status_regs;
+#endif /* __ASSEMBLER__ */
 
 #endif /* LIBASMASE_INTERNAL_H */

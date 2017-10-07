@@ -8,14 +8,15 @@
         'libasmase.c',
         'registers.c',
         'tracee.c',
-        'x86.c',
-        'x86_64.S'
+        'x86_64/arch.S',
+        'x86_64/regs.c',
       ],
       'defines': [
         '_GNU_SOURCE'
       ],
       'include_dirs': [
-        'include'
+        'include',
+        'x86_64'
       ],
       'direct_dependent_settings': {
         'include_dirs': [

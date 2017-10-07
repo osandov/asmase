@@ -140,8 +140,8 @@ describe('Instance', function() {
         }
 
         const regs = this.instance.getRegisters(RegisterSet.GENERAL_PURPOSE);
-        for (const reg in regs) {
-          if (regs.hasOwnProperty(reg)) {
+        for (const reg in expected) {
+          if (expected.hasOwnProperty(reg)) {
             regs[reg].value.toString().should.equal(expected[reg].toString());
           }
         }

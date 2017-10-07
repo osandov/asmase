@@ -24,6 +24,7 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))

@@ -22,95 +22,24 @@
 #ifndef LIBASMASE_ARCH_SUPPORT_H
 #define LIBASMASE_ARCH_SUPPORT_H
 
-#include <assert.h>
-#include <stdbool.h>
-#include <sys/user.h>
-
-#include "util.h"
+#include "internal.h"
 
 /*
  * Architecture support requires defining a few things:
  *
  * 1. A fixed address where the memfd should be mapped (MEMFD_ADDR).
- * 2. A trap instruction (arch_trap_instruction{,_len}).
- * 3. Code to bootstrap the tracee (arch_bootstrap_code{,_len}).
- * 4. A function to set the program counter of a tracee.
- * 5. A function to assemble a call to the munmap() syscall.
- * 6. The architecture ptrace register sets (DEFINE_ARCH_PTRACE_REGSETS<n>()).
- * 7. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
+ * 2. A type for storing register values (struct arch_regs).
+ * 3. A function to get the register values (arch_get_regs()).
+ * 4. The architecture registor descriptors (DEFINE_ARCH_REGISTERS() and
  *    REGISTER_DESCRIPTOR()).
+ * 5. A function to set the program counter of a tracee
+ *    (arch_set_tracee_program_counter()).
+ * 6. A trap instruction (arch_trap_instruction{,_len}).
+ * 7. Code to bootstrap the tracee (arch_bootstrap_code{,_len}).
  */
-
-struct arch_register_descriptor {
-	const char *name;
-	size_t offset;
-	size_t size;
-	const struct asmase_status_register_bits *status_bits;
-	size_t num_status_bits;
-	int ptrace_regset;
-	enum asmase_register_type type;
-	void (*copy_register_fn)(const struct arch_register_descriptor *, void *, void *);
-};
 
 void default_copy_register(const struct arch_register_descriptor *desc,
-			   void *dst, void *src);
-
-/**
- * DEFINE_ARCH_PTRACE_REGSETS<n> - Define the architecture ptrace register sets.
- *
- * @type<n>: Type of the nth register set.
- * @nt<n>: NT_* constant of the nth register set.
- */
-#define DEFINE_ARCH_PTRACE_REGSETS2(type1, nt1, type2, nt2)		\
-enum {									\
-	ARCH_PTRACE_##nt1,						\
-	ARCH_PTRACE_##nt2,						\
-	ARCH_NUM_PTRACE_REGSETS,					\
-};									\
-struct arch_ptrace_regsets {						\
-	type1 ARCH_PTRACE_##nt1;					\
-	type2 ARCH_PTRACE_##nt2;					\
-};									\
-static inline size_t arch_ptrace_regset_nt(int ptrace_regset)		\
-{									\
-	switch (ptrace_regset) {					\
-	case ARCH_PTRACE_##nt1:						\
-		return nt1;						\
-	case ARCH_PTRACE_##nt2:						\
-		return nt2;						\
-	default:							\
-		assert(false);						\
-		return -1;						\
-	}								\
-}									\
-static inline size_t arch_ptrace_regset_offsetof(int ptrace_regset)	\
-{									\
-	switch (ptrace_regset) {					\
-	case ARCH_PTRACE_##nt1:						\
-		return offsetof(struct arch_ptrace_regsets,		\
-				ARCH_PTRACE_##nt1);			\
-	case ARCH_PTRACE_##nt2:						\
-		return offsetof(struct arch_ptrace_regsets,		\
-				ARCH_PTRACE_##nt2);			\
-	default:							\
-		assert(false);						\
-		return -1;						\
-	}								\
-}									\
-static inline size_t arch_ptrace_regset_sizeof(int ptrace_regset)	\
-{									\
-	switch (ptrace_regset) {					\
-	case ARCH_PTRACE_##nt1:						\
-		return FIELD_SIZEOF(struct arch_ptrace_regsets,		\
-				    ARCH_PTRACE_##nt1);			\
-	case ARCH_PTRACE_##nt2:						\
-		return FIELD_SIZEOF(struct arch_ptrace_regsets,		\
-				    ARCH_PTRACE_##nt2);			\
-	default:							\
-		assert(false);						\
-		return -1;						\
-	}								\
-}
+			   void *dst, const struct arch_regs *src);
 
 #define __ASMASE_REGISTER_TYPE_SIZEOF(type)				\
 	(((type) == ASMASE_REGISTER_U8) ? sizeof(uint8_t) :		\
@@ -125,44 +54,33 @@ static inline size_t arch_ptrace_regset_sizeof(int ptrace_regset)	\
 	(__ASMASE_REGISTER_TYPE_SIZEOF(type) +				\
 	 BUILD_BUG_ON_ZERO(__ASMASE_REGISTER_TYPE_SIZEOF(type) == 0))
 
-#define ____REGISTER_DESCRIPTOR(name_, type_, nt, field, status_bits_,			\
-				num_status_bits_, check_size, fn) {			\
+#define __REGISTER_DESCRIPTOR(name_, type_, field, status_bits_, num_status_bits_,	\
+			      fn) {							\
 	.name = name_,									\
-	.offset = offsetof(FIELD_TYPEOF(struct arch_ptrace_regsets, nt), field),	\
-	.size = ASMASE_REGISTER_TYPE_SIZEOF(type_) +					\
-		BUILD_BUG_ON_ZERO(check_size &&						\
-				  FIELD_SIZEOF(FIELD_TYPEOF(struct arch_ptrace_regsets, nt), field) !=	\
-				  ASMASE_REGISTER_TYPE_SIZEOF(type_)),			\
+	.offset = offsetof(struct arch_regs, field),					\
+	.size = ASMASE_REGISTER_TYPE_SIZEOF(type_),					\
 	.status_bits = status_bits_,							\
 	.num_status_bits = num_status_bits_,						\
-	.ptrace_regset = nt,								\
 	.type = type_,									\
 	.copy_register_fn = fn,								\
 }
 
-#define __REGISTER_DESCRIPTOR(name, type, nt, field)	\
-	____REGISTER_DESCRIPTOR(name, type, nt, field, NULL, 0, false, default_copy_register)
+#define REGISTER_DESCRIPTOR(name, type, field)	\
+	__REGISTER_DESCRIPTOR(name, type, field, NULL, 0, default_copy_register)
 
-#define REGISTER_DESCRIPTOR(name, type, nt, field)	\
-	____REGISTER_DESCRIPTOR(name, type, nt, field, NULL, 0, true, default_copy_register)
+#define STATUS_REGISTER_DESCRIPTOR_FN(reg, type, field, fn)		\
+	__REGISTER_DESCRIPTOR(#reg, type, field, arch_##reg##_bits,	\
+			      ARRAY_SIZE(arch_##reg##_bits), fn)
 
-#define STATUS_REGISTER_DESCRIPTOR_FN(name, type, nt, field, fn)		\
-	____REGISTER_DESCRIPTOR(#name, type, nt, field, arch_##name##_bits,	\
-				ARRAY_SIZE(arch_##name##_bits), true, fn)
+#define STATUS_REGISTER_DESCRIPTOR(reg, type, field)	\
+	STATUS_REGISTER_DESCRIPTOR_FN(reg, type, field, default_copy_register)
 
-#define STATUS_REGISTER_DESCRIPTOR(name, type, nt, field)		\
-	STATUS_REGISTER_DESCRIPTOR_FN(name, type, nt, field, default_copy_register)
+#define USER_REGS_DESCRIPTOR_UINT(reg, bits)	\
+	REGISTER_DESCRIPTOR(#reg, ASMASE_REGISTER_U##bits, regs.reg)
 
-#define __USER_REGS_DESCRIPTOR_UINT(reg, reg_name, bits) \
-	REGISTER_DESCRIPTOR(reg_name, ASMASE_REGISTER_U##bits, ARCH_PTRACE_NT_PRSTATUS, reg)
-
-#define USER_REGS_DESCRIPTOR_U16_NAMED(reg, name) __USER_REGS_DESCRIPTOR_UINT(reg, name, 16)
-#define USER_REGS_DESCRIPTOR_U32_NAMED(reg, name) __USER_REGS_DESCRIPTOR_UINT(reg, name, 32)
-#define USER_REGS_DESCRIPTOR_U64_NAMED(reg, name) __USER_REGS_DESCRIPTOR_UINT(reg, name, 64)
-
-#define USER_REGS_DESCRIPTOR_U16(reg) USER_REGS_DESCRIPTOR_U16_NAMED(reg, #reg)
-#define USER_REGS_DESCRIPTOR_U32(reg) USER_REGS_DESCRIPTOR_U32_NAMED(reg, #reg)
-#define USER_REGS_DESCRIPTOR_U64(reg) USER_REGS_DESCRIPTOR_U64_NAMED(reg, #reg)
+#define USER_REGS_DESCRIPTOR_U16(reg) USER_REGS_DESCRIPTOR_UINT(reg, 16)
+#define USER_REGS_DESCRIPTOR_U32(reg) USER_REGS_DESCRIPTOR_UINT(reg, 32)
+#define USER_REGS_DESCRIPTOR_U64(reg) USER_REGS_DESCRIPTOR_UINT(reg, 64)
 
 /**
  * DEFINE_ARCH_REGISTERS() - Define a set of architecture registers.

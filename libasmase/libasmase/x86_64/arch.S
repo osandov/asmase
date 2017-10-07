@@ -1,7 +1,7 @@
 #include <asm-generic/mman-common.h>
 #include <sys/syscall.h>
 
-#include "asm.h"
+#include "../internal.h"
 
 /* XXX: should probably get this programatically. */
 #define TASK_SIZE ((1 << 47) - 4096)

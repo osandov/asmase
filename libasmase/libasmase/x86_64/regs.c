@@ -1,5 +1,5 @@
 /*
- * x86 architecture support.
+ * x86_64 architecture support.
  *
  * Copyright (C) 2016-2017 Omar Sandoval
  *
@@ -27,7 +27,24 @@
 #include <sys/types.h>
 #include <asm/processor-flags.h>
 
-#include "internal.h"
+#include "../arch_support.h"
+
+int arch_get_regs(pid_t pid, struct arch_regs *regs)
+{
+	struct iovec iov;
+
+	iov.iov_base = &regs->regs;
+	iov.iov_len = sizeof(regs->regs);
+	if (ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &iov) == -1)
+		return -1;
+
+	iov.iov_base = &regs->fpregs;
+	iov.iov_len = sizeof(regs->fpregs);
+	if (ptrace(PTRACE_GETREGSET, pid, NT_FPREGSET, &iov) == -1)
+		return -1;
+
+	return 0;
+}
 
 int arch_set_tracee_program_counter(pid_t pid, void *pc)
 {
@@ -36,11 +53,7 @@ int arch_set_tracee_program_counter(pid_t pid, void *pc)
 	if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) == -1)
 		return -1;
 
-#ifdef __x86_64__
 	regs.rip = (unsigned long long)pc;
-#else
-	regs.eip = (long)pc;
-#endif
 
 	if (ptrace(PTRACE_SETREGS, pid, NULL, &regs) == -1)
 		return -1;
@@ -48,63 +61,21 @@ int arch_set_tracee_program_counter(pid_t pid, void *pc)
 	return 0;
 }
 
-int arch_assemble_munmap(unsigned long munmap_start, unsigned long munmap_len,
-			 char **out, size_t *len)
-{
-#ifdef __x86_64__
-	unsigned char code[] = {
-		0x48, 0xbf, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* movq $0, %rdi */
-		0x48, 0xbe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* movq $0, %rsi */
-		0x48, 0xc7, 0xc0, 0x0b, 0x00, 0x00, 0x00,			/* movq $SYS_munmap, %rax */
-		0x0f, 0x05,							/* syscall */
-	};
-	/* Fill in actual values for %rdi and %rsi. */
-	memcpy(&code[2], &munmap_start, 8);
-	memcpy(&code[12], &munmap_len, 8);
-#else
-#error
-#endif
-
-	*len = sizeof(code);
-	*out = malloc(*len);
-	if (!*out)
-		return -1;
-	memcpy(*out, code, *len);
-	return 0;
-}
-
 const struct arch_register_descriptor arch_program_counter_reg =
-#ifdef __x86_64__
 	USER_REGS_DESCRIPTOR_U64(rip);
-#else
-	USER_REGS_DESCRIPTOR_U32(eip);
-#endif
-
-#ifdef __x86_64__
-#define SEGMENT_REG_DESCRIPTOR(name)				\
-	__REGISTER_DESCRIPTOR(#name, ASMASE_REGISTER_U16,	\
-			      ARCH_PTRACE_NT_PRSTATUS, name)
-#else
-#define SEGMENT_REG_DESCRIPTOR(name)				\
-	__REGISTER_DESCRIPTOR(#name, ASMASE_REGISTER_U16,	\
-			      ARCH_PTRACE_NT_PRSTATUS, x##name)
-#endif
 
 DEFINE_ARCH_REGISTERS(segment,
-        SEGMENT_REG_DESCRIPTOR(cs),
-        SEGMENT_REG_DESCRIPTOR(ss),
-        SEGMENT_REG_DESCRIPTOR(ds),
-        SEGMENT_REG_DESCRIPTOR(es),
-        SEGMENT_REG_DESCRIPTOR(fs),
-        SEGMENT_REG_DESCRIPTOR(gs),
-#ifdef __x86_64__
-        USER_REGS_DESCRIPTOR_U64(fs_base),
-        USER_REGS_DESCRIPTOR_U64(gs_base),
-#endif
+	USER_REGS_DESCRIPTOR_U16(cs),
+	USER_REGS_DESCRIPTOR_U16(ss),
+	USER_REGS_DESCRIPTOR_U16(ds),
+	USER_REGS_DESCRIPTOR_U16(es),
+	USER_REGS_DESCRIPTOR_U16(fs),
+	USER_REGS_DESCRIPTOR_U16(gs),
+	USER_REGS_DESCRIPTOR_U64(fs_base),
+	USER_REGS_DESCRIPTOR_U64(gs_base),
 );
 
 DEFINE_ARCH_REGISTERS(general_purpose,
-#ifdef __x86_64__
 	USER_REGS_DESCRIPTOR_U64(rax),
 	USER_REGS_DESCRIPTOR_U64(rcx),
 	USER_REGS_DESCRIPTOR_U64(rdx),
@@ -121,81 +92,52 @@ DEFINE_ARCH_REGISTERS(general_purpose,
 	USER_REGS_DESCRIPTOR_U64(r13),
 	USER_REGS_DESCRIPTOR_U64(r14),
 	USER_REGS_DESCRIPTOR_U64(r15),
-#else
-	USER_REGS_DESCRIPTOR_U32(eax),
-	USER_REGS_DESCRIPTOR_U32(ecx),
-	USER_REGS_DESCRIPTOR_U32(edx),
-	USER_REGS_DESCRIPTOR_U32(ebx),
-	USER_REGS_DESCRIPTOR_U32(esp),
-	USER_REGS_DESCRIPTOR_U32(ebp),
-	USER_REGS_DESCRIPTOR_U32(esi),
-	USER_REGS_DESCRIPTOR_U32(edi),
-#endif
 );
 
 DEFINE_STATUS_REGISTER_BITS(eflags,
-    STATUS_REGISTER_FLAG("CF", X86_EFLAGS_CF_BIT), /* Carry flag */
-    STATUS_REGISTER_FLAG("PF", X86_EFLAGS_PF_BIT), /* Parity flag */
-    STATUS_REGISTER_FLAG("AF", X86_EFLAGS_AF_BIT), /* Adjust flag */
-    STATUS_REGISTER_FLAG("ZF", X86_EFLAGS_ZF_BIT), /* Zero flag */
-    STATUS_REGISTER_FLAG("SF", X86_EFLAGS_SF_BIT), /* Sign flag */
-    STATUS_REGISTER_FLAG("TF", X86_EFLAGS_TF_BIT), /* Trap flag */
-    STATUS_REGISTER_FLAG("IF", X86_EFLAGS_IF_BIT), /* Interruption flag */
-    STATUS_REGISTER_FLAG("DF", X86_EFLAGS_DF_BIT), /* Direction flag */
-    STATUS_REGISTER_FLAG("OF", X86_EFLAGS_OF_BIT), /* Overflow flag */
-    STATUS_REGISTER_BITS("IOPL", X86_EFLAGS_IOPL_BIT, 0x3), /* I/O privilege level */
-    STATUS_REGISTER_FLAG("NT", X86_EFLAGS_NT_BIT), /* Nested task flag */
-    STATUS_REGISTER_FLAG("RF", X86_EFLAGS_RF_BIT), /* Resume flag */
-    STATUS_REGISTER_FLAG("VM", X86_EFLAGS_VM_BIT), /* Virtual-8086 mode */
-    STATUS_REGISTER_FLAG("AC", X86_EFLAGS_AC_BIT), /* Alignment check */
-    STATUS_REGISTER_FLAG("VIF", X86_EFLAGS_VIF_BIT), /* Virtual interrupt flag */
-    STATUS_REGISTER_FLAG("VIP", X86_EFLAGS_VIP_BIT), /* Virtual interrupt pending flag */
-    STATUS_REGISTER_FLAG("ID", X86_EFLAGS_ID_BIT), /* Identification flag */
+	STATUS_REGISTER_FLAG("CF", X86_EFLAGS_CF_BIT), /* Carry flag */
+	STATUS_REGISTER_FLAG("PF", X86_EFLAGS_PF_BIT), /* Parity flag */
+	STATUS_REGISTER_FLAG("AF", X86_EFLAGS_AF_BIT), /* Adjust flag */
+	STATUS_REGISTER_FLAG("ZF", X86_EFLAGS_ZF_BIT), /* Zero flag */
+	STATUS_REGISTER_FLAG("SF", X86_EFLAGS_SF_BIT), /* Sign flag */
+	STATUS_REGISTER_FLAG("TF", X86_EFLAGS_TF_BIT), /* Trap flag */
+	STATUS_REGISTER_FLAG("IF", X86_EFLAGS_IF_BIT), /* Interruption flag */
+	STATUS_REGISTER_FLAG("DF", X86_EFLAGS_DF_BIT), /* Direction flag */
+	STATUS_REGISTER_FLAG("OF", X86_EFLAGS_OF_BIT), /* Overflow flag */
+	STATUS_REGISTER_BITS("IOPL", X86_EFLAGS_IOPL_BIT, 0x3), /* I/O privilege level */
+	STATUS_REGISTER_FLAG("NT", X86_EFLAGS_NT_BIT), /* Nested task flag */
+	STATUS_REGISTER_FLAG("RF", X86_EFLAGS_RF_BIT), /* Resume flag */
+	STATUS_REGISTER_FLAG("VM", X86_EFLAGS_VM_BIT), /* Virtual-8086 mode */
+	STATUS_REGISTER_FLAG("AC", X86_EFLAGS_AC_BIT), /* Alignment check */
+	STATUS_REGISTER_FLAG("VIF", X86_EFLAGS_VIF_BIT), /* Virtual interrupt flag */
+	STATUS_REGISTER_FLAG("VIP", X86_EFLAGS_VIP_BIT), /* Virtual interrupt pending flag */
+	STATUS_REGISTER_FLAG("ID", X86_EFLAGS_ID_BIT), /* Identification flag */
 );
-
-#ifdef __x86_64__
-#define EFLAGS_TYPE ASMASE_REGISTER_U64
-#else
-#define EFLAGS_TYPE ASMASE_REGISTER_U32
-#endif
 
 DEFINE_ARCH_REGISTERS(status,
-	STATUS_REGISTER_DESCRIPTOR(eflags, EFLAGS_TYPE, ARCH_PTRACE_NT_PRSTATUS, eflags),
+	STATUS_REGISTER_DESCRIPTOR(eflags, ASMASE_REGISTER_U64, regs.eflags),
 );
 
-#ifdef __x86_64__
-#define FPREGSET ARCH_PTRACE_NT_FPREGSET
-#else
-#define FPREGSET ARCH_PTRACE_NT_PRXFPREG
-#endif
-
 /* Top physical register in x87 register stack. */
-inline uint16_t x87_st_top(uint16_t fsw)
+static inline uint16_t x87_st_top(uint16_t fsw)
 {
-    return (fsw & 0x3800) >> 11;
+	return (fsw & 0x3800) >> 11;
 }
 
 /*
  * Convert a physical x87 register number (i.e., Ri) to a logical (i.e., %st(i))
  * register number.
  */
-inline uint16_t x87_phys_to_log(uint16_t index, uint16_t top)
+static inline uint16_t x87_phys_to_log(uint16_t index, uint16_t top)
 {
-    return (index - top + 8) % 8;
+	return (index - top + 8) % 8;
 }
 
 static void x87_copy_register(const struct arch_register_descriptor *desc,
-			      void *dst, void *src)
+			      void *dst, const struct arch_regs *src)
 {
-#ifdef __x86_64__
-	struct user_fpregs_struct *fpregs = src;
-	uint16_t fsw = fpregs->swd;
-	unsigned int *st_space = fpregs->st_space;
-#else
-	struct user_fpxregs_struct *fpxregs = src;
-	uint16_t fsw = fpxregs->swd;
-	long int *st_space = fpxregs->st_space;
-#endif
+	uint16_t fsw = src->fpregs.swd;
+	const unsigned int *st_space = src->fpregs.st_space;
 	uint16_t top = x87_st_top(fsw);
 	uint16_t physical, logical;
 
@@ -208,7 +150,6 @@ static void x87_copy_register(const struct arch_register_descriptor *desc,
 	.name = "R"#n,				\
 	.offset = n,				\
 	.size = sizeof(long double),		\
-	.ptrace_regset = FPREGSET,		\
 	.type = ASMASE_REGISTER_FLOAT80,	\
 	.copy_register_fn = x87_copy_register,	\
 }
@@ -314,19 +255,11 @@ static inline uint16_t x87_tag(long double st)
  * processor's full tag word from the floating point stack itself.
  */
 static void ftw_copy_register(const struct arch_register_descriptor *desc,
-			      void *dst, void *src)
+			      void *dst, const struct arch_regs *src)
 {
-#ifdef __x86_64__
-	struct user_fpregs_struct *fpregs = src;
-	uint16_t fsw = fpregs->swd;
-	uint16_t aftw = fpregs->ftw;
-	unsigned int *st_space = fpregs->st_space;
-#else
-	struct user_fpxregs_struct *fpxregs = src;
-	uint16_t fsw = fpxregs->swd;
-	uint16_t aftw = fpxregs->twd;
-	long int *st_space = fpxregs->st_space;
-#endif
+	uint16_t fsw = src->fpregs.swd;
+	uint16_t aftw = src->fpregs.ftw;
+	const unsigned int *st_space = src->fpregs.st_space;
 	uint16_t top = x87_st_top(fsw);
 	uint16_t ftw = 0;
 	uint16_t physical;
@@ -346,27 +279,21 @@ static void ftw_copy_register(const struct arch_register_descriptor *desc,
 }
 
 DEFINE_ARCH_REGISTERS(floating_point_status,
-	STATUS_REGISTER_DESCRIPTOR(fcw, ASMASE_REGISTER_U16, FPREGSET, cwd),
-	STATUS_REGISTER_DESCRIPTOR(fsw, ASMASE_REGISTER_U16, FPREGSET, swd),
-#ifdef __x86_64__
-	STATUS_REGISTER_DESCRIPTOR_FN(ftw, ASMASE_REGISTER_U16, FPREGSET, ftw, ftw_copy_register),
-	REGISTER_DESCRIPTOR("fip", ASMASE_REGISTER_U64, FPREGSET, rip),
-	REGISTER_DESCRIPTOR("fdp", ASMASE_REGISTER_U64, FPREGSET, rdp),
-#else
-	STATUS_REGISTER_DESCRIPTOR_FN(ftw, ASMASE_REGISTER_U16, FPREGSET, twd, ftw_copy_register),
-	__REGISTER_DESCRIPTOR("fip", ASMASE_REGISTER_U64, FPREGSET, fip), /* and fcs */
-	__REGISTER_DESCRIPTOR("fdp", ASMASE_REGISTER_U64, FPREGSET, foo), /* and fos */
-#endif
-	REGISTER_DESCRIPTOR("fop", ASMASE_REGISTER_U16, FPREGSET, fop),
+	STATUS_REGISTER_DESCRIPTOR(fcw, ASMASE_REGISTER_U16, fpregs.cwd),
+	STATUS_REGISTER_DESCRIPTOR(fsw, ASMASE_REGISTER_U16, fpregs.swd),
+	STATUS_REGISTER_DESCRIPTOR_FN(ftw, ASMASE_REGISTER_U16, fpregs.ftw, ftw_copy_register),
+	REGISTER_DESCRIPTOR("fip", ASMASE_REGISTER_U64, fpregs.rip),
+	REGISTER_DESCRIPTOR("fdp", ASMASE_REGISTER_U64, fpregs.rdp),
+	REGISTER_DESCRIPTOR("fop", ASMASE_REGISTER_U16, fpregs.fop),
 );
 
-#define MMX_REG_DESCRIPTOR(num)							\
-	__REGISTER_DESCRIPTOR("mm" #num, ASMASE_REGISTER_U64, FPREGSET,		\
-			      st_space[4 * num])
-/* TODO: YMM/ZMM */
-#define XMM_REG_DESCRIPTOR(num)							\
-	__REGISTER_DESCRIPTOR("xmm" #num, ASMASE_REGISTER_U128, FPREGSET,	\
-			      xmm_space[4 * num])
+#define MMX_REG_DESCRIPTOR(num)					\
+	REGISTER_DESCRIPTOR("mm" #num, ASMASE_REGISTER_U64,	\
+			    fpregs.st_space[4 * num])
+
+#define XMM_REG_DESCRIPTOR(num)					\
+	REGISTER_DESCRIPTOR("xmm" #num, ASMASE_REGISTER_U128,	\
+			    fpregs.xmm_space[4 * num])
 
 DEFINE_ARCH_REGISTERS(vector,
 	MMX_REG_DESCRIPTOR(0),
@@ -385,7 +312,6 @@ DEFINE_ARCH_REGISTERS(vector,
 	XMM_REG_DESCRIPTOR(5),
 	XMM_REG_DESCRIPTOR(6),
 	XMM_REG_DESCRIPTOR(7),
-#ifdef __x86_64__
 	XMM_REG_DESCRIPTOR(8),
 	XMM_REG_DESCRIPTOR(9),
 	XMM_REG_DESCRIPTOR(10),
@@ -394,7 +320,6 @@ DEFINE_ARCH_REGISTERS(vector,
 	XMM_REG_DESCRIPTOR(13),
 	XMM_REG_DESCRIPTOR(14),
 	XMM_REG_DESCRIPTOR(15),
-#endif
 );
 
 DEFINE_STATUS_REGISTER_BITS(mxcsr,
@@ -426,5 +351,5 @@ DEFINE_STATUS_REGISTER_BITS(mxcsr,
 );
 
 DEFINE_ARCH_REGISTERS(vector_status,
-	STATUS_REGISTER_DESCRIPTOR(mxcsr, ASMASE_REGISTER_U32, FPREGSET, mxcsr),
+	STATUS_REGISTER_DESCRIPTOR(mxcsr, ASMASE_REGISTER_U32, fpregs.mxcsr),
 );

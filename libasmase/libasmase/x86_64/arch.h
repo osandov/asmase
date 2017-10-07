@@ -1,5 +1,5 @@
 /*
- * Internal definitions which are shared with assembly code.
+ * x86_64 architecture definitions.
  *
  * Copyright (C) 2017 Omar Sandoval
  *
@@ -19,17 +19,18 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBASMASE_ASM_H
-#define LIBASMASE_ASM_H
+#ifndef LIBASMASE_X86_64_ARCH_H
+#define LIBASMASE_X86_64_ARCH_H
 
-#ifdef __x86_64__
 #define MEMFD_ADDR 0x7fff00000000UL
-#else
-#error
+
+#ifndef __ASSEMBLER__
+#include <sys/user.h>
+
+struct arch_regs {
+	struct user_regs_struct regs;
+	struct user_fpregs_struct fpregs;
+};
 #endif
 
-/* 64k per tracee by default; 4k for code, the rest for the stack. */
-#define MEMFD_SIZE 65536
-#define CODE_MAX_SIZE 4096
-
-#endif /* LIBASMASE_ASM_H */
+#endif /* LIBASMASE_X86_64_ARCH_H */
