@@ -1,8 +1,8 @@
 {
-  "name": "libasmase",
+  "name": "asmase-core",
   "version": "1.0.0",
-  "description": "libasmase JavaScript bindings",
-  "main": "libasmase.js",
+  "description": "Asmase core",
+  "main": "asmase-core.js",
   "scripts": {
     "test": "mocha"
   },
