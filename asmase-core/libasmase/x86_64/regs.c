@@ -1,5 +1,5 @@
 /*
- * x86_64 architecture support.
+ * x86_64 register support.
  *
  * Copyright (C) 2016-2017 Omar Sandoval
  *
