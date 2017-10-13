@@ -3,7 +3,6 @@ const BigNum = require('bignum');
 const chai = require('chai');
 const fs = require('fs');
 const should = chai.should();
-const signals = require('os').constants.signals;
 chai.use(require('chai-fs'));
 
 chai.Assertion.addMethod('bit', function(bit) {
@@ -97,19 +96,19 @@ describe('Instance', function() {
 
   describe('#executeCode()', function() {
     it('should handle normal case', function() {
-      this.executeCode('nop').should.eql({state: 'stopped', stopsig: signals.SIGTRAP});
+      this.executeCode('nop').should.eql({state: 'stopped', stopsig: 'SIGTRAP'});
     });
     it('should ignore SIGWICH', function() {
       process.kill(this.instance.getPid(), 'SIGWINCH');
-      this.executeCode('nop').should.eql({state: 'stopped', stopsig: signals.SIGTRAP});
+      this.executeCode('nop').should.eql({state: 'stopped', stopsig: 'SIGTRAP'});
     });
     it('should handle SIGTERM', function() {
       process.kill(this.instance.getPid());
-      this.executeCode('nop').should.eql({state: 'stopped', stopsig: signals.SIGTERM});
+      this.executeCode('nop').should.eql({state: 'stopped', stopsig: 'SIGTERM'});
     });
     it('should handle SIGKILL', function() {
       process.kill(this.instance.getPid(), 'SIGKILL');
-      this.executeCode('nop').should.eql({state: 'signaled', termsig: signals.SIGKILL, 'coredump': false});
+      this.executeCode('nop').should.eql({state: 'signaled', termsig: 'SIGKILL', 'coredump': false});
     });
     it('should handle exit', function() {
       this.executeCode(exitCode).should.eql({state: 'exited', exitstatus: 99});
@@ -576,7 +575,7 @@ describe('Instance', function() {
       }],
       SANDBOX_SYSCALLS: ['should prevent syscalls', function(instance, assembler) {
         const wstatus = instance.executeCode(assembler.assembleCode(exitCode));
-        wstatus.should.eql({state: 'stopped', stopsig: signals.SIGSYS});
+        wstatus.should.eql({state: 'stopped', stopsig: 'SIGSYS'});
         ('/proc/' + instance.getPid().toString()).should.be.a.directory();
       }],
     };

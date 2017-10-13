@@ -21,9 +21,56 @@
 #define BINDING_INSTANCE
 
 #include <cerrno>
+#include <string>
+#include <unordered_map>
 #include <libasmase.h>
 #include <nan.h>
 #include <sys/wait.h>
+
+static std::string signame(int sig) {
+  static const std::unordered_map<int, const std::string> names{
+    {SIGHUP, "SIGHUP"},
+    {SIGINT, "SIGINT"},
+    {SIGQUIT, "SIGQUIT"},
+    {SIGILL, "SIGILL"},
+    {SIGTRAP, "SIGTRAP"},
+    {SIGABRT, "SIGABRT"},
+    {SIGIOT, "SIGIOT"},
+    {SIGBUS, "SIGBUS"},
+    {SIGFPE, "SIGFPE"},
+    {SIGKILL, "SIGKILL"},
+    {SIGUSR1, "SIGUSR1"},
+    {SIGSEGV, "SIGSEGV"},
+    {SIGUSR2, "SIGUSR2"},
+    {SIGPIPE, "SIGPIPE"},
+    {SIGALRM, "SIGALRM"},
+    {SIGTERM, "SIGTERM"},
+    {SIGCHLD, "SIGCHLD"},
+    {SIGSTKFLT, "SIGSTKFLT"},
+    {SIGCONT, "SIGCONT"},
+    {SIGSTOP, "SIGSTOP"},
+    {SIGTSTP, "SIGTSTP"},
+    {SIGTTIN, "SIGTTIN"},
+    {SIGTTOU, "SIGTTOU"},
+    {SIGURG, "SIGURG"},
+    {SIGXCPU, "SIGXCPU"},
+    {SIGXFSZ, "SIGXFSZ"},
+    {SIGVTALRM, "SIGVTALRM"},
+    {SIGPROF, "SIGPROF"},
+    {SIGWINCH, "SIGWINCH"},
+    {SIGIO, "SIGIO"},
+    {SIGPOLL, "SIGPOLL"},
+    {SIGPWR, "SIGPWR"},
+    {SIGSYS, "SIGSYS"},
+  };
+
+  const auto iter = names.find(sig);
+  if (iter == names.end()) {
+    return std::to_string(sig);
+  } else {
+    return iter->second;
+  }
+}
 
 class Instance : public Nan::ObjectWrap {
 public:
@@ -216,13 +263,13 @@ err:
     } else if (WIFSIGNALED(wstatus)) {
       state = "signaled";
       Nan::Set(obj, Nan::New("termsig").ToLocalChecked(),
-               Nan::New(WTERMSIG(wstatus)));
+               Nan::New(signame(WTERMSIG(wstatus))).ToLocalChecked());
       Nan::Set(obj, Nan::New("coredump").ToLocalChecked(),
                Nan::New<v8::Boolean>(WCOREDUMP(wstatus)));
     } else if (WIFSTOPPED(wstatus)) {
       state = "stopped";
       Nan::Set(obj, Nan::New("stopsig").ToLocalChecked(),
-               Nan::New(WSTOPSIG(wstatus)));
+               Nan::New(signame(WSTOPSIG(wstatus))).ToLocalChecked());
     } else if (WIFCONTINUED(wstatus)) {
       state = "continued";
     } else {
