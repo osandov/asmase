@@ -13,7 +13,6 @@
   "author": "Omar Sandoval",
   "license": "GPL-3.0",
   "dependencies": {
-    "bignum": "^0.12.5",
     "bindings": "^1.3.0",
     "nan": "^2.7.0"
   },

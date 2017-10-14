@@ -21,6 +21,8 @@
 #define BINDING_INSTANCE
 
 #include <cerrno>
+#include <cfloat>
+#include <cinttypes>
 #include <string>
 #include <unordered_map>
 #include <libasmase.h>
@@ -127,51 +129,32 @@ private:
   }
 
   static Nan::MaybeLocal<v8::Value> GetRegisterValue(const struct asmase_register* reg) {
-    v8::Local<v8::Object> buffer;
+    char buf[40];
     switch (reg->type) {
     case ASMASE_REGISTER_U8:
-      buffer = Nan::NewBuffer(1).ToLocalChecked();
-      memcpy(node::Buffer::Data(buffer), &reg->u8, 1);
-      goto bignum;
+      sprintf(buf, "0x%02" PRIx8, reg->u8);
+      break;
     case ASMASE_REGISTER_U16:
-      buffer = Nan::NewBuffer(2).ToLocalChecked();
-      memcpy(node::Buffer::Data(buffer), &reg->u16, 2);
-      goto bignum;
+      sprintf(buf, "0x%04" PRIx16, reg->u16);
+      break;
     case ASMASE_REGISTER_U32:
-      buffer = Nan::NewBuffer(4).ToLocalChecked();
-      memcpy(node::Buffer::Data(buffer), &reg->u32, 4);
-      goto bignum;
+      sprintf(buf, "0x%08" PRIx32, reg->u32);
+      break;
     case ASMASE_REGISTER_U64:
-      buffer = Nan::NewBuffer(8).ToLocalChecked();
-      memcpy(node::Buffer::Data(buffer), &reg->u64, 8);
-      goto bignum;
+      sprintf(buf, "0x%016" PRIx64, reg->u64);
+      break;
     case ASMASE_REGISTER_U128:
-      buffer = Nan::NewBuffer(16).ToLocalChecked();
-      memcpy(node::Buffer::Data(buffer), &reg->u128, 16);
-      goto bignum;
+      sprintf(buf, "0x%016" PRIx64 "%016" PRIx64, reg->u128_hi, reg->u128_lo);
+      break;
     case ASMASE_REGISTER_FLOAT80:
-      /* TODO: this loses precision, we need a Float80 type */
-      return Nan::New((double)reg->float80);
+      sprintf(buf, "%.*Lf", DECIMAL_DIG, reg->float80);
+      break;
     default:
       Nan::ThrowError(v8::String::Concat(Nan::New("unknown register type ").ToLocalChecked(),
                                          Nan::New(reg->type)->ToString()));
       return Nan::MaybeLocal<v8::Value>();
     }
-
-bignum:
-    v8::Local<v8::Object> opt = Nan::New<v8::Object>();
-#ifdef ASMASE_LITTLE_ENDIAN
-    v8::Local<v8::String> endian = Nan::New("little").ToLocalChecked();
-#else
-    v8::Local<v8::String> endian = Nan::New("big").ToLocalChecked();
-#endif
-    Nan::Set(opt, Nan::New("endian").ToLocalChecked(), endian);
-    Nan::Set(opt, Nan::New("size").ToLocalChecked(), Nan::New("auto").ToLocalChecked());
-    const int argc = 2;
-    v8::Local<v8::Value> argv[argc] = {buffer, opt};
-    return Nan::CallAsFunction(Nan::New(BigNumFromBuffer),
-                               Nan::GetCurrentContext()->Global(),
-                               argc, argv);
+    return Nan::New(buf).ToLocalChecked();
   }
 
   static Nan::MaybeLocal<v8::Set> GetRegisterBits(const struct asmase_register* reg) {

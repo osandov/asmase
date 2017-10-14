@@ -1,5 +1,4 @@
 const {AsmaseError, Assembler, Instance, InstanceFlag, RegisterSet} = require('..');
-const BigNum = require('bignum');
 const chai = require('chai');
 const fs = require('fs');
 const should = chai.should();
@@ -7,13 +6,22 @@ chai.use(require('chai-fs'));
 
 chai.Assertion.addMethod('bit', function(bit) {
   this.assert(
-    !this._obj.and(1 << bit).eq(0),
+    (parseInt(this._obj, 16) & (1 << bit)) !== 0,
     'expected bit to be set',
     'expected bit to not be set',
   );
 });
 
 const UINT64_MAX_PLUS_ONE = '0x10000000000000000';
+
+function randHexInt(bits) {
+  let s = '0x';
+  while (bits > 0) {
+    s += ('00000000' + Math.floor(Math.random() * 0xffffffff).toString(16)).slice(-8);
+    bits -= 32;
+  }
+  return s;
+}
 
 const exitCode = {
   x64: ('movq $231, %rax\n' +
@@ -133,15 +141,15 @@ describe('Instance', function() {
                           'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15'];
         const expected = {};
         for (let i = 0; i < regNames.length; i++) {
-          const value = BigNum.rand(UINT64_MAX_PLUS_ONE);
+          const value = randHexInt(64);
           expected[regNames[i]] = value;
-          this.executeCode('movq $' + value.toString() + ', %' + regNames[i]);
+          this.executeCode('movq $' + value + ', %' + regNames[i]);
         }
 
         const regs = this.instance.getRegisters(RegisterSet.GENERAL_PURPOSE);
         for (const reg in expected) {
           if (expected.hasOwnProperty(reg)) {
-            regs[reg].value.toString().should.equal(expected[reg].toString());
+            regs[reg].value.should.equal(expected[reg]);
           }
         }
       });
@@ -263,7 +271,7 @@ describe('Instance', function() {
                            'fildq (%rsp)');
           const regs = this.instance.getRegisters(RegisterSet.FLOATING_POINT);
           for (let j = 7; j >= i; j--) {
-            regs['R' + j.toString()].value.should.equal(j);
+            Number(regs['R' + j.toString()].value).should.equal(j);
           }
         }
       });
@@ -277,7 +285,7 @@ describe('Instance', function() {
 
         this.executeCode('finit');
         fcw = this.getFcw();
-        fcw.value.toNumber().should.equal(0x37f);
+        parseInt(fcw.value, 16).should.equal(0x37f);
         fcw.bits.should.include('PC=EXT');
         fcw.bits.should.include('RC=RN');
 
@@ -285,7 +293,7 @@ describe('Instance', function() {
                          'pushq %rax\n' +
                          'fldcw (%rsp)');
         fcw = this.getFcw();
-        fcw.value.toNumber().should.equal(0x40);
+        parseInt(fcw.value, 16).should.equal(0x40);
 
         this.executeCode('movq $0x7f, %rax\n' +
                          'movq %rax, (%rsp)\n' +
@@ -430,7 +438,7 @@ describe('Instance', function() {
 
       it('should support mxcsr', function() {
         this.getMxcsr = function() {
-          return this.instance.getRegisters(RegisterSet.VECTOR_STATUS).mxcsr.value.toNumber();
+          return parseInt(this.instance.getRegisters(RegisterSet.VECTOR_STATUS).mxcsr.value, 16);
         }
 
         this.executeCode('subq $4, %rsp\n' +
@@ -452,7 +460,7 @@ describe('Instance', function() {
 
       it('should support the x87 tag word', function() {
         this.getFtw = function() {
-          return this.instance.getRegisters(RegisterSet.FLOATING_POINT_STATUS).ftw.value.toNumber();
+          return parseInt(this.instance.getRegisters(RegisterSet.FLOATING_POINT_STATUS).ftw.value, 16);
         }
 
         let expected;
@@ -496,16 +504,16 @@ describe('Instance', function() {
       it('should support MMX registers', function() {
         const expected = {};
         for (let i = 0; i < 8; i++) {
-          const value = BigNum.rand(UINT64_MAX_PLUS_ONE);
+          const value = randHexInt(64);
           expected['mm' + i.toString()] = value;
-          this.executeCode('movq $' + value.toString() + ', %rax\n' +
+          this.executeCode('movq $' + value + ', %rax\n' +
                            'movq %rax, %mm' + i.toString());
         }
 
         const regs = this.instance.getRegisters(RegisterSet.VECTOR);
         for (const reg in expected) {
           if (regs.hasOwnProperty(reg)) {
-            regs[reg].value.toString().should.equal(expected[reg].toString());
+            regs[reg].value.should.equal(expected[reg]);
           }
         }
       });
@@ -513,13 +521,13 @@ describe('Instance', function() {
       it('should support SSE registers', function() {
         const expected = {};
         for (let i = 0; i < 16; i++) {
-          const lo = BigNum.rand(UINT64_MAX_PLUS_ONE);
-          const hi = BigNum.rand(UINT64_MAX_PLUS_ONE);
-          const value = hi.shiftLeft(64).add(lo);
+          const value = randHexInt(128);
+          const hi = value.slice(0, 18);
+          const lo = '0x' + value.slice(18);
           expected['xmm' + i.toString()] = value;
-          this.executeCode('movq $' + hi.toString() + ', %rax\n' +
+          this.executeCode('movq $' + hi + ', %rax\n' +
                            'pushq %rax\n' +
-                           'movq $' + lo.toString() + ', %rax\n' +
+                           'movq $' + lo + ', %rax\n' +
                            'pushq %rax\n' +
                            'movdqu (%rsp), %xmm' + i.toString());
         }
@@ -527,7 +535,7 @@ describe('Instance', function() {
         const regs = this.instance.getRegisters(RegisterSet.VECTOR);
         for (const reg in expected) {
           if (regs.hasOwnProperty(reg)) {
-            regs[reg].value.toString().should.equal(expected[reg].toString());
+            regs[reg].value.should.equal(expected[reg]);
           }
         }
       });
@@ -556,12 +564,12 @@ describe('Instance', function() {
         const regSets = this.instance.getRegisterSets();
         const regs = this.instance.getRegisters(regSets);
         for (let i = 0; i < zeroRegs.length; i++) {
-          regs[zeroRegs[i]].value.toNumber().should.equal(0);
+          parseInt(regs[zeroRegs[i]].value, 16).should.equal(0);
         }
-        (regs.eflags.value.toNumber() & 0xcd5).should.equal(0);
-        regs.fcw.value.toNumber().should.equal(0x37f);
-        regs.ftw.value.toNumber().should.equal(0xffff);
-        regs.mxcsr.value.toNumber().should.equal(0x1f80);
+        (parseInt(regs.eflags.value, 16) & 0xcd5).should.equal(0);
+        parseInt(regs.fcw.value, 16).should.equal(0x37f);
+        parseInt(regs.ftw.value, 16).should.equal(0xffff);
+        parseInt(regs.mxcsr.value, 16).should.equal(0x1f80);
       });
     });
   }
