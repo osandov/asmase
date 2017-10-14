@@ -51,7 +51,7 @@ private:
     if (info.IsConstructCall()) {
       struct asmase_assembler* assembler = asmase_create_assembler();
       if (!assembler) {
-        Nan::ThrowError(Nan::ErrnoException(errno));
+        ThrowAsmaseError(errno);
         return;
       }
       Assembler *obj = new Assembler(assembler);
@@ -92,12 +92,10 @@ private:
       info.GetReturnValue().Set(Nan::NewBuffer(out, len).ToLocalChecked());
       // The new Buffer now owns out.
     } else if (ret == 1) {
-      const int argc = 1;
-      v8::Local<v8::Value> argv[argc] = {Nan::New(out).ToLocalChecked()};
-      Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AssemblerError), argc, argv).ToLocalChecked());
+      ThrowAssemblerError(out);
       free(out);
     } else {
-      Nan::ThrowError(Nan::ErrnoException(errno));
+      ThrowAsmaseError(errno);
     }
   }
 

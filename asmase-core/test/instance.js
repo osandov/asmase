@@ -1,4 +1,4 @@
-const {Assembler, Instance, InstanceFlag, RegisterSet} = require('..');
+const {AsmaseError, Assembler, Instance, InstanceFlag, RegisterSet} = require('..');
 const BigNum = require('bignum');
 const chai = require('chai');
 const fs = require('fs');
@@ -34,7 +34,7 @@ describe('Instance', function() {
   });
 
   it('should handle invalid instance flags', function() {
-    (() => new Instance(0xffffffff)).should.throw(Error, 'EINVAL');
+    (() => new Instance(0xffffffff)).should.throw(AsmaseError, 'Invalid argument');
   });
 
   it('should unmap all memory', function() {

@@ -20,8 +20,23 @@
 #include <libasmase.h>
 #include <nan.h>
 
+static Nan::Persistent<v8::Object> AsmaseError;
 static Nan::Persistent<v8::Object> AssemblerError;
 static Nan::Persistent<v8::Object> BigNumFromBuffer;
+
+static void ThrowAsmaseError(int errnum)
+{
+  const int argc = 1;
+  v8::Local<v8::Value> argv[argc] = {Nan::New(strerror(errnum)).ToLocalChecked()};
+  Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AsmaseError), argc, argv).ToLocalChecked());
+}
+
+static void ThrowAssemblerError(const char *diagnostic)
+{
+  const int argc = 1;
+  v8::Local<v8::Value> argv[argc] = {Nan::New(diagnostic).ToLocalChecked()};
+  Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AssemblerError), argc, argv).ToLocalChecked());
+}
 
 #include "assembler.h"
 #include "instance.h"
@@ -36,20 +51,19 @@ void InitAll(Nan::ADDON_REGISTER_FUNCTION_ARGS_TYPE target, v8::Local<v8::Value>
   v8::Local<v8::Object> bignum = Nan::To<v8::Object>(Nan::CallAsFunction(require, Nan::To<v8::Object>(module).ToLocalChecked(), argc, argv).ToLocalChecked()).ToLocalChecked();
   BigNumFromBuffer.Reset(Nan::To<v8::Object>(Nan::Get(bignum, Nan::New("fromBuffer").ToLocalChecked()).ToLocalChecked()).ToLocalChecked());
 
-  v8::Local<v8::String> scriptString = Nan::New(
-R"(
-function AssemblerError(message) {
-  var instance = new Error(message);
-  Object.setPrototypeOf(instance, Object.getPrototypeOf(this));
-  return instance;
-}
-AssemblerError.prototype = Object.create(Error.prototype);
-Object.setPrototypeOf(AssemblerError, Error);
-AssemblerError
-)").ToLocalChecked();
-  v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
-  AssemblerError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
+  {
+    v8::Local<v8::String> scriptString = Nan::New("class AsmaseError extends Error {}; AsmaseError").ToLocalChecked();
+    v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
+    AsmaseError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
+  }
 
+  {
+    v8::Local<v8::String> scriptString = Nan::New("class AssemblerError extends Error {}; AssemblerError").ToLocalChecked();
+    v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
+    AssemblerError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
+  }
+
+  Nan::Set(target, Nan::New("AsmaseError").ToLocalChecked(), Nan::New(AsmaseError));
   Nan::Set(target, Nan::New("AssemblerError").ToLocalChecked(), Nan::New(AssemblerError));
 
   Assembler::Init(target);

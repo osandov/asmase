@@ -104,7 +104,7 @@ private:
       int flags = info[0]->IsUndefined() ? 0 : Nan::To<int>(info[0]).FromJust();
       struct asmase_instance* instance = asmase_create_instance(flags);
       if (!instance) {
-        Nan::ThrowError(Nan::ErrnoException(errno));
+        ThrowAsmaseError(errno);
         return;
       }
       Instance *obj = new Instance(instance);
@@ -199,7 +199,7 @@ bignum:
     for (size_t i = 0; i < reg->num_status_bits; i++) {
       char* flag = asmase_status_register_format(&reg->status_bits[i], value);
       if (!flag) {
-        Nan::ThrowError(Nan::ErrnoException(errno));
+        ThrowAsmaseError(errno);
         return Nan::MaybeLocal<v8::Set>();
       }
       if (!*flag) {
@@ -225,7 +225,7 @@ bignum:
     size_t num_regs;
     int ret = asmase_get_registers(obj->instance_, reg_sets, &regs, &num_regs);
     if (ret == -1) {
-      Nan::ThrowError(Nan::ErrnoException(errno));
+      ThrowAsmaseError(errno);
       return;
     }
     v8::Local<v8::Object> regsObj = Nan::New<v8::Object>();
@@ -291,7 +291,7 @@ err:
     int wstatus;
     int ret = asmase_execute_code(obj->instance_, code, len, &wstatus);
     if (ret == -1) {
-      Nan::ThrowError(Nan::ErrnoException(errno));
+      ThrowAsmaseError(errno);
       return;
     }
     info.GetReturnValue().Set(WstatusObject(wstatus));
@@ -316,9 +316,6 @@ err:
       if (errno == ERANGE) {
         Nan::ThrowRangeError("addr is too big");
         return;
-      } else if (errno) {
-        Nan::ThrowError(Nan::ErrnoException(errno));
-        return;
       } else if (!**addrStr || *end) {
         Nan::ThrowError("addr is invalid");
         return;
@@ -334,7 +331,7 @@ err:
     int ret = asmase_read_memory(obj->instance_, node::Buffer::Data(buffer),
                                  reinterpret_cast<void*>(addr), len);
     if (ret == -1) {
-      Nan::ThrowError(Nan::ErrnoException(errno));
+      ThrowAsmaseError(errno);
       return;
     }
     info.GetReturnValue().Set(buffer);

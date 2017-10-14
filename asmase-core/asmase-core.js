@@ -17,7 +17,8 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const {Assembler, AssemblerError, Instance} = require('bindings')('binding.node');
+const {AsmaseError, Assembler, AssemblerError, Instance} = require('bindings')('binding.node');
+exports.AsmaseError = AsmaseError;
 exports.Assembler = Assembler;
 exports.AssemblerError = AssemblerError;
 exports.Instance = Instance;
