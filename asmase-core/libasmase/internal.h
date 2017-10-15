@@ -56,17 +56,6 @@ struct asmase_instance {
 	struct arch_regs regs;
 };
 
-struct arch_register_descriptor {
-	const char *name;
-	size_t offset;
-	size_t size;
-	const struct asmase_status_register_bits *status_bits;
-	size_t num_status_bits;
-	enum asmase_register_type type;
-	void (*copy_register_fn)(const struct arch_register_descriptor *,
-				 void *, const struct arch_regs *);
-};
-
 /**
  * arch_trap_instruction - machine code to raise SIGTRAP
  */
@@ -107,26 +96,6 @@ typedef void (*arch_bootstrap_func)(int memfd, bool seccomp) __attribute__((nore
 
 int arch_get_regs(pid_t pid, struct arch_regs *regs);
 int arch_set_regs(pid_t pid, const struct arch_regs *regs);
-
-extern const struct arch_register_descriptor arch_program_counter_reg;
-
-extern const struct arch_register_descriptor arch_segment_regs[];
-extern const size_t arch_num_segment_regs;
-
-extern const struct arch_register_descriptor arch_general_purpose_regs[];
-extern const size_t arch_num_general_purpose_regs;
-extern const struct arch_register_descriptor arch_status_regs[];
-extern const size_t arch_num_status_regs;
-
-extern const struct arch_register_descriptor arch_floating_point_regs[];
-extern const size_t arch_num_floating_point_regs;
-extern const struct arch_register_descriptor arch_floating_point_status_regs[];
-extern const size_t arch_num_floating_point_status_regs;
-
-extern const struct arch_register_descriptor arch_vector_regs[];
-extern const size_t arch_num_vector_regs;
-extern const struct arch_register_descriptor arch_vector_status_regs[];
-extern const size_t arch_num_vector_status_regs;
 #endif /* __ASSEMBLER__ */
 
 #endif /* LIBASMASE_INTERNAL_H */

@@ -37,7 +37,7 @@ describe('Instance', function() {
       return this.instance.executeCode(this.assembler.assembleCode(code));
     }
     this.getFsw = function() {
-      return this.instance.getRegisters(RegisterSet.FLOATING_POINT_STATUS).fsw;
+      return this.instance.getRegister('fsw');
     }
   });
 
@@ -76,29 +76,6 @@ describe('Instance', function() {
       const pid = this.instance.getPid();
       pid.should.be.a('number');
       ('/proc/' + pid.toString()).should.be.a.directory();
-    });
-  });
-
-  describe('#getRegisterSets()', function() {
-    it('should return a non-zero subset of RegisterSet.ALL', function() {
-      const regSets = this.instance.getRegisterSets();
-      regSets.should.be.a('number');
-      regSets.should.not.equal(0);
-      (regSets & ~RegisterSet.ALL).should.equal(0);
-    });
-  });
-
-  describe('#getRegisters()', function() {
-    it('should return all of the requested register sets', function() {
-      const regSets = this.instance.getRegisterSets();
-      const regs = this.instance.getRegisters(regSets);
-      let actualRegSets = 0;
-      for (const reg in regs) {
-        if (regs.hasOwnProperty(reg)) {
-          actualRegSets |= regs[reg].set;
-        }
-      }
-      actualRegSets.should.equal(regSets);
     });
   });
 
@@ -146,17 +123,14 @@ describe('Instance', function() {
           this.executeCode('movq $' + value + ', %' + regNames[i]);
         }
 
-        const regs = this.instance.getRegisters(RegisterSet.GENERAL_PURPOSE);
-        for (const reg in expected) {
-          if (expected.hasOwnProperty(reg)) {
-            regs[reg].value.should.equal(expected[reg]);
-          }
-        }
+        Object.entries(expected).forEach(([reg, value]) => {
+          this.instance.getRegister(reg).value.should.equal(value);
+        });
       });
 
       it('should support eflags', function() {
         this.getEflags = function() {
-          return this.instance.getRegisters(RegisterSet.STATUS).eflags;
+          return this.instance.getRegister('eflags');
         }
 
         let eflags;
@@ -269,16 +243,15 @@ describe('Instance', function() {
         for (let i = 7; i >= 0; i--) {
           this.executeCode('movq $' + i + ', (%rsp)\n' + 
                            'fildq (%rsp)');
-          const regs = this.instance.getRegisters(RegisterSet.FLOATING_POINT);
           for (let j = 7; j >= i; j--) {
-            Number(regs['R' + j.toString()].value).should.equal(j);
+            Number(this.instance.getRegister('R' + j.toString()).value).should.equal(j);
           }
         }
       });
 
       it('should support the x87 control word', function() {
         this.getFcw = function() {
-          return this.instance.getRegisters(RegisterSet.FLOATING_POINT_STATUS).fcw;
+          return this.instance.getRegister('fcw');
         }
 
         let fcw;
@@ -438,7 +411,7 @@ describe('Instance', function() {
 
       it('should support mxcsr', function() {
         this.getMxcsr = function() {
-          return parseInt(this.instance.getRegisters(RegisterSet.VECTOR_STATUS).mxcsr.value, 16);
+          return parseInt(this.instance.getRegister('mxcsr').value, 16);
         }
 
         this.executeCode('subq $4, %rsp\n' +
@@ -460,7 +433,7 @@ describe('Instance', function() {
 
       it('should support the x87 tag word', function() {
         this.getFtw = function() {
-          return parseInt(this.instance.getRegisters(RegisterSet.FLOATING_POINT_STATUS).ftw.value, 16);
+          return parseInt(this.instance.getRegister('ftw').value, 16);
         }
 
         let expected;
@@ -510,12 +483,9 @@ describe('Instance', function() {
                            'movq %rax, %mm' + i.toString());
         }
 
-        const regs = this.instance.getRegisters(RegisterSet.VECTOR);
-        for (const reg in expected) {
-          if (regs.hasOwnProperty(reg)) {
-            regs[reg].value.should.equal(expected[reg]);
-          }
-        }
+        Object.entries(expected).forEach(([reg, value]) => {
+          this.instance.getRegister(reg).value.should.equal(value);
+        });
       });
 
       it('should support SSE registers', function() {
@@ -532,12 +502,9 @@ describe('Instance', function() {
                            'movdqu (%rsp), %xmm' + i.toString());
         }
 
-        const regs = this.instance.getRegisters(RegisterSet.VECTOR);
-        for (const reg in expected) {
-          if (regs.hasOwnProperty(reg)) {
-            regs[reg].value.should.equal(expected[reg]);
-          }
-        }
+        Object.entries(expected).forEach(([reg, value]) => {
+          this.instance.getRegister(reg).value.should.equal(value);
+        });
       });
 
       it('should be able to read memory', function() {
@@ -546,8 +513,8 @@ describe('Instance', function() {
                          'movq %rax, (%rsp)\n' +
                          'movq $0x21646c726f, %rax\n' +
                          'movq %rax, 8(%rsp)\n');
-        const rsp = this.instance.getRegisters(RegisterSet.GENERAL_PURPOSE).rsp.value;
-        const mem = this.instance.readMemory(rsp.toString(), 13);
+        const rsp = this.instance.getRegister('rsp').value;
+        const mem = this.instance.readMemory(rsp, 13);
         mem.should.eql(Buffer.from('hello, world!'));
       });
 
@@ -561,15 +528,13 @@ describe('Instance', function() {
         for (let i = 0; i < 16; i++) {
           zeroRegs.push('xmm' + i.toString());
         }
-        const regSets = this.instance.getRegisterSets();
-        const regs = this.instance.getRegisters(regSets);
         for (let i = 0; i < zeroRegs.length; i++) {
-          parseInt(regs[zeroRegs[i]].value, 16).should.equal(0);
+          parseInt(this.instance.getRegister(zeroRegs[i]).value, 16).should.equal(0);
         }
-        (parseInt(regs.eflags.value, 16) & 0xcd5).should.equal(0);
-        parseInt(regs.fcw.value, 16).should.equal(0x37f);
-        parseInt(regs.ftw.value, 16).should.equal(0xffff);
-        parseInt(regs.mxcsr.value, 16).should.equal(0x1f80);
+        (parseInt(this.instance.getRegister('eflags').value, 16) & 0xcd5).should.equal(0);
+        parseInt(this.instance.getRegister('fcw').value, 16).should.equal(0x37f);
+        parseInt(this.instance.getRegister('ftw').value, 16).should.equal(0xffff);
+        parseInt(this.instance.getRegister('mxcsr').value, 16).should.equal(0x1f80);
       });
     });
   }

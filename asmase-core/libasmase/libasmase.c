@@ -307,14 +307,15 @@ pid_t asmase_getpid(const struct asmase_instance *a)
 
 static int reset_tracee_program_counter(struct asmase_instance *a)
 {
-	char *dst = (char *)&a->regs + arch_program_counter_reg.offset;
+	union asmase_register_value value;
 
-	switch (arch_program_counter_reg.type) {
+	assert(asmase_registers[0].set == ASMASE_REGISTERS_PROGRAM_COUNTER);
+	switch (asmase_registers[0].type) {
 	case ASMASE_REGISTER_U32:
-		*(uint32_t *)dst = (uint32_t)MEMFD_ADDR;
+		value.u32 = (uint32_t)MEMFD_ADDR;
 		break;
 	case ASMASE_REGISTER_U64:
-		*(uint64_t *)dst = (uint64_t)MEMFD_ADDR;
+		value.u64 = (uint64_t)MEMFD_ADDR;
 		break;
 	default:
 		assert(false && "Invalid program counter type");
@@ -322,7 +323,7 @@ static int reset_tracee_program_counter(struct asmase_instance *a)
 		return -1;
 	}
 
-	return arch_set_regs(a->pid, &a->regs);
+	return asmase_set_register(a, &asmase_registers[0], &value);
 }
 
 __attribute__((visibility("default")))
@@ -364,6 +365,108 @@ wait:
 		return -1;
 
 	return 0;
+}
+
+static inline size_t asmase_register_type_size(enum asmase_register_type type)
+{
+	switch (type) {
+	case ASMASE_REGISTER_U8:
+		return sizeof(uint8_t);
+	case ASMASE_REGISTER_U16:
+		return sizeof(uint16_t);
+	case ASMASE_REGISTER_U32:
+		return sizeof(uint32_t);
+	case ASMASE_REGISTER_U64:
+		return sizeof(uint64_t);
+	case ASMASE_REGISTER_U128:
+		return 2 * sizeof(uint64_t);
+	case ASMASE_REGISTER_FLOAT80:
+		return sizeof(long double);
+	default:
+		assert(false && "unknown register type");
+		return 0;
+	}
+}
+
+void default_copy_register(const struct asmase_register_descriptor *desc,
+			   void *dst, const struct arch_regs *src)
+{
+	memcpy(dst, (char *)src + desc->offset,
+	       asmase_register_type_size(desc->type));
+}
+
+__attribute__((visibility("default")))
+void asmase_get_register(const struct asmase_instance *a,
+			 const struct asmase_register_descriptor *reg,
+			 union asmase_register_value *value)
+{
+	reg->copy_register_fn(reg, value, &a->regs);
+}
+
+__attribute__((visibility("default")))
+int asmase_set_register(struct asmase_instance *a,
+			const struct asmase_register_descriptor *reg,
+			const union asmase_register_value *value)
+{
+	if (reg->copy_register_fn != default_copy_register) {
+		errno = EOPNOTSUPP;
+		return -1;
+	}
+
+	memcpy((char *)&a->regs + reg->offset, value,
+	       asmase_register_type_size(reg->type));
+	return arch_set_regs(a->pid, &a->regs);
+}
+
+
+__attribute__((visibility("default")))
+char *asmase_status_register_format(const struct asmase_register_descriptor *reg,
+				    const struct asmase_status_register_bits *bits,
+				    const union asmase_register_value *value)
+{
+	uint8_t bits_value;
+	char *str;
+	int ret;
+
+#define BITS_VALUE(value, bits) ((value >> bits->shift) & bits->mask)
+	switch (reg->type) {
+	case ASMASE_REGISTER_U8:
+		bits_value = BITS_VALUE(value->u8, bits);
+		break;
+	case ASMASE_REGISTER_U16:
+		bits_value = BITS_VALUE(value->u16, bits);
+		break;
+	case ASMASE_REGISTER_U32:
+		bits_value = BITS_VALUE(value->u32, bits);
+		break;
+	case ASMASE_REGISTER_U64:
+		bits_value = BITS_VALUE(value->u64, bits);
+		break;
+	case ASMASE_REGISTER_U128:
+		bits_value = BITS_VALUE(value->u128, bits);
+		break;
+	default:
+		assert(false && "Invalid status register type");
+		errno = EINVAL;
+		return NULL;
+	}
+#undef BITS_VALUE
+
+	if (bits->mask == 0x1) {
+		if (bits_value)
+			return strdup(bits->name);
+		else
+			return strdup("");
+	}
+
+	if (bits->values)
+		ret = asprintf(&str, "%s=%s", bits->name, bits->values[bits_value]);
+	else
+		ret = asprintf(&str, "%s=0x%x", bits->name, bits_value);
+	if (ret == -1)
+		return NULL;
+
+	return str;
 }
 
 __attribute__((visibility("default")))

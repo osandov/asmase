@@ -82,8 +82,7 @@ public:
     tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "getPid", GetPid);
-    Nan::SetPrototypeMethod(tpl, "getRegisterSets", GetRegisterSets);
-    Nan::SetPrototypeMethod(tpl, "getRegisters", GetRegisters);
+    Nan::SetPrototypeMethod(tpl, "getRegister", GetRegister);
     Nan::SetPrototypeMethod(tpl, "executeCode", ExecuteCode);
     Nan::SetPrototypeMethod(tpl, "readMemory", ReadMemory);
 
@@ -123,64 +122,10 @@ private:
     info.GetReturnValue().Set(Nan::New(asmase_getpid(obj->instance_)));
   }
 
-  static NAN_METHOD(GetRegisterSets) {
-    Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
-    info.GetReturnValue().Set(Nan::New(asmase_get_register_sets(obj->instance_)));
-  }
-
-  static Nan::MaybeLocal<v8::Value> GetRegisterValue(const struct asmase_register* reg) {
-    char buf[40];
-    switch (reg->type) {
-    case ASMASE_REGISTER_U8:
-      sprintf(buf, "0x%02" PRIx8, reg->u8);
-      break;
-    case ASMASE_REGISTER_U16:
-      sprintf(buf, "0x%04" PRIx16, reg->u16);
-      break;
-    case ASMASE_REGISTER_U32:
-      sprintf(buf, "0x%08" PRIx32, reg->u32);
-      break;
-    case ASMASE_REGISTER_U64:
-      sprintf(buf, "0x%016" PRIx64, reg->u64);
-      break;
-    case ASMASE_REGISTER_U128:
-      sprintf(buf, "0x%016" PRIx64 "%016" PRIx64, reg->u128_hi, reg->u128_lo);
-      break;
-    case ASMASE_REGISTER_FLOAT80:
-      sprintf(buf, "%.*Lf", DECIMAL_DIG, reg->float80);
-      break;
-    default:
-      Nan::ThrowError(v8::String::Concat(Nan::New("unknown register type ").ToLocalChecked(),
-                                         Nan::New(reg->type)->ToString()));
-      return Nan::MaybeLocal<v8::Value>();
-    }
-    return Nan::New(buf).ToLocalChecked();
-  }
-
-  static Nan::MaybeLocal<v8::Set> GetRegisterBits(const struct asmase_register* reg) {
-    uint64_t value;
-    switch (reg->type) {
-    case ASMASE_REGISTER_U8:
-      value = reg->u8;
-      break;
-    case ASMASE_REGISTER_U16:
-      value = reg->u16;
-      break;
-    case ASMASE_REGISTER_U32:
-      value = reg->u32;
-      break;
-    case ASMASE_REGISTER_U64:
-      value = reg->u64;
-      break;
-    default:
-      Nan::ThrowError(v8::String::Concat(Nan::New("status register bits on unexpected type ").ToLocalChecked(),
-                                         Nan::New(reg->type)->ToString()));
-      return Nan::MaybeLocal<v8::Set>();
-    }
-
+  static Nan::MaybeLocal<v8::Set> GetRegisterBits(const struct asmase_register_descriptor* reg, const union asmase_register_value* value) {
     v8::Local<v8::Set> set = v8::Set::New(v8::Isolate::GetCurrent());
     for (size_t i = 0; i < reg->num_status_bits; i++) {
-      char* flag = asmase_status_register_format(&reg->status_bits[i], value);
+      char* flag = asmase_status_register_format(reg, &reg->status_bits[i], value);
       if (!flag) {
         ThrowAsmaseError(errno);
         return Nan::MaybeLocal<v8::Set>();
@@ -197,43 +142,63 @@ private:
     return set;
   }
 
-  static NAN_METHOD(GetRegisters) {
+  static NAN_METHOD(GetRegister) {
     Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
-    if (!info[0]->IsNumber()) {
-      Nan::ThrowTypeError("regSets must be a number");
+    if (!info[0]->IsString()) {
+      Nan::ThrowTypeError("register must be a string");
       return;
-    }
-    int reg_sets = Nan::To<int>(info[0]).FromJust();
-    struct asmase_register *regs;
-    size_t num_regs;
-    int ret = asmase_get_registers(obj->instance_, reg_sets, &regs, &num_regs);
-    if (ret == -1) {
-      ThrowAsmaseError(errno);
-      return;
-    }
-    v8::Local<v8::Object> regsObj = Nan::New<v8::Object>();
-    for (size_t i = 0; i < num_regs; i++) {
-      v8::Local<v8::Object> regObj = Nan::New<v8::Object>();
-      Nan::Set(regObj, Nan::New("type").ToLocalChecked(), Nan::New(regs[i].type));
-      Nan::Set(regObj, Nan::New("set").ToLocalChecked(), Nan::New(regs[i].set));
-      v8::Local<v8::Value> value;
-      if (!Instance::GetRegisterValue(&regs[i]).ToLocal(&value)) {
-        goto err;
-      }
-      Nan::Set(regObj, Nan::New("value").ToLocalChecked(), value);
-      if (regs[i].num_status_bits) {
-        v8::Local<v8::Set> bits;
-        if (!Instance::GetRegisterBits(&regs[i]).ToLocal(&bits)) {
-          goto err;
-        }
-        Nan::Set(regObj, Nan::New("bits").ToLocalChecked(), bits);
-      }
-      Nan::Set(regsObj, Nan::New(regs[i].name).ToLocalChecked(), regObj);
     }
 
-    info.GetReturnValue().Set(regsObj);
-err:
-    free(regs);
+    Nan::Utf8String code(info[0]);
+    const auto iter = registers_table.find(*code);
+    if (iter == registers_table.end()) {
+      std::string error{"unknown register: "};
+      error += *code;
+      ThrowAsmaseError(error);
+      return;
+    }
+
+    const struct asmase_register_descriptor* reg = iter->second;
+    union asmase_register_value value;
+    asmase_get_register(obj->instance_, reg, &value);
+    char buf[40];
+    switch (reg->type) {
+    case ASMASE_REGISTER_U8:
+      sprintf(buf, "0x%02" PRIx8, value.u8);
+      break;
+    case ASMASE_REGISTER_U16:
+      sprintf(buf, "0x%04" PRIx16, value.u16);
+      break;
+    case ASMASE_REGISTER_U32:
+      sprintf(buf, "0x%08" PRIx32, value.u32);
+      break;
+    case ASMASE_REGISTER_U64:
+      sprintf(buf, "0x%016" PRIx64, value.u64);
+      break;
+    case ASMASE_REGISTER_U128:
+      sprintf(buf, "0x%016" PRIx64 "%016" PRIx64, value.u128_hi, value.u128_lo);
+      break;
+    case ASMASE_REGISTER_FLOAT80:
+      sprintf(buf, "%.*Lf", DECIMAL_DIG, value.float80);
+      break;
+    default:
+      assert(false && "unknown register type");
+      return;
+    }
+
+    v8::Local<v8::Object> result = Nan::New<v8::Object>();
+    Nan::Set(result, Nan::New("type").ToLocalChecked(), Nan::New(reg->type));
+    Nan::Set(result, Nan::New("set").ToLocalChecked(), Nan::New(reg->set));
+    Nan::Set(result, Nan::New("value").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
+    if (reg->num_status_bits) {
+      v8::Local<v8::Set> bits;
+      if (!Instance::GetRegisterBits(reg, &value).ToLocal(&bits)) {
+        return;
+      }
+      Nan::Set(result, Nan::New("bits").ToLocalChecked(), bits);
+    }
+
+    info.GetReturnValue().Set(result);
   }
 
   static v8::Local<v8::Object> WstatusObject(int wstatus) {

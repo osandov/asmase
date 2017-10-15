@@ -6,7 +6,6 @@
       'sources': [
         'assembler.cpp',
         'libasmase.c',
-        'registers.c',
         'tracee.c',
         'x86_64/arch.S',
         'x86_64/regs.c',

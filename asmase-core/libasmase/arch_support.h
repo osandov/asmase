@@ -37,58 +37,48 @@
  * 7. Code to bootstrap the tracee (arch_bootstrap_code{,_len}).
  */
 
-void default_copy_register(const struct arch_register_descriptor *desc,
+void default_copy_register(const struct asmase_register_descriptor *desc,
 			   void *dst, const struct arch_regs *src);
 
-#define __ASMASE_REGISTER_TYPE_SIZEOF(type)				\
-	(((type) == ASMASE_REGISTER_U8) ? sizeof(uint8_t) :		\
-	 ((type) == ASMASE_REGISTER_U16) ? sizeof(uint16_t) :		\
-	 ((type) == ASMASE_REGISTER_U32) ? sizeof(uint32_t) :		\
-	 ((type) == ASMASE_REGISTER_U64) ? sizeof(uint64_t) :		\
-	 ((type) == ASMASE_REGISTER_U128) ? 2 * sizeof(uint64_t) :	\
-	 ((type) == ASMASE_REGISTER_FLOAT80) ? sizeof(long double) :	\
-	 0)
-
-#define ASMASE_REGISTER_TYPE_SIZEOF(type)				\
-	(__ASMASE_REGISTER_TYPE_SIZEOF(type) +				\
-	 BUILD_BUG_ON_ZERO(__ASMASE_REGISTER_TYPE_SIZEOF(type) == 0))
-
-#define __REGISTER_DESCRIPTOR(name_, type_, field, status_bits_, num_status_bits_,	\
-			      fn) {							\
-	.name = name_,									\
-	.offset = offsetof(struct arch_regs, field),					\
-	.size = ASMASE_REGISTER_TYPE_SIZEOF(type_),					\
-	.status_bits = status_bits_,							\
-	.num_status_bits = num_status_bits_,						\
-	.type = type_,									\
-	.copy_register_fn = fn,								\
+#define __REGISTER_DESCRIPTOR(name_, set_, type_, field, status_bits_,	\
+			      num_status_bits_, fn) {			\
+	.name = name_,							\
+	.set = set_,							\
+	.type = type_,							\
+	.status_bits = status_bits_,					\
+	.num_status_bits = num_status_bits_,				\
+	.offset = offsetof(struct arch_regs, field),			\
+	.copy_register_fn = fn,						\
 }
 
-#define REGISTER_DESCRIPTOR(name, type, field)	\
-	__REGISTER_DESCRIPTOR(name, type, field, NULL, 0, default_copy_register)
+#define REGISTER_DESCRIPTOR(name, set, type, field)		\
+	__REGISTER_DESCRIPTOR(name, set, type, field, NULL, 0,	\
+			      default_copy_register)
 
-#define STATUS_REGISTER_DESCRIPTOR_FN(reg, type, field, fn)		\
-	__REGISTER_DESCRIPTOR(#reg, type, field, arch_##reg##_bits,	\
+#define STATUS_REGISTER_DESCRIPTOR_FN(reg, set, type, field, fn)	\
+	__REGISTER_DESCRIPTOR(#reg, set, type, field,			\
+			      arch_##reg##_bits,			\
 			      ARRAY_SIZE(arch_##reg##_bits), fn)
 
-#define STATUS_REGISTER_DESCRIPTOR(reg, type, field)	\
-	STATUS_REGISTER_DESCRIPTOR_FN(reg, type, field, default_copy_register)
+#define STATUS_REGISTER_DESCRIPTOR(reg, set, type, field)	\
+	STATUS_REGISTER_DESCRIPTOR_FN(reg, set, type, field,	\
+				      default_copy_register)
 
-#define USER_REGS_DESCRIPTOR_UINT(reg, bits)	\
-	REGISTER_DESCRIPTOR(#reg, ASMASE_REGISTER_U##bits, regs.reg)
+#define USER_REGS_DESCRIPTOR_UINT(reg, bits, set)	\
+	REGISTER_DESCRIPTOR(#reg, set, ASMASE_REGISTER_U##bits, regs.reg)
 
-#define USER_REGS_DESCRIPTOR_U16(reg) USER_REGS_DESCRIPTOR_UINT(reg, 16)
-#define USER_REGS_DESCRIPTOR_U32(reg) USER_REGS_DESCRIPTOR_UINT(reg, 32)
-#define USER_REGS_DESCRIPTOR_U64(reg) USER_REGS_DESCRIPTOR_UINT(reg, 64)
+#define USER_REGS_DESCRIPTOR_U16(reg, set) USER_REGS_DESCRIPTOR_UINT(reg, 16, set)
+#define USER_REGS_DESCRIPTOR_U32(reg, set) USER_REGS_DESCRIPTOR_UINT(reg, 32, set)
+#define USER_REGS_DESCRIPTOR_U64(reg, set) USER_REGS_DESCRIPTOR_UINT(reg, 64, set)
 
 /**
  * DEFINE_ARCH_REGISTERS() - Define a set of architecture registers.
  *
  * @regset: Name of the register set (e.g., general_purpose, status).
- * @...: struct arch_register_descriptor initializers.
+ * @...: struct asmase_register_descriptor initializers.
  */
 #define DEFINE_ARCH_REGISTERS(regset, ...)						\
-	const struct arch_register_descriptor arch_##regset##_regs[] = {__VA_ARGS__};	\
+	const struct asmase_register_descriptor arch_##regset##_regs[] = {__VA_ARGS__};	\
 	const size_t arch_num_##regset##_regs = ARRAY_SIZE(arch_##regset##_regs)
 
 #define DEFINE_STATUS_REGISTER_BITS(name, ...)						\

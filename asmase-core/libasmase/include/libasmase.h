@@ -65,22 +65,6 @@ int libasmase_init(void);
 struct asmase_instance;
 
 /**
- * enum asmase_register_set - Bitmask of classes of registers.
- */
-enum asmase_register_set {
-	ASMASE_REGISTERS_PROGRAM_COUNTER = (1 << 0),
-	ASMASE_REGISTERS_SEGMENT = (1 << 1),
-	ASMASE_REGISTERS_GENERAL_PURPOSE = (1 << 2),
-	ASMASE_REGISTERS_STATUS = (1 << 3),
-	ASMASE_REGISTERS_FLOATING_POINT = (1 << 4),
-	ASMASE_REGISTERS_FLOATING_POINT_STATUS = (1 << 5),
-	ASMASE_REGISTERS_VECTOR = (1 << 6),
-	ASMASE_REGISTERS_VECTOR_STATUS = (1 << 7),
-};
-
-#define ASMASE_REGISTERS_ALL ((1 << 8) - 1)
-
-/**
  * struct asmase_status_register_bits - A set of bits in a status register.
  *
  * This can be used to parse the bits in a status register (like eflags on x86
@@ -99,33 +83,20 @@ struct asmase_status_register_bits {
 };
 
 /**
- * asmase_status_register_value() - Get the value of a flag in a status
- * register.
- *
- * @bits: The set of bits.
- * @value: The status register value.
- *
- * Return: The value of the flag bits.
+ * enum asmase_register_set - Bitmask of classes of registers.
  */
-static inline uint8_t
-asmase_status_register_value(const struct asmase_status_register_bits *bits,
-			     uint64_t value)
-{
-	return (value >> bits->shift) & bits->mask;
-}
+enum asmase_register_set {
+	ASMASE_REGISTERS_PROGRAM_COUNTER = (1 << 0),
+	ASMASE_REGISTERS_SEGMENT = (1 << 1),
+	ASMASE_REGISTERS_GENERAL_PURPOSE = (1 << 2),
+	ASMASE_REGISTERS_STATUS = (1 << 3),
+	ASMASE_REGISTERS_FLOATING_POINT = (1 << 4),
+	ASMASE_REGISTERS_FLOATING_POINT_STATUS = (1 << 5),
+	ASMASE_REGISTERS_VECTOR = (1 << 6),
+	ASMASE_REGISTERS_VECTOR_STATUS = (1 << 7),
+};
 
-/**
- * asmase_status_register_format() - Format the value of a flag in a status
- * register.
- *
- * @bits: The set of bits.
- * @value: The status register value.
- *
- * Return: Allocated string on success (must be freed with free()); NULL on
- * failure.
- */
-char *asmase_status_register_format(const struct asmase_status_register_bits *bits,
-				    uint64_t value);
+#define ASMASE_REGISTERS_ALL ((1 << 8) - 1)
 
 /**
  * enum asmase_register_type - Types of registers.
@@ -141,14 +112,21 @@ enum asmase_register_type {
 #endif
 };
 
-/**
- * struct asmase_register - State of a register.
- */
-struct asmase_register {
+struct asmase_register_descriptor {
 	/**
 	 * @name: Register name.
 	 */
 	const char *name;
+
+	/**
+	 * @set: Register set this register belongs to.
+	 */
+	enum asmase_register_set set;
+
+	/**
+	 * @type: Register type.
+	 */
+	enum asmase_register_type type;
 
 	/**
 	 * @status: Array of struct asmase_status_register_bits that can be used
@@ -162,41 +140,36 @@ struct asmase_register {
 	 */
 	size_t num_status_bits;
 
-	/**
-	 * @set: Register set this register belongs to.
-	 */
-	enum asmase_register_set set;
+	/* Internal. */
+	size_t offset;
+	void (*copy_register_fn)(const struct asmase_register_descriptor *,
+				 void *, const struct arch_regs *);
+};
 
-	/**
-	 * @type: Register type.
-	 */
-	enum asmase_register_type type;
-
-	/*
-	 * Register value depending on @type.
-	 */
-	union {
-		uint8_t u8;
-		uint16_t u16;
-		uint32_t u32;
-		uint64_t u64;
+union asmase_register_value {
+	uint8_t u8;
+	uint16_t u16;
+	uint32_t u32;
+	uint64_t u64;
 
 #ifdef ASMASE_HAVE_INT128
-		unsigned __int128 u128;
+	unsigned __int128 u128;
 #endif
-		struct {
+	struct {
 #ifdef ASMASE_LITTLE_ENDIAN
-			uint64_t u128_lo, u128_hi;
+		uint64_t u128_lo, u128_hi;
 #else
-			uint64_t u128_hi, u128_lo;
-#endif
-		};
-
-#ifdef ASMASE_HAVE_FLOAT80
-		long double float80;
+		uint64_t u128_hi, u128_lo;
 #endif
 	};
+
+#ifdef ASMASE_HAVE_FLOAT80
+	long double float80;
+#endif
 };
+
+extern const struct asmase_register_descriptor asmase_registers[];
+extern const size_t asmase_num_registers;
 
 /**
  * Flags for asmase_create_instance().
@@ -258,30 +231,43 @@ int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len,
 			int *wstatus);
 
 /**
- * asmase_get_register_sets() - Get the types of registers available on an
- * asmase instance.
+ * asmase_get_register() - Get the value of a register of an asmase instance.
  *
  * @a: asmase instance.
- *
- * Return: A bitmask of enum asmase_register_set values representing the
- * available types of registers.
+ * @reg: Register to get.
+ * @value: Returned value.
  */
-int asmase_get_register_sets(const struct asmase_instance *a);
+void asmase_get_register(const struct asmase_instance *a,
+			 const struct asmase_register_descriptor *reg,
+			 union asmase_register_value *value);
 
 /**
- * asmase_get_registers() - Get the values of the registers of an asmase
- * instance.
+ * asmase_set_register() - Set the value of a register of an asmase instance.
  *
  * @a: asmase instance.
- * @reg_sets: Bitmask of enum asmase_register_set values representing the
- * registers to get.
- * @regs: Allocated list of registers; must be freed with free().
- * @num_regs: Number of registers in the returned list.
+ * @reg: Register to set.
+ * @value: Value to set the register to.
  *
- * Return: 0 on success, -1 on failure, in which case errno will be set.
+ * Return: 0 on success, -1 on failure, in which case errno will be set
  */
-int asmase_get_registers(const struct asmase_instance *a, int reg_sets,
-			 struct asmase_register **regs, size_t *num_regs);
+int asmase_set_register(struct asmase_instance *a,
+			const struct asmase_register_descriptor *reg,
+			const union asmase_register_value *value);
+
+/**
+ * asmase_status_register_format() - Format the value of a flag in a status
+ * register.
+ *
+ * @reg: The status register.
+ * @bits: The set of bits.
+ * @value: The status register value.
+ *
+ * Return: Allocated string on success (must be freed with free()); NULL on
+ * failure.
+ */
+char *asmase_status_register_format(const struct asmase_register_descriptor *reg,
+				    const struct asmase_status_register_bits *bits,
+				    const union asmase_register_value *value);
 
 /**
  * asmase_readv_memory() - Read ranges of memory from an asmase instance.
