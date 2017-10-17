@@ -10,14 +10,11 @@ const CODE_TEST_CASES = {
 
 describe('Assembler', function() {
   describe('#assembleCode()', function() {
-    const testCases = CODE_TEST_CASES[process.arch];
-    for (const code in testCases) {
-      if (testCases.hasOwnProperty(code)) {
-        it('should assemble ' + code + ' correctly on ' + process.arch, function() {
-          (new Assembler()).assembleCode(code).should.eql(Buffer.from(testCases[code]));
-        });
-      }
-    }
+    Object.entries(CODE_TEST_CASES[process.arch]).forEach(([code, machineCode]) => {
+      it(`should assemble ${code} correctly on ${process.arch}`, function() {
+        (new Assembler()).assembleCode(code).should.eql(Buffer.from(machineCode));
+      });
+    });
 
     it('should throw a diagnostic on bad assembly', function() {
       (() => (new Assembler()).assembleCode('foo')).should.throw(AssemblerError);

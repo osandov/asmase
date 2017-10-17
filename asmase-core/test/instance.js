@@ -24,9 +24,9 @@ function randHexInt(bits) {
 }
 
 const exitCode = {
-  x64: ('movq $231, %rax\n' +
-        'movq $99, %rdi\n' +
-        'syscall'),
+  x64: (`movq $231, %rax
+         movq $99, %rdi
+         syscall`),
 }[process.arch];
 
 describe('Instance', function() {
@@ -46,12 +46,12 @@ describe('Instance', function() {
   });
 
   it('should set the thread name', function() {
-    const comm = '/proc/' + this.instance.getPid().toString() + '/comm';
+    const comm = `/proc/${this.instance.getPid()}/comm`;
     comm.should.be.a.file().with.content('asmase_tracee\n');
   });
 
   it('should unmap all memory', function() {
-    const maps = '/proc/' + this.instance.getPid().toString() + '/maps';
+    const maps = `/proc/${this.instance.getPid()}/maps`;
     const mapsContents = fs.readFileSync(maps).toString();
     const regexp = /^[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +(.*)$/mg;
     const matches = [];
@@ -65,22 +65,22 @@ describe('Instance', function() {
   });
 
   it('should clear the environment', function() {
-    const environ = '/proc/' + this.instance.getPid().toString() + '/environ';
+    const environ = `/proc/${this.instance.getPid()}/environ`;
     // Can't use .and.empty becase st_size is always 0 for proc
     environ.should.be.a.file().with.content('');
   });
 
   it('should clear the command line', function() {
-    const cmdlin = '/proc/' + this.instance.getPid().toString() + '/cmdline';
+    const cmdline = `/proc/${this.instance.getPid()}/cmdline`;
     // Can't use .and.empty becase st_size is always 0 for proc
-    cmdlin.should.be.a.file().with.content('');
+    cmdline.should.be.a.file().with.content('');
   });
 
   describe('#getPid()', function() {
     it('should return a valid PID', function() {
       const pid = this.instance.getPid();
       pid.should.be.a('number');
-      ('/proc/' + pid.toString()).should.be.a.directory();
+      `/proc/${pid}`.should.be.a.directory();
     });
   });
 
@@ -135,7 +135,7 @@ describe('Instance', function() {
         for (let i = 0; i < regNames.length; i++) {
           const value = randHexInt(64);
           expected[regNames[i]] = value;
-          this.executeCode('movq $' + value + ', %' + regNames[i]);
+          this.executeCode(`movq $${value}, %${regNames[i]}`);
         }
 
         Object.entries(expected).forEach(([reg, value]) => {
@@ -151,76 +151,76 @@ describe('Instance', function() {
         let eflags;
 
         // Carry flag
-        this.executeCode('movq $0xffffffffffffffff, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'addq %rbx, %rax');
+        this.executeCode(`movq $0xffffffffffffffff, %rax
+                          movq $1, %rbx
+                          addq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.have.bit(0);
         eflags.bits.should.include('CF');
 
-        this.executeCode('movq $0xffffffff, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'addq %rbx, %rax');
+        this.executeCode(`movq $0xffffffff, %rax
+                          movq $1, %rbx
+                          addq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.not.have.bit(0);
         eflags.bits.should.not.include('CF');
 
         // Parity flag
-        this.executeCode('movq $0x1, %rax\n' +
-                         'movq $0x10, %rbx\n' +
-                         'andq %rbx, %rax');
+        this.executeCode(`movq $0x1, %rax
+                          movq $0x10, %rbx
+                          andq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.have.bit(2);
         eflags.bits.should.include('PF');
 
-        this.executeCode('movq $0x1, %rax\n' +
-                         'movq $0x1, %rbx\n' +
-                         'addq %rbx, %rax')
+        this.executeCode(`movq $0x1, %rax
+                          movq $0x1, %rbx
+                          addq %rbx, %rax`)
         eflags = this.getEflags();
         eflags.value.should.not.have.bit(2);
         eflags.bits.should.not.include('PF');
 
         // Adjust flag
-        this.executeCode('movq $0xf, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'addq %rbx, %rax');
+        this.executeCode(`movq $0xf, %rax
+                          movq $1, %rbx
+                          addq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.have.bit(4);
         eflags.bits.should.include('AF');
 
-        this.executeCode('movq $0xe, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'addq %rbx, %rax');
+        this.executeCode(`movq $0xe, %rax
+                          movq $1, %rbx
+                          addq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.not.have.bit(4);
         eflags.bits.should.not.include('AF');
 
         // Zero flag
-        this.executeCode('movq $1, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'subq %rbx, %rax');
+        this.executeCode(`movq $1, %rax
+                          movq $1, %rbx
+                          subq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.have.bit(6);
         eflags.bits.should.include('ZF');
 
-        this.executeCode('movq $1, %rax\n' +
-                         'movq $2, %rbx\n' +
-                         'subq %rbx, %rax');
+        this.executeCode(`movq $1, %rax
+                          movq $2, %rbx
+                          subq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.not.have.bit(6);
         eflags.bits.should.not.include('ZF');
 
         // Sign flag
-        this.executeCode('movq $1, %rax\n' +
-                         'movq $2, %rbx\n' +
-                         'subq %rbx, %rax');
+        this.executeCode(`movq $1, %rax
+                          movq $2, %rbx
+                          subq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.have.bit(7);
         eflags.bits.should.include('SF');
 
-        this.executeCode('movq $2, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'subq %rbx, %rax');
+        this.executeCode(`movq $2, %rax
+                          movq $1, %rbx
+                          subq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.not.have.bit(7);
         eflags.bits.should.not.include('SF');
@@ -238,16 +238,16 @@ describe('Instance', function() {
         eflags.bits.should.not.include('DF');
 
         // Overflow flag
-        this.executeCode('movq $0x7fffffffffffffff, %rax\n' +
-                         'movq $1, %rbx\n' +
-                         'addq %rbx, %rax');
+        this.executeCode(`movq $0x7fffffffffffffff, %rax
+                          movq $1, %rbx
+                          addq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.have.bit(11);
         eflags.bits.should.include('OF');
 
-        this.executeCode('movq $0x7fffffffffffffff, %rax\n' +
-                         'movq $1, %rbx\n'+
-                         'subq %rbx, %rax');
+        this.executeCode(`movq $0x7fffffffffffffff, %rax
+                          movq $1, %rbx
+                          subq %rbx, %rax`);
         eflags = this.getEflags();
         eflags.value.should.not.have.bit(11);
         eflags.bits.should.not.include('OF');
@@ -256,10 +256,10 @@ describe('Instance', function() {
       it('should support the x87 data registers', function() {
         this.executeCode('subq $8, %rsp');
         for (let i = 7; i >= 0; i--) {
-          this.executeCode('movq $' + i + ', (%rsp)\n' + 
-                           'fildq (%rsp)');
+          this.executeCode(`movq $${i}, (%rsp)
+                            fildq (%rsp)`);
           for (let j = 7; j >= i; j--) {
-            Number(this.instance.getRegister('R' + j.toString()).value).should.equal(j);
+            Number(this.instance.getRegister(`R${j}`).value).should.equal(j);
           }
         }
       });
@@ -277,39 +277,39 @@ describe('Instance', function() {
         fcw.bits.should.include('PC=EXT');
         fcw.bits.should.include('RC=RN');
 
-        this.executeCode('movq $0, %rax\n' +
-                         'pushq %rax\n' +
-                         'fldcw (%rsp)');
+        this.executeCode(`movq $0, %rax
+                          pushq %rax
+                          fldcw (%rsp)`);
         fcw = this.getFcw();
         parseInt(fcw.value, 16).should.equal(0x40);
 
-        this.executeCode('movq $0x7f, %rax\n' +
-                         'movq %rax, (%rsp)\n' +
-                         'fldcw (%rsp)')
+        this.executeCode(`movq $0x7f, %rax
+                          movq %rax, (%rsp)
+                          fldcw (%rsp)`);
         fcw = this.getFcw();
         fcw.bits.should.contain('PC=SGL');
 
-        this.executeCode('movq $0x27f, %rax\n' +
-                         'movq %rax, (%rsp)\n' +
-                         'fldcw (%rsp)');
+        this.executeCode(`movq $0x27f, %rax
+                          movq %rax, (%rsp)
+                          fldcw (%rsp)`);
         fcw = this.getFcw();
         fcw.bits.should.contain('PC=DBL');
 
-        this.executeCode('movq $0x77f, %rax\n' +
-                         'movq %rax, (%rsp)\n' +
-                         'fldcw (%rsp)');
+        this.executeCode(`movq $0x77f, %rax
+                          movq %rax, (%rsp)
+                          fldcw (%rsp)`);
         fcw = this.getFcw();
         fcw.bits.should.include('RC=R-');
 
-        this.executeCode('movq $0xf7f, %rax\n' +
-                         'movq %rax, (%rsp)\n' +
-                         'fldcw (%rsp)');
+        this.executeCode(`movq $0xf7f, %rax
+                          movq %rax, (%rsp)
+                          fldcw (%rsp)`);
         fcw = this.getFcw();
         fcw.bits.should.include('RC=RZ');
 
-        this.executeCode('movq $0xb7f, %rax\n' +
-                         'movq %rax, (%rsp)\n' +
-                         'fldcw (%rsp)')
+        this.executeCode(`movq $0xb7f, %rax
+                          movq %rax, (%rsp)
+                          fldcw (%rsp)`);
         fcw = this.getFcw();
         fcw.bits.should.include('RC=R+');
       });
@@ -322,7 +322,7 @@ describe('Instance', function() {
           this.executeCode('fldz');
           fsw = this.getFsw();
           ((fsw.value & 0x3800) >> 11).should.equal(i);
-          fsw.bits.should.include('TOP=0x' + i.toString(16));
+          fsw.bits.should.include(`TOP=0x${i.toString(16)}`);
         }
       });
 
@@ -353,28 +353,28 @@ describe('Instance', function() {
 
         this.checkFswException('fldz\n'.repeat(9), [[6, 'SF'], [0, 'EF=IE']]);
 
-        this.checkFswException('movq $1, %rax\n' +
-                               'movq %rax, (%rsp)\n' +
-                               'fldl (%rsp)\n',
+        this.checkFswException(`movq $1, %rax
+                                movq %rax, (%rsp)
+                                fldl (%rsp)`,
                                [[1, 'EF=DE']]);
 
-        this.checkFswException('fldz\n' +
-                               'fld1\n' +
-                               'fdiv %st(1), %st(0)',
+        this.checkFswException(`fldz
+                                fld1
+                                fdiv %st(1), %st(0)`,
                                [[2, 'EF=ZE']]);
 
-        this.checkFswException('movq $65535, %rax\n' +
-                               'pushq %rax\n' +
-                               'fildq (%rsp)\n' +
-                               'fld1\n' +
-                               'fscale',
+        this.checkFswException(`movq $65535, %rax
+                                pushq %rax
+                                fildq (%rsp)
+                                fld1
+                                fscale`,
                                [[3, 'EF=OE'], [5, 'EF=PE']]);
 
-        this.checkFswException('movq $-65535, %rax\n' +
-                               'pushq %rax\n' +
-                               'fildq (%rsp)\n' +
-                               'fld1\n' +
-                               'fscale',
+        this.checkFswException(`movq $-65535, %rax
+                                pushq %rax
+                                fildq (%rsp)
+                                fld1
+                                fscale`,
                                [[4, 'EF=UE']]);
       });
 
@@ -393,32 +393,32 @@ describe('Instance', function() {
         fsw.bits.should.not.include('C3');
 
         // C3
-        this.executeCode('fldz\n' +
-                         'fxam');
+        this.executeCode(`fldz
+                          fxam`);
         fsw = this.getFsw();
         (fsw.value & (1 << 14)).should.not.equal(0);
         fsw.bits.should.include('C3');
 
         // C2
-        this.executeCode('fld1\n' +
-                         'fxam');
+        this.executeCode(`fld1
+                          fxam`);
         fsw = this.getFsw();
         (fsw.value & (1 << 10)).should.not.equal(0);
         fsw.bits.should.include('C2');
 
         // C1
-        this.executeCode('fchs\n' +
-                         'fxam');
+        this.executeCode(`fchs
+                          fxam`);
         fsw = this.getFsw();
         (fsw.value & (1 << 9)).should.not.equal(0);
         fsw.bits.should.include('C1');
 
         // C0
-        this.executeCode('movq $-1, %rax\n' +
-                         'pushq %rax\n' +
-                         'pushq %rax\n' +
-                         'fldt (%rsp)\n' +
-                         'fxam');
+        this.executeCode(`movq $-1, %rax
+                          pushq %rax
+                          pushq %rax
+                          fldt (%rsp)
+                          fxam`);
         fsw = this.getFsw();
         (fsw.value & (1 << 8)).should.not.equal(0);
         fsw.bits.should.include('C0');
@@ -429,20 +429,20 @@ describe('Instance', function() {
           return parseInt(this.instance.getRegister('mxcsr').value, 16);
         }
 
-        this.executeCode('subq $4, %rsp\n' +
-                         'movl $0xffff, %eax\n' +
-                         'movl %eax, (%rsp)\n' +
-                         'ldmxcsr (%rsp)');
+        this.executeCode(`subq $4, %rsp
+                          movl $0xffff, %eax
+                          movl %eax, (%rsp)
+                          ldmxcsr (%rsp)`);
         this.getMxcsr().should.equal(0xffff);
 
-        this.executeCode('xorl %eax, %eax\n' +
-                         'movl %eax, (%rsp)\n' +
-                         'ldmxcsr (%rsp)')
+        this.executeCode(`xorl %eax, %eax
+                          movl %eax, (%rsp)
+                          ldmxcsr (%rsp)`)
         this.getMxcsr().should.equal(0);
 
-        this.executeCode('movl $0x1f80, %eax\n' +
-                         'movl %eax, (%rsp)\n' +
-                         'ldmxcsr (%rsp)');
+        this.executeCode(`movl $0x1f80, %eax
+                          movl %eax, (%rsp)
+                          ldmxcsr (%rsp)`);
         this.getMxcsr().should.equal(0x1f80);
       });
 
@@ -476,10 +476,10 @@ describe('Instance', function() {
         }
 
         // Special
-        this.executeCode('finit\n' +
-                         'movq $-1, %rax\n' +
-                         'pushq %rax\n' +
-                         'pushq %rax');
+        this.executeCode(`finit
+                          movq $-1, %rax
+                          pushq %rax
+                          pushq %rax`);
         expected = 0xffff;
         for (let i = 7; i >= 0; i--) {
           this.executeCode('fldt (%rsp)');
@@ -494,8 +494,8 @@ describe('Instance', function() {
         for (let i = 0; i < 8; i++) {
           const value = randHexInt(64);
           expected['mm' + i.toString()] = value;
-          this.executeCode('movq $' + value + ', %rax\n' +
-                           'movq %rax, %mm' + i.toString());
+          this.executeCode(`movq $${value}, %rax
+                            movq %rax, %mm${i}`);
         }
 
         Object.entries(expected).forEach(([reg, value]) => {
@@ -510,11 +510,11 @@ describe('Instance', function() {
           const hi = value.slice(0, 18);
           const lo = '0x' + value.slice(18);
           expected['xmm' + i.toString()] = value;
-          this.executeCode('movq $' + hi + ', %rax\n' +
-                           'pushq %rax\n' +
-                           'movq $' + lo + ', %rax\n' +
-                           'pushq %rax\n' +
-                           'movdqu (%rsp), %xmm' + i.toString());
+          this.executeCode(`movq $${hi}, %rax
+                            pushq %rax
+                            movq $${lo}, %rax
+                            pushq %rax
+                            movdqu (%rsp), %xmm${i}`);
         }
 
         Object.entries(expected).forEach(([reg, value]) => {
@@ -523,11 +523,11 @@ describe('Instance', function() {
       });
 
       it('should be able to read memory', function() {
-        this.executeCode('subq $16, %rsp\n' + 
-                         'movq $0x77202c6f6c6c6568, %rax\n' +
-                         'movq %rax, (%rsp)\n' +
-                         'movq $0x21646c726f, %rax\n' +
-                         'movq %rax, 8(%rsp)\n');
+        this.executeCode(`subq $16, %rsp
+                          movq $0x77202c6f6c6c6568, %rax
+                          movq %rax, (%rsp)
+                          movq $0x21646c726f, %rax
+                          movq %rax, 8(%rsp)`);
         const rsp = this.instance.getRegister('rsp').value;
         const mem = this.instance.readMemory(rsp, 13);
         mem.should.eql(Buffer.from('hello, world!'));
@@ -538,10 +538,10 @@ describe('Instance', function() {
                           'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
                           'ds', 'es', 'fs', 'gs', 'fsw', 'fip', 'fdp', 'fop'];
         for (let i = 0; i < 8; i++) {
-          zeroRegs.push('mm' + i.toString());
+          zeroRegs.push(`mm${i}`);
         }
         for (let i = 0; i < 16; i++) {
-          zeroRegs.push('xmm' + i.toString());
+          zeroRegs.push(`xmm${i}`);
         }
         for (let i = 0; i < zeroRegs.length; i++) {
           parseInt(this.instance.getRegister(zeroRegs[i]).value, 16).should.equal(0);
@@ -558,31 +558,29 @@ describe('Instance', function() {
     const mapsRe = '^[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +';
     const cases = {
       SANDBOX_FDS: ['should close all file descriptors', function(instance) {
-        const fd_dir = '/proc/' + instance.getPid().toString() + '/fd';
-        fd_dir.should.be.a.directory().and.empty;
+        `/proc/${instance.getPid()}/fd`.should.be.a.directory().and.empty;
       }],
       SANDBOX_SYSCALLS: ['should prevent syscalls', function(instance, assembler) {
         const wstatus = instance.executeCode(assembler.assembleCode(exitCode));
         wstatus.should.eql({state: 'stopped', stopsig: 'SIGSYS'});
-        ('/proc/' + instance.getPid().toString()).should.be.a.directory();
+        (`/proc/${instance.getPid()}`).should.be.a.directory();
       }],
     };
 
-    for (const flag in cases) {
-      if (cases.hasOwnProperty(flag)) {
-        describe(flag, function() {
-          it(cases[flag][0], function() {
-            cases[flag][1](new Instance(InstanceFlag[flag]), this.assembler);
-          });
+    Object.entries(cases).forEach(([flag, [description, func]]) => {
+      describe(flag, function() {
+        it(description, function() {
+          func(new Instance(InstanceFlag[flag]), this.assembler);
         });
-      }
-    }
+      });
+    });
+
     describe('SANDBOX_ALL', function() {
-      for (const flag in cases) {
-        it(cases[flag][0], function() {
-          cases[flag][1](new Instance(InstanceFlag.SANDBOX_ALL), this.assembler);
+      Object.entries(cases).forEach(([flag, [description, func]]) => {
+        it(description, function() {
+          func(new Instance(InstanceFlag.SANDBOX_ALL), this.assembler);
         });
-      }
+      });
     });
   });
 });
