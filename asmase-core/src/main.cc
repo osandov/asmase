@@ -23,6 +23,7 @@
 
 static std::unordered_map<std::string, const struct asmase_register_descriptor *> registers_table;
 
+static Nan::Persistent<v8::Map> Registers;
 static Nan::Persistent<v8::Object> AsmaseError;
 static Nan::Persistent<v8::Object> AssemblerError;
 
@@ -53,9 +54,19 @@ static void ThrowAssemblerError(const char *diagnostic)
 NAN_MODULE_INIT(InitAll) {
   libasmase_init();
 
+  v8::Local<v8::Map> registers = v8::Map::New(v8::Isolate::GetCurrent());
+
   for (size_t i = 0; i < asmase_num_registers; i++) {
-    registers_table[asmase_registers[i].name] = &asmase_registers[i];
+    const struct asmase_register_descriptor* reg = &asmase_registers[i];
+
+    v8::Local<v8::Object> regObj = Nan::New<v8::Object>();
+    Nan::Set(regObj, Nan::New("type").ToLocalChecked(), Nan::New(reg->type));
+    Nan::Set(regObj, Nan::New("set").ToLocalChecked(), Nan::New(reg->set));
+    registers = registers->Set(Nan::GetCurrentContext(), Nan::New(reg->name).ToLocalChecked(), regObj).ToLocalChecked();
+    registers_table[reg->name] = reg;
   }
+
+  Registers.Reset(registers);
 
   {
     v8::Local<v8::String> scriptString = Nan::New("class AsmaseError extends Error {}; AsmaseError").ToLocalChecked();
@@ -69,6 +80,7 @@ NAN_MODULE_INIT(InitAll) {
     AssemblerError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
   }
 
+  Nan::Set(target, Nan::New("registers").ToLocalChecked(), Nan::New(Registers));
   Nan::Set(target, Nan::New("AsmaseError").ToLocalChecked(), Nan::New(AsmaseError));
   Nan::Set(target, Nan::New("AssemblerError").ToLocalChecked(), Nan::New(AssemblerError));
 

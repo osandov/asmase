@@ -1,4 +1,4 @@
-const {AsmaseError, Assembler, Instance, InstanceFlag, RegisterSet} = require('..');
+const {AsmaseError, Assembler, Instance, InstanceFlag, RegisterSet, registers} = require('..');
 const chai = require('chai');
 const fs = require('fs');
 const should = chai.should();
@@ -97,6 +97,16 @@ describe('Instance', function() {
     });
     it('should handle exit', function() {
       this.executeCode(exitCode).should.eql({state: 'exited', exitstatus: 99});
+    });
+  });
+
+  describe('#getRegister()',  function() {
+    it('should support all registers', function() {
+      registers.forEach(({type, set}, name) => {
+        const reg = this.instance.getRegister(name);
+        reg.type.should.equal(type);
+        reg.set.should.equal(set);
+      });
     });
   });
 
