@@ -122,24 +122,22 @@ private:
     info.GetReturnValue().Set(Nan::New(asmase_getpid(obj->instance_)));
   }
 
-  static Nan::MaybeLocal<v8::Set> GetRegisterBits(const struct asmase_register_descriptor* reg, const union asmase_register_value* value) {
-    v8::Local<v8::Set> set = v8::Set::New(v8::Isolate::GetCurrent());
+  static Nan::MaybeLocal<v8::Array> GetRegisterBits(const struct asmase_register_descriptor* reg, const union asmase_register_value* value) {
+    v8::Local<v8::Array> bits = Nan::New<v8::Array>();
     for (size_t i = 0; i < reg->num_status_bits; i++) {
       char* flag = asmase_status_register_format(reg, &reg->status_bits[i], value);
       if (!flag) {
         ThrowAsmaseError(errno);
-        return Nan::MaybeLocal<v8::Set>();
+        return Nan::MaybeLocal<v8::Array>();
       }
       if (!*flag) {
         free(flag);
         continue;
       }
-      if (set->Add(Nan::GetCurrentContext(), Nan::New(flag).ToLocalChecked()).IsEmpty()) {
-        return Nan::MaybeLocal<v8::Set>();
-      }
+      Nan::Set(bits, bits->Length(), Nan::New(flag).ToLocalChecked());
       free(flag);
     }
-    return set;
+    return bits;
   }
 
   static NAN_METHOD(GetRegister) {
@@ -191,7 +189,7 @@ private:
     Nan::Set(result, Nan::New("set").ToLocalChecked(), Nan::New(reg->set));
     Nan::Set(result, Nan::New("value").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
     if (reg->num_status_bits) {
-      v8::Local<v8::Set> bits;
+      v8::Local<v8::Array> bits;
       if (!Instance::GetRegisterBits(reg, &value).ToLocal(&bits)) {
         return;
       }
