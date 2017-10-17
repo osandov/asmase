@@ -45,6 +45,11 @@ describe('Instance', function() {
     (() => new Instance(0xffffffff)).should.throw(AsmaseError, 'Invalid argument');
   });
 
+  it('should set the thread name', function() {
+    const comm = '/proc/' + this.instance.getPid().toString() + '/comm';
+    comm.should.be.a.file().with.content('asmase_tracee\n');
+  });
+
   it('should unmap all memory', function() {
     const maps = '/proc/' + this.instance.getPid().toString() + '/maps';
     const mapsContents = fs.readFileSync(maps).toString();

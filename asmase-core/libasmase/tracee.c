@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <sys/ptrace.h>
 
 #include "internal.h"
@@ -94,12 +95,16 @@ static void close_fds(int memfd)
 
 void tracee(int memfd, int flags)
 {
+	static const char *name = "asmase_tracee";
 	void *temp;
 
 	if (ptrace(PTRACE_TRACEME, -1, NULL, NULL) == -1)
 		_exit(EXIT_FAILURE);
 
 	reset_signals();
+
+	if (prctl(PR_SET_NAME, (long)name, 0, 0, 0) == -1)
+		_exit(EXIT_FAILURE);
 
 	if (flags & ASMASE_SANDBOX_FDS)
 		close_fds(memfd);
