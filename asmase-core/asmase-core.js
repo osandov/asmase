@@ -31,24 +31,24 @@ exports.Instance = Instance;
 exports.registers = registers;
 
 exports.RegisterSet = Object.freeze({
-  PROGRAM_COUNTER: (1 << 0),
-  SEGMENT: (1 << 1),
-  GENERAL_PURPOSE: (1 << 2),
-  STATUS: (1 << 3),
-  FLOATING_POINT: (1 << 4),
-  FLOATING_POINT_STATUS: (1 << 5),
-  VECTOR: (1 << 6),
-  VECTOR_STATUS:  (1 << 7),
-  ALL: ((1 << 8) - 1),
+  PROGRAM_COUNTER: 0,
+  SEGMENT: 1,
+  GENERAL_PURPOSE: 2,
+  STATUS: 3,
+  FLOATING_POINT: 4,
+  FLOATING_POINT_STATUS: 5,
+  VECTOR: 6,
+  VECTOR_STATUS: 7,
+  ALL: 8,
 });
 
 exports.RegisterType = Object.freeze({
-  U8: 1,
-  U16: 2,
-  U32: 3,
-  U64: 4,
-  U128: 5,
-  FLOAT80: 6,
+  U8: 0,
+  U16: 1,
+  U32: 2,
+  U64: 3,
+  U128: 4,
+  FLOAT80: 5,
 });
 
 exports.InstanceFlag = Object.freeze({
