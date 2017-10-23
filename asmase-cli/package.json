@@ -1,0 +1,29 @@
+{
+  "name": "asmase-cli",
+  "version": "1.0.0",
+  "description": "Asmase interactive assembly REPL",
+  "main": "main.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osandov/asmase.git"
+  },
+  "author": "Omar Sandoval",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/osandov/asmase/issues"
+  },
+  "homepage": "https://github.com/osandov/asmase#readme",
+  "dependencies": {
+    "asmase-core": "file:../asmase-core",
+    "big-integer": "^1.6.25",
+    "chevrotain": "^0.32.1",
+    "unescape-js": "^1.0.8"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "mocha": "^4.0.1"
+  }
+}
