@@ -50,6 +50,11 @@ describe('Instance', function() {
     comm.should.be.a.file().with.content('asmase_tracee\n');
   });
 
+  it('should zero out the memory buffer', function() {
+    const mem = this.instance.readMemory(0x7fff00000000, 65536);
+    mem.should.eql(Buffer.alloc(65536));
+  });
+
   it('should unmap all memory', function() {
     const maps = `/proc/${this.instance.getPid()}/maps`;
     const mapsContents = fs.readFileSync(maps).toString();

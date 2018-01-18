@@ -1,7 +1,7 @@
 /*
  * Core libasmase support.
  *
- * Copyright (C) 2016-2017 Omar Sandoval
+ * Copyright (C) 2016-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -93,6 +93,18 @@ static int attach_to_tracee(struct asmase_instance *a)
 		return -1;
 
 	if (arch_get_regs(a->pid, &a->regs) == -1)
+		return -1;
+
+	return 0;
+}
+
+static int zero_out_memfd(struct asmase_instance *a)
+{
+	static const char zeros[MEMFD_SIZE];
+	ssize_t sret;
+
+	sret = pwrite(a->memfd, zeros, sizeof(zeros), 0);
+	if (sret == -1)
 		return -1;
 
 	return 0;
@@ -270,6 +282,9 @@ struct asmase_instance *asmase_create_instance(int flags)
 	}
 
 	if (attach_to_tracee(a) == -1)
+		goto err;
+
+	if (zero_out_memfd(a) == -1)
 		goto err;
 
 	if (check_maps(a) == -1)
