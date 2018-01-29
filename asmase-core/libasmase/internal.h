@@ -1,7 +1,7 @@
 /*
  * Internal libasmase interface.
  *
- * Copyright (C) 2016-2017 Omar Sandoval
+ * Copyright (C) 2016-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -36,7 +36,6 @@
 
 #include "util.h"
 
-void libasmase_assembler_init(void);
 void tracee(int memfd, int flags) __attribute__((noreturn));
 
 struct asmase_instance {

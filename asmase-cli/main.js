@@ -22,7 +22,8 @@
 "use strict";
 
 const readline = require('readline');
-const {Assembler, Instance} = require('asmase-core');
+const {Assembler} = require('asmase-assembler');
+const {Instance} = require('asmase-core');
 const {AsmaseCLI} = require('./cli.js');
 const {createAsmaseLexer, AsmaseParser, createAsmaseVisitor} = require('./lang.js');
 

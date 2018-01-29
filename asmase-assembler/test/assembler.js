@@ -2,7 +2,7 @@ const {Assembler, AssemblerError} = require('..');
 const should = require('chai').should();
 
 const CODE_TEST_CASES = {
-  x64: {
+  x86_64: {
     'nop': [0x90],
     'movq $5, %rax': [0x48, 0xc7, 0xc0, 0x05, 0x00, 0x00, 0x00],
   },
@@ -10,9 +10,11 @@ const CODE_TEST_CASES = {
 
 describe('Assembler', function() {
   describe('#assembleCode()', function() {
-    Object.entries(CODE_TEST_CASES[process.arch]).forEach(([code, machineCode]) => {
-      it(`should assemble ${code} correctly on ${process.arch}`, function() {
-        (new Assembler()).assembleCode(code).should.eql(Buffer.from(machineCode));
+    Object.entries(CODE_TEST_CASES).forEach(([architecture, cases]) => {
+      Object.entries(cases).forEach(([code, machineCode]) => {
+        it(`should assemble ${code} correctly on ${architecture}`, function() {
+          (new Assembler(architecture)).assembleCode(code).should.eql(Buffer.from(machineCode));
+        });
       });
     });
 

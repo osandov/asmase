@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Omar Sandoval
+ * Copyright (C) 2017-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -25,7 +25,6 @@ static std::unordered_map<std::string, const struct asmase_register_descriptor *
 
 static Nan::Persistent<v8::Map> Registers;
 static Nan::Persistent<v8::Object> AsmaseError;
-static Nan::Persistent<v8::Object> AssemblerError;
 
 static void ThrowAsmaseError(int errnum)
 {
@@ -41,19 +40,9 @@ static void ThrowAsmaseError(const std::string& error)
   Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AsmaseError), argc, argv).ToLocalChecked());
 }
 
-static void ThrowAssemblerError(const char *diagnostic)
-{
-  const int argc = 1;
-  v8::Local<v8::Value> argv[argc] = {Nan::New(diagnostic).ToLocalChecked()};
-  Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AssemblerError), argc, argv).ToLocalChecked());
-}
-
-#include "assembler.h"
 #include "instance.h"
 
 NAN_MODULE_INIT(InitAll) {
-  libasmase_init();
-
   v8::Local<v8::Map> registers = v8::Map::New(v8::Isolate::GetCurrent());
 
   for (size_t i = 0; i < asmase_num_registers; i++) {
@@ -68,23 +57,13 @@ NAN_MODULE_INIT(InitAll) {
 
   Registers.Reset(registers);
 
-  {
-    v8::Local<v8::String> scriptString = Nan::New("class AsmaseError extends Error {}; AsmaseError").ToLocalChecked();
-    v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
-    AsmaseError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
-  }
-
-  {
-    v8::Local<v8::String> scriptString = Nan::New("class AssemblerError extends Error {}; AssemblerError").ToLocalChecked();
-    v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
-    AssemblerError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
-  }
+  v8::Local<v8::String> scriptString = Nan::New("(function() { class AsmaseError extends Error {}; return AsmaseError; })()").ToLocalChecked();
+  v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
+  AsmaseError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
 
   Nan::Set(target, Nan::New("registers").ToLocalChecked(), Nan::New(Registers));
   Nan::Set(target, Nan::New("AsmaseError").ToLocalChecked(), Nan::New(AsmaseError));
-  Nan::Set(target, Nan::New("AssemblerError").ToLocalChecked(), Nan::New(AssemblerError));
 
-  Assembler::Init(target);
   Instance::Init(target);
 }
 

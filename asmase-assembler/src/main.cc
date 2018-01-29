@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Omar Sandoval
+ * Copyright (C) 2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -17,12 +17,11 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BINDING_ASSEMBLER_H
-#define BINDING_ASSEMBLER_H
-
-#include <cerrno>
-#include <libasmase.h>
 #include <nan.h>
+
+#include "assembler.h"
+
+static Nan::Persistent<v8::Object> AssemblerError;
 
 class Assembler : public Nan::ObjectWrap {
 public:
@@ -39,22 +38,28 @@ public:
   }
 
 private:
-  struct asmase_assembler* assembler_;
+  std::unique_ptr<AssemblerContext> assembler_;
 
-  explicit Assembler(struct asmase_assembler *assembler) : assembler_(assembler) {}
-
-  ~Assembler() {
-    asmase_destroy_assembler(assembler_);
-  }
+  explicit Assembler(std::unique_ptr<AssemblerContext> assembler)
+    : assembler_{std::move(assembler)} {}
 
   static NAN_METHOD(New) {
     if (info.IsConstructCall()) {
-      struct asmase_assembler* assembler = asmase_create_assembler();
-      if (!assembler) {
-        ThrowAsmaseError(errno);
+      std::unique_ptr<AssemblerContext> assembler;
+      if (info[0]->IsUndefined()) {
+        assembler.reset(AssemblerContext::createAssemblerContext());
+      } else if (info[0]->IsString()) {
+        Nan::Utf8String architecture(info[0]);
+        assembler.reset(AssemblerContext::createAssemblerContext(*architecture));
+      } else {
+        Nan::ThrowTypeError("architecture must be a string");
         return;
       }
-      Assembler *obj = new Assembler(assembler);
+      if (!assembler) {
+        Nan::ThrowError("Could not create assembler");
+        return;
+      }
+      Assembler* obj = new Assembler(std::move(assembler));
       obj->Wrap(info.This());
       info.GetReturnValue().Set(info.This());
     } else {
@@ -79,23 +84,27 @@ private:
     }
     Nan::Utf8String code(info[0]);
     int line = info[2]->IsUndefined() ? 1 : Nan::To<int>(info[2]).FromJust();
-    char *out;
-    size_t len;
-    int ret;
+    std::pair<std::string, AssemblerResult> result;
     if (info[1]->IsUndefined()) {
-      ret = asmase_assemble_code(obj->assembler_, "", line, *code, &out, &len);
+      result = obj->assembler_->assembleCode("", line, *code);
     } else {
       Nan::Utf8String filename(info[1]);
-      ret = asmase_assemble_code(obj->assembler_, *filename, line, *code, &out, &len);
+      result = obj->assembler_->assembleCode(*filename, line, *code);
     }
-    if (ret == 0) {
-      info.GetReturnValue().Set(Nan::NewBuffer(out, len).ToLocalChecked());
-      // The new Buffer now owns out.
-    } else if (ret == 1) {
-      ThrowAssemblerError(out);
-      free(out);
-    } else {
-      ThrowAsmaseError(errno);
+    switch (result.second) {
+    case AssemblerResult::Success:
+      info.GetReturnValue().Set(Nan::CopyBuffer(result.first.c_str(), result.first.size()).ToLocalChecked());
+      break;
+    case AssemblerResult::Diagnostic:
+      {
+        const int argc = 1;
+        v8::Local<v8::Value> argv[argc] = {Nan::New(result.first).ToLocalChecked()};
+        Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AssemblerError), argc, argv).ToLocalChecked());
+      }
+      break;
+    case AssemblerResult::Error:
+      Nan::ThrowError(Nan::New(result.first).ToLocalChecked());
+      break;
     }
   }
 
@@ -105,4 +114,18 @@ private:
   }
 };
 
-#endif /* BINDING_ASSEMBLER_H */
+NAN_MODULE_INIT(InitAll) {
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+
+  v8::Local<v8::String> scriptString = Nan::New("(function() { class AssemblerError extends Error {}; return AssemblerError; })()").ToLocalChecked();
+  v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
+  AssemblerError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
+  Nan::Set(target, Nan::New("AssemblerError").ToLocalChecked(), Nan::New(AssemblerError));
+
+  Assembler::Init(target);
+}
+
+NODE_MODULE(addon, InitAll);

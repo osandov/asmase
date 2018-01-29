@@ -22,7 +22,8 @@
 "use strict";
 
 const bigInt = require('big-integer');
-const {AsmaseError, AssemblerError, RegisterSet} = require('asmase-core');
+const {AssemblerError} = require('asmase-assembler');
+const {AsmaseError, RegisterSet} = require('asmase-core');
 const AsmaseRegisters = require('asmase-core').registers;
 const {AsmaseTypeError, AsmaseValue} = require('./value.js');
 const {escapeChar, memoryFormats} = require('./memory.js');

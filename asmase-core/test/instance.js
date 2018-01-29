@@ -1,4 +1,5 @@
-const {AsmaseError, Assembler, Instance, InstanceFlag, RegisterSet, registers} = require('..');
+const {Assembler} = require('asmase-assembler');
+const {AsmaseError, Instance, InstanceFlag, RegisterSet, registers} = require('..');
 const chai = require('chai');
 const fs = require('fs');
 const should = chai.should();

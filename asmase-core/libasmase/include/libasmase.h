@@ -1,7 +1,7 @@
 /*
  * libasmase interactive assembly language library.
  *
- * Copyright (C) 2016-2017 Omar Sandoval
+ * Copyright (C) 2016-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -52,15 +52,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * libasmase_init() - Initialize libasmase.
- *
- * This function must be called before the rest of libasmase.
- *
- * Return: 0 on success, -1 on failure, in which case errno will be set
- */
-int libasmase_init(void);
 
 struct asmase_instance;
 
@@ -298,41 +289,6 @@ ssize_t asmase_readv_memory(const struct asmase_instance *a,
  */
 ssize_t asmase_read_memory(const struct asmase_instance *a, void *buf,
 			   void *addr, size_t len);
-
-struct asmase_assembler;
-
-/**
- * asmase_create_assembler() - Create a new assembler.
- *
- * Return: New assembler.
- */
-struct asmase_assembler *asmase_create_assembler(void);
-
-/**
- * asmase_destroy_assembler() - Free all resources associated with an assembler.
- *
- * @as: Assembler to destroy.
- */
-void asmase_destroy_assembler(struct asmase_assembler *as);
-
-/**
- * asmase_assemble_code() - Assemble some assembly code to machine code.
- *
- * @as: Assembler.
- * @filename: Filename for diagnostics.
- * @line: Line number for diagnostics.
- * @asm_code: Assembly code.
- * @out: Allocated output buffer; must be freed with free().
- * @len: Length of the output buffer.
- *
- * Return: 0 if the code was successfully assembled, in which case @out will
- * contain the assembled machine code; 1 if there was an error with the assembly
- * code, in which case @out will contain a diagnostic message; or -1 if there
- * was an internal error, in which case @out will be NULL.
- */
-int asmase_assemble_code(const struct asmase_assembler *as,
-			 const char *filename, int line, const char *asm_code,
-			 char **out, size_t *len);
 
 #ifdef __cplusplus
 }

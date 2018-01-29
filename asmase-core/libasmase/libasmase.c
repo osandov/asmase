@@ -40,13 +40,6 @@
 
 #include "internal.h"
 
-__attribute__((visibility("default")))
-int libasmase_init(void)
-{
-	libasmase_assembler_init();
-	return 0;
-}
-
 static int create_memfd(struct asmase_instance *a)
 {
 	a->memfd = syscall(SYS_memfd_create, "asmase", 0);

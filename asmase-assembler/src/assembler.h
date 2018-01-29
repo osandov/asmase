@@ -1,7 +1,7 @@
 /*
  * Assembler implementation built on the LLVM MC layer.
  *
- * Copyright (C) 2013-2017 Omar Sandoval
+ * Copyright (C) 2013-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -49,6 +49,7 @@ using namespace llvm;
 
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
 #include <system_error>
@@ -59,101 +60,135 @@ using std::system_category;
 #define OwningPtr std::unique_ptr
 #endif
 
-#include <libasmase.h>
-
 /* The reserved size of the output SmallString. */
 static const int OUTPUT_BUFFER_SIZE = 4096;
 
-class AssemblerContext;
+static const std::unordered_map<std::string, std::string> architectureTriples{
+  {"x86_64", "x86_64-unknown-linux-gnu"},
+  {"arm", "armv6--linux-gnueabihf"},
+};
 
 class DiagHandlerContext {
 public:
   StringRef filename;
   int line;
-  std::string &result;
+  std::string output;
 
-  DiagHandlerContext(const char *filename, int line, std::string &result)
-    : filename{filename}, line{line}, result{result} {}
+  DiagHandlerContext(const char *filename, int line)
+    : filename{filename}, line{line} {}
 };
 
-static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg)
-{
-  const DiagHandlerContext &context =
-    *static_cast<const DiagHandlerContext *>(arg);
+static void asmaseDiagHandler(const SMDiagnostic &diag, void *arg) {
+  DiagHandlerContext& context = *static_cast<DiagHandlerContext *>(arg);
 
   SMDiagnostic diagnostic{
     *diag.getSourceMgr(),
-    diag.getLoc(),
-    context.filename,
-    context.line,
-    diag.getColumnNo(),
-    diag.getKind(),
-    diag.getMessage(),
-    diag.getLineContents(),
-    diag.getRanges(),
+      diag.getLoc(),
+      context.filename,
+      context.line,
+      diag.getColumnNo(),
+      diag.getKind(),
+      diag.getMessage(),
+      diag.getLineContents(),
+      diag.getRanges(),
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 3)
-    diag.getFixIts()
+      diag.getFixIts()
 #endif
   };
 
-  raw_string_ostream outputStream{context.result};
+  raw_string_ostream outputStream{context.output};
   diagnostic.print(nullptr, outputStream, false);
 }
+
+enum class AssemblerResult {
+  Success,
+  Diagnostic,
+  Error,
+};
 
 class AssemblerContext {
 private:
   /* LLVM state that can be reused. */
   const std::string tripleName, mcpu, features;
   const Triple triple;
-  const Target *target;
-  OwningPtr<const MCSubtargetInfo> subtargetInfo;
-  OwningPtr<const MCRegisterInfo> registerInfo;
-  OwningPtr<const MCAsmInfo> asmInfo;
-  OwningPtr<const MCInstrInfo> instrInfo;
+  const Target* target;
+  std::unique_ptr<const MCSubtargetInfo> subtargetInfo;
+  std::unique_ptr<const MCRegisterInfo> registerInfo;
+  std::unique_ptr<const MCAsmInfo> asmInfo;
+  std::unique_ptr<const MCInstrInfo> instrInfo;
 
-  static error_code getTextSection(object::ObjectFile &objFile,
-      std::string &result);
+  static std::pair<std::string, AssemblerResult> getTextSection(object::ObjectFile& objFile);
+
+  AssemblerContext(const std::string& tripleName, const Target* target,
+      std::unique_ptr<const MCSubtargetInfo> subtargetInfo,
+      std::unique_ptr<const MCRegisterInfo> registerInfo,
+      std::unique_ptr<const MCAsmInfo> asmInfo,
+      std::unique_ptr<const MCInstrInfo> instrInfo)
+    : tripleName{tripleName}, triple{tripleName}, target{target},
+    subtargetInfo{std::move(subtargetInfo)},
+    registerInfo{std::move(registerInfo)}, asmInfo{std::move(asmInfo)},
+    instrInfo{std::move(instrInfo)} {}
+
+  static AssemblerContext* createAssemblerContextFromTriple(const std::string& tripleName);
 
 public:
-  AssemblerContext();
+  static AssemblerContext* createAssemblerContext();
+  static AssemblerContext* createAssemblerContext(const std::string& architecture);
 
-  error_code assembleCode(const char *filename, int line, const char *asm_code,
-      std::string &result) const;
+  std::pair<std::string, AssemblerResult> assembleCode(const char *filename,
+      int line, const char *asm_code);
 };
 
-AssemblerContext::AssemblerContext()
-  : tripleName{sys::getDefaultTargetTriple()}, triple{tripleName}
+AssemblerContext* AssemblerContext::createAssemblerContextFromTriple(const std::string& tripleName)
 {
   std::string err;
-  target = TargetRegistry::lookupTarget(tripleName, err);
-  assert(target && "Could not get target!");
-
-  subtargetInfo.reset(
-      target->createMCSubtargetInfo(tripleName, mcpu, features));
-  assert(subtargetInfo && "Unable to create subtarget info!");
-
-  registerInfo.reset(target->createMCRegInfo(tripleName));
-  assert(registerInfo && "Unable to create target register info!");
-
+  const Target* target = TargetRegistry::lookupTarget(tripleName, err);
+  if (!target)
+    return nullptr;
+  std::unique_ptr<const MCSubtargetInfo> subtargetInfo{
+      target->createMCSubtargetInfo(tripleName, "", "")};
+  if (!subtargetInfo)
+    return nullptr;
+  std::unique_ptr<const MCRegisterInfo> registerInfo{
+    target->createMCRegInfo(tripleName)};
+  if (!registerInfo)
+    return nullptr;
+  std::unique_ptr<const MCAsmInfo> asmInfo{
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
-  asmInfo.reset(target->createMCAsmInfo(*registerInfo, tripleName));
+  target->createMCAsmInfo(*registerInfo, tripleName)
 #else
-  asmInfo.reset(target->createMCAsmInfo(tripleName));
+  target->createMCAsmInfo(tripleName)
 #endif
-  assert(asmInfo && "Unable to create target asm info!");
+  };
+  if (!asmInfo)
+    return nullptr;
+  std::unique_ptr<const MCInstrInfo> instrInfo{
+    target->createMCInstrInfo()};
+  if (!instrInfo)
+    return nullptr;
 
-  instrInfo.reset(target->createMCInstrInfo());
-  assert(instrInfo && "Unable to create target instruction info!");
+  return new AssemblerContext{tripleName, target, std::move(subtargetInfo), std::move(registerInfo), std::move(asmInfo), std::move(instrInfo)};
 }
 
-error_code AssemblerContext::assembleCode(const char *filename, int line,
-    const char *asm_code, std::string &result) const
+AssemblerContext* AssemblerContext::createAssemblerContext() {
+  return createAssemblerContextFromTriple(sys::getDefaultTargetTriple());
+}
+
+AssemblerContext* AssemblerContext::createAssemblerContext(const std::string& architecture) {
+  auto it = architectureTriples.find(architecture);
+  if (it == architectureTriples.end())
+    return nullptr;
+  return createAssemblerContextFromTriple(it->second);
+}
+
+std::pair<std::string, AssemblerResult> AssemblerContext::assembleCode(const char *filename,
+    int line, const char *asm_code)
 {
   // Set up the input
   SourceMgr srcMgr;
   srcMgr.AddNewSourceBuffer(
       MemoryBuffer::getMemBufferCopy(asm_code, "assembly"), SMLoc{});
-  DiagHandlerContext diagHandlerCtx{filename, line, result};
+  DiagHandlerContext diagHandlerCtx{filename, line};
   srcMgr.setDiagHandler(
       asmaseDiagHandler, static_cast<void *>(&diagHandlerCtx));
 
@@ -238,7 +273,7 @@ error_code AssemblerContext::assembleCode(const char *filename, int line,
   parser->setTargetParser(*TAP);
 
   if (parser->Run(false) != 0)
-    return error_code{EPROTO, system_category()}; /* XXX */
+    return std::make_pair(diagHandlerCtx.output, AssemblerResult::Diagnostic);
 
 #if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 8)
   outputStream.flush();
@@ -248,14 +283,14 @@ error_code AssemblerContext::assembleCode(const char *filename, int line,
     MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
   auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer->getMemBufferRef());
   if (error_code err = objFileErr.getError())
-    return err;
+    return std::make_pair(err.message(), AssemblerResult::Error);
   std::unique_ptr<object::ObjectFile> objFile{objFileErr->release()};
 #elif LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5
   std::unique_ptr<MemoryBuffer> outputBuffer{
     MemoryBuffer::getMemBuffer(outputString, "machine code", false)};
   auto objFileErr = object::ObjectFile::createELFObjectFile(outputBuffer);
   if (error_code err = objFileErr.getError())
-    return err;
+    return std::make_pair(err.message(), AssemblerResult::Error);
   auto objFile = *objFileErr;
 #else
   MemoryBuffer *outputBuffer =
@@ -264,12 +299,11 @@ error_code AssemblerContext::assembleCode(const char *filename, int line,
     objFile{object::ObjectFile::createELFObjectFile(outputBuffer)};
 #endif
 
-  return getTextSection(*objFile, result);
+  return getTextSection(*objFile);
 }
 
 /* Return the text section (i.e., machine code) for an object file. */
-error_code AssemblerContext::getTextSection(object::ObjectFile &objFile,
-    std::string &result) {
+std::pair<std::string, AssemblerResult> AssemblerContext::getTextSection(object::ObjectFile& objFile) {
   error_code err;
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
   object::section_iterator it = objFile.section_begin();
@@ -284,70 +318,23 @@ error_code AssemblerContext::getTextSection(object::ObjectFile &objFile,
 #else
     err = it->isText(isText);
     if (err)
-      return err;
+      return std::make_pair(err.message(), AssemblerResult::Error);
 #endif
     if (isText) {
       StringRef contents;
       err = it->getContents(contents);
       if (err)
-        return err;
-      result = contents;
-      return error_code{};
+        return std::make_pair(err.message(), AssemblerResult::Error);
+      return std::make_pair(contents, AssemblerResult::Success);
     }
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
     ++it;
 #else
     it.increment(err);
     if (err)
-      return err;
+      return std::make_pair(err.message(), AssemblerResult::Error);
 #endif
   }
-  return error_code{ENOEXEC, system_category()};
-}
-
-extern "C" {
-
-void libasmase_assembler_init(void)
-{
-  llvm::InitializeNativeTarget();
-  llvm::InitializeNativeTargetAsmParser();
-}
-
-__attribute__((visibility("default")))
-struct asmase_assembler *asmase_create_assembler(void)
-{
-  return reinterpret_cast<struct asmase_assembler *>(new AssemblerContext);
-}
-
-__attribute__((visibility("default")))
-void asmase_destroy_assembler(struct asmase_assembler *as)
-{
-  auto context = reinterpret_cast<class AssemblerContext *>(as);
-
-  delete context;
-}
-
-__attribute__((visibility("default")))
-int asmase_assemble_code(const struct asmase_assembler *as,
-    const char *filename, int line, const char *asm_code, char **out,
-    size_t *len)
-{
-  auto context = reinterpret_cast<const class AssemblerContext *>(as);
-  std::string result;
-
-  *out = NULL;
-  *len = 0;
-
-  error_code err = context->assembleCode(filename, line, asm_code, result);
-  if (err && err.value() != EPROTO)
-    return -1;
-
-  *out = (char *)malloc(result.size());
-  if (!*out)
-    return -1;
-  memcpy(*out, result.c_str(), result.size());
-  *len = result.size();
-  return err ? 1 : 0;
-}
-
+  return std::make_pair("Could not find assembled text section",
+      AssemblerResult::Error);
 }
