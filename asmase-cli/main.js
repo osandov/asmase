@@ -23,7 +23,7 @@
 
 const readline = require('readline');
 const {Assembler} = require('asmase-assembler');
-const {Instance} = require('asmase-core');
+const {createInstanceSync} = require('asmase-core');
 const {AsmaseCLI} = require('./cli.js');
 const {createAsmaseLexer, AsmaseParser, createAsmaseVisitor} = require('./lang.js');
 
@@ -48,7 +48,7 @@ rl.prompt();
 const lexer = createAsmaseLexer();
 const parser = new AsmaseParser();
 const visitor = createAsmaseVisitor(parser);
-const instance = new Instance();
+const instance = createInstanceSync();
 const assembler = new Assembler();
 const cli = new AsmaseCLI({
   lexer,

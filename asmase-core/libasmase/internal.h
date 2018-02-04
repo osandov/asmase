@@ -38,21 +38,28 @@
 
 void tracee(int memfd, int flags) __attribute__((noreturn));
 
+enum asmase_instance_state {
+	ASMASE_INSTANCE_STATE_NEW,
+	ASMASE_INSTANCE_STATE_READY,
+	ASMASE_INSTANCE_STATE_RUNNING,
+	ASMASE_INSTANCE_STATE_EXITED,
+};
+
 struct asmase_instance {
-	/**
-	 * @pid: PID of the tracee.
-	 */
+	/** @pid: PID of the tracee. */
 	pid_t pid;
 
-	/**
-	 * @memfd: memfd mapped into the tracee.
-	 */
+	/** @memfd: memfd mapped into the tracee. */
 	int memfd;
 
-	/**
-	 * @regs: buffer of register values
-	 */
+	/** @regs: buffer of register values. */
 	struct arch_regs regs;
+
+	/** @flags: flags instance was created with. */
+	int flags;
+
+	/** @state: state of the tracee. */
+	enum asmase_instance_state state;
 };
 
 /**

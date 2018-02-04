@@ -181,7 +181,9 @@ enum asmase_create_flags {
 #define ASMASE_SANDBOX_ALL ((1 << 2) - 1)
 
 /**
- * asmase_create_instance() - Create a new asmase instance.
+ * asmase_create_instance() - Create a new asmase instance asynchronously. The
+ * instance must be waited on with asmase_poll() or asmase_wait(); the instance
+ * will trap when it is ready.
  *
  * @flags: A bitmask of enum asmase_create_flags.
  *
@@ -191,7 +193,8 @@ struct asmase_instance *asmase_create_instance(int flags);
 
 /**
  * asmase_destroy_instance() - Free all resources associated with an asmase
- * instance.
+ * instance. The caller is responsible for killing and reaping the instance
+ * process if it has not already exited.
  *
  * @a: asmase instance to destroy.
  */
@@ -207,17 +210,38 @@ void asmase_destroy_instance(struct asmase_instance *a);
 pid_t asmase_getpid(const struct asmase_instance *a);
 
 /**
- * asmase_execute_code() - Execute machine code on an asmase instance.
+ * asmase_execute_code() - Asynchronously execute machine code on an asmase
+ * instance.
  *
  * @a: asmase instance to execute on.
  * @code: Assembled machine code to execute.
  * @len: Length of the machine code.
- * @wstatus: Status of the asmase instance as returned by waitpid().
  *
  * Return: 0 on success, -1 on failure, in which case errno will be set
  */
-int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len,
-			int *wstatus);
+int asmase_execute_code(struct asmase_instance *a, const char *code,
+			size_t len);
+
+/**
+ * asmase_wait() - Wait for an asmase instance to change state.
+ *
+ * @a: asmase instance to wait for.
+ * @wstatus: Status of the asmase instance as returned by waitpid().
+ *
+ * Return: 1 on success, -1 on failure, in which case errno will be set
+ */
+int asmase_wait(struct asmase_instance *a, int *wstatus);
+
+/**
+ * asmase_poll() - Check whether an asmase instance has changed state.
+ *
+ * @a: asmase instance to check.
+ * @wstatus: Status of the asmase instance as returned by waitpid().
+ *
+ * Return: 1 on success, 0 if the process hasn't changed state, or -1 on
+ * failure, in which case errno will be set.
+ */
+int asmase_poll(struct asmase_instance *a, int *wstatus);
 
 /**
  * asmase_get_register() - Get the value of a register of an asmase instance.

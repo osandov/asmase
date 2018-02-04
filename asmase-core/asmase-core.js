@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Omar Sandoval
+ * Copyright (C) 2017-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -19,15 +19,16 @@
 
 const {
   AsmaseError,
-  Assembler,
-  AssemblerError,
   Instance,
+  createInstance,
+  createInstanceSync,
   registers,
-} = require('bindings')('binding.node');
+} = require('bindings')('addon.node');
+
 exports.AsmaseError = AsmaseError;
-exports.Assembler = Assembler;
-exports.AssemblerError = AssemblerError;
 exports.Instance = Instance;
+exports.createInstance = createInstance;
+exports.createInstanceSync = createInstanceSync;
 exports.registers = registers;
 
 exports.RegisterSet = Object.freeze({

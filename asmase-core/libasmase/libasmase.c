@@ -65,28 +65,111 @@ static pid_t fork_tracee(struct asmase_instance *a, int flags)
 		return pid;
 }
 
-static int attach_to_tracee(struct asmase_instance *a)
+__attribute__((visibility("default")))
+struct asmase_instance *asmase_create_instance(int flags)
 {
-	int wstatus;
+	struct asmase_instance *a;
 
-	if (waitpid(a->pid, &wstatus, 0) == -1)
-		return -1;
+	if (flags & ~(ASMASE_SANDBOX_ALL)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
-	/*
-	 * If the tracee exited or was signaled before it requested to be
-	 * ptrace'd, we can't attach to it. If it stopped for some reason other
-	 * than trapping, then consider it dead.
-	 */
-	if (!WIFSTOPPED(wstatus) || WSTOPSIG(wstatus) != SIGTRAP) {
-		errno = ECHILD;
+	a = malloc(sizeof(*a));
+	if (!a)
+		return NULL;
+
+	if (create_memfd(a) == -1) {
+		free(a);
+		return NULL;
+	}
+
+	a->pid = fork_tracee(a, flags);
+	if (a->pid == -1) {
+		close(a->memfd);
+		free(a);
+		return NULL;
+	}
+
+	a->flags = flags;
+	a->state = ASMASE_INSTANCE_STATE_NEW;
+
+	return a;
+}
+
+__attribute__((visibility("default")))
+void asmase_destroy_instance(struct asmase_instance *a)
+{
+	close(a->memfd);
+	free(a);
+}
+
+__attribute__((visibility("default")))
+pid_t asmase_getpid(const struct asmase_instance *a)
+{
+	return a->pid;
+}
+
+static int reset_tracee_program_counter(struct asmase_instance *a)
+{
+	union asmase_register_value value;
+
+	assert(asmase_registers[0].set == ASMASE_REGISTERS_PROGRAM_COUNTER);
+	switch (asmase_registers[0].type) {
+	case ASMASE_REGISTER_U32:
+		value.u32 = (uint32_t)MEMFD_ADDR;
+		break;
+	case ASMASE_REGISTER_U64:
+		value.u64 = (uint64_t)MEMFD_ADDR;
+		break;
+	default:
+		assert(false && "Invalid program counter type");
+		errno = EINVAL;
 		return -1;
 	}
 
-	if (ptrace(PTRACE_SETOPTIONS, a->pid, NULL, PTRACE_O_EXITKILL) == -1)
+	return asmase_set_register(a, &asmase_registers[0], &value);
+}
+
+__attribute__((visibility("default")))
+int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len)
+{
+	struct iovec iov[] = {
+		{(void *)code, len},
+		{(void *)arch_trap_instruction, arch_trap_instruction_len},
+	};
+	ssize_t sret;
+	size_t total_len;
+	bool overflow;
+
+	if (a->state != ASMASE_INSTANCE_STATE_READY) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	overflow = __builtin_add_overflow(len, arch_trap_instruction_len,
+					  &total_len);
+	if (overflow || total_len > CODE_MAX_SIZE) {
+		errno = E2BIG;
+		return -1;
+	}
+
+	sret = pwritev(a->memfd, iov, ARRAY_SIZE(iov), 0);
+	if (sret == -1)
 		return -1;
 
-	if (arch_get_regs(a->pid, &a->regs) == -1)
+	if (reset_tracee_program_counter(a) == -1) {
+		if (errno == ESRCH)
+			return 0;
 		return -1;
+	}
+	if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1) {
+		if (errno == ESRCH)
+			return 0;
+		return -1;
+	}
+
+	a->state = ASMASE_INSTANCE_STATE_RUNNING;
 
 	return 0;
 }
@@ -247,132 +330,87 @@ out:
 	return ret;
 }
 
-__attribute__((visibility("default")))
-struct asmase_instance *asmase_create_instance(int flags)
+static int asmase_finish_create(struct asmase_instance *a)
 {
-	struct asmase_instance *a;
-	int saved_errno;
-
-	if (flags & ~(ASMASE_SANDBOX_ALL)) {
-		errno = EINVAL;
-		return NULL;
-	}
-
-	a = malloc(sizeof(*a));
-	if (!a)
-		return NULL;
-
-	if (create_memfd(a) == -1) {
-		free(a);
-		return NULL;
-	}
-
-	a->pid = fork_tracee(a, flags);
-	if (a->pid == -1) {
-		close(a->memfd);
-		free(a);
-		return NULL;
-	}
-
-	if (attach_to_tracee(a) == -1)
-		goto err;
+	if (ptrace(PTRACE_SETOPTIONS, a->pid, NULL, PTRACE_O_EXITKILL) == -1)
+		return -1;
 
 	if (zero_out_memfd(a) == -1)
-		goto err;
+		return -1;
 
 	if (check_maps(a) == -1)
-		goto err;
-
-	if ((flags & ASMASE_SANDBOX_FDS) && check_fds(a) == -1)
-		goto err;
-
-	if ((flags & ASMASE_SANDBOX_SYSCALLS) && check_seccomp(a) == -1)
-		goto err;
-
-	return a;
-
-err:
-	saved_errno = errno;
-	asmase_destroy_instance(a);
-	errno = saved_errno;
-	return NULL;
-}
-
-__attribute__((visibility("default")))
-void asmase_destroy_instance(struct asmase_instance *a)
-{
-	kill(a->pid, SIGKILL);
-	waitpid(a->pid, NULL, 0);
-	close(a->memfd);
-	free(a);
-}
-
-__attribute__((visibility("default")))
-pid_t asmase_getpid(const struct asmase_instance *a)
-{
-	return a->pid;
-}
-
-static int reset_tracee_program_counter(struct asmase_instance *a)
-{
-	union asmase_register_value value;
-
-	assert(asmase_registers[0].set == ASMASE_REGISTERS_PROGRAM_COUNTER);
-	switch (asmase_registers[0].type) {
-	case ASMASE_REGISTER_U32:
-		value.u32 = (uint32_t)MEMFD_ADDR;
-		break;
-	case ASMASE_REGISTER_U64:
-		value.u64 = (uint64_t)MEMFD_ADDR;
-		break;
-	default:
-		assert(false && "Invalid program counter type");
-		errno = EINVAL;
-		return -1;
-	}
-
-	return asmase_set_register(a, &asmase_registers[0], &value);
-}
-
-__attribute__((visibility("default")))
-int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len,
-			int *wstatus)
-{
-	struct iovec iov[] = {
-		{(void *)code, len},
-		{(void *)arch_trap_instruction, arch_trap_instruction_len},
-	};
-	ssize_t sret;
-	size_t total_len;
-	bool overflow;
-
-	overflow = __builtin_add_overflow(len, arch_trap_instruction_len,
-					  &total_len);
-	if (overflow || total_len > CODE_MAX_SIZE) {
-		errno = E2BIG;
-		return -1;
-	}
-
-	sret = pwritev(a->memfd, iov, ARRAY_SIZE(iov), 0);
-	if (sret == -1)
 		return -1;
 
-	if (reset_tracee_program_counter(a) == -1) {
-		if (errno == ESRCH)
-			goto wait;
-		return -1;
-	}
-	if (ptrace(PTRACE_CONT, a->pid, NULL, NULL) == -1 && errno != ESRCH)
+	if ((a->flags & ASMASE_SANDBOX_FDS) && check_fds(a) == -1)
 		return -1;
 
-wait:
-	if (waitpid(a->pid, wstatus, 0) == -1)
-		return -1;
-
-	if (arch_get_regs(a->pid, &a->regs) == -1 && errno != ESRCH)
+	if ((a->flags & ASMASE_SANDBOX_SYSCALLS) && check_seccomp(a) == -1)
 		return -1;
 
 	return 0;
+}
+
+static int asmase_waitpid(struct asmase_instance *a, int *wstatus, int flags)
+{
+	pid_t ret;
+
+again:
+	ret = waitpid(a->pid, wstatus, flags);
+	if (ret <= 0)
+		return ret;
+
+	if (a->state == ASMASE_INSTANCE_STATE_NEW) {
+		if (WIFEXITED(*wstatus) || WIFSIGNALED(*wstatus)) {
+			/*
+			 * It's an error if the tracee exited while
+			 * bootstrapping.
+			 */
+			a->state = ASMASE_INSTANCE_STATE_EXITED;
+			errno = ECHILD;
+			return -1;
+		} else if (!WIFSTOPPED(*wstatus) || WSTOPSIG(*wstatus) != SIGTRAP ||
+			   asmase_finish_create(a) == -1) {
+			/* The tracee didn't bootrap properly. */
+			goto kill;
+		}
+	}
+
+	if (WIFEXITED(*wstatus) || WIFSIGNALED(*wstatus)) {
+		a->state = ASMASE_INSTANCE_STATE_EXITED;
+		return 1;
+	}
+
+	a->state = ASMASE_INSTANCE_STATE_READY;
+
+	if (arch_get_regs(a->pid, &a->regs) == -1) {
+		/*
+		 * This is just ptrace() which should never fail if the tracee
+		 * hasn't been reaped, but at least clean up if we can.
+		 */
+		if (errno != ESRCH)
+			goto kill;
+	}
+
+	return 1;
+
+kill:
+	kill(a->pid, SIGKILL);
+	if (flags & WNOHANG)
+		return 0;
+	else
+		goto again;
+}
+
+__attribute__((visibility("default")))
+int asmase_poll(struct asmase_instance *a, int *wstatus)
+{
+	return asmase_waitpid(a, wstatus, WNOHANG);
+}
+
+__attribute__((visibility("default")))
+int asmase_wait(struct asmase_instance *a, int *wstatus)
+{
+	return asmase_waitpid(a, wstatus, 0);
 }
 
 static inline size_t asmase_register_type_size(enum asmase_register_type type)

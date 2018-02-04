@@ -154,12 +154,12 @@ function helpList(topics) {
 }
 
 class AsmaseCLI {
-  constructor({lexer, parser, visitor, instance, assembler, stdout, stderr}) {
+  constructor({lexer, parser, visitor, assembler, instance, stdout, stderr}) {
     this.lexer = lexer;
     this.parser = parser;
     this.visitor = visitor;
-    this.instance = instance;
     this.assembler = assembler;
+    this.instance = instance;
     this.stdout = stdout;
     this.stderr = stderr;
 
@@ -194,7 +194,7 @@ class AsmaseCLI {
     this.stdout.write(']\n');
     let wstatus;
     try {
-      wstatus = this.instance.executeCode(machineCode);
+      wstatus = this.instance.executeCodeSync(machineCode);
     } catch (e) {
       if (e instanceof AsmaseError) {
         this.stderr.write(`error: ${e.message}\n`);
