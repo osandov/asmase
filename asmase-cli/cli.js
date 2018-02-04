@@ -204,14 +204,14 @@ class AsmaseCLI {
     }
     switch (wstatus.state) {
       case 'exited':
-        this.stderr.write(`program exited with status ${wstatus.exitstatus}\n`);
+        this.stderr.write(`program exited with status ${wstatus.exitStatus}\n`);
         break;
       case 'signaled':
-        this.stderr.write(`program was terminated with ${wstatus.termsig}\n`);
+        this.stderr.write(`program was terminated with ${wstatus.signal}\n`);
         break;
       case 'stopped':
-        if (wstatus.stopsig !== 'SIGTRAP') {
-          this.stderr.write(`program received ${wstatus.stopsig}\n`);
+        if (wstatus.signal !== 'SIGTRAP') {
+          this.stderr.write(`program received ${wstatus.signal}\n`);
         }
         break;
       case 'continued':

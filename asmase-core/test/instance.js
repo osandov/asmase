@@ -151,11 +151,11 @@ describe('Instance', function() {
   });
 
   const executeCases = [
-    ['should handle normal case', undefined, 'nop', {state: 'stopped', stopsig: 'SIGTRAP'}],
-    ['should ignore SIGWINCH', 'SIGWINCH', 'nop', {state: 'stopped', stopsig: 'SIGTRAP'}],
-    ['should handle SIGTERM', 'SIGTERM', 'nop', {state: 'stopped', stopsig: 'SIGTERM'}],
-    ['should handle SIGKILL', 'SIGKILL', 'nop', {state: 'signaled', termsig: 'SIGKILL', 'coredump': false}],
-    ['should handle exit', undefined, exitCode, {state: 'exited', exitstatus: 99}],
+    ['should handle normal case', undefined, 'nop', {state: 'stopped', signal: 'SIGTRAP'}],
+    ['should ignore SIGWINCH', 'SIGWINCH', 'nop', {state: 'stopped', signal: 'SIGTRAP'}],
+    ['should handle SIGTERM', 'SIGTERM', 'nop', {state: 'stopped', signal: 'SIGTERM'}],
+    ['should handle SIGKILL', 'SIGKILL', 'nop', {state: 'signaled', signal: 'SIGKILL'}],
+    ['should handle exit', undefined, exitCode, {state: 'exited', exitStatus: 99}],
   ];
 
   describe('#executeCode()', function() {
@@ -715,7 +715,7 @@ describe('Instance', function() {
       }],
       SANDBOX_SYSCALLS: ['should prevent syscalls', async function(instance) {
         const wstatus = await instance.executeAssembly(exitCode);
-        wstatus.should.eql({state: 'stopped', stopsig: 'SIGSYS'});
+        wstatus.should.eql({state: 'stopped', signal: 'SIGSYS'});
         (`/proc/${instance.getPid()}`).should.be.a.directory();
       }],
     };

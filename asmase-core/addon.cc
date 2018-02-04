@@ -84,19 +84,17 @@ static v8::Local<v8::Object> wstatusObject(int wstatus) {
   if (WIFEXITED(wstatus)) {
     Nan::Set(obj, Nan::New("state").ToLocalChecked(),
         Nan::New("exited").ToLocalChecked());
-    Nan::Set(obj, Nan::New("exitstatus").ToLocalChecked(),
+    Nan::Set(obj, Nan::New("exitStatus").ToLocalChecked(),
         Nan::New(WEXITSTATUS(wstatus)));
   } else if (WIFSIGNALED(wstatus)) {
     Nan::Set(obj, Nan::New("state").ToLocalChecked(),
         Nan::New("signaled").ToLocalChecked());
-    Nan::Set(obj, Nan::New("termsig").ToLocalChecked(),
+    Nan::Set(obj, Nan::New("signal").ToLocalChecked(),
         Nan::New(signame(WTERMSIG(wstatus))).ToLocalChecked());
-    Nan::Set(obj, Nan::New("coredump").ToLocalChecked(),
-        Nan::New<v8::Boolean>(WCOREDUMP(wstatus)));
   } else if (WIFSTOPPED(wstatus)) {
     Nan::Set(obj, Nan::New("state").ToLocalChecked(),
         Nan::New("stopped").ToLocalChecked());
-    Nan::Set(obj, Nan::New("stopsig").ToLocalChecked(),
+    Nan::Set(obj, Nan::New("signal").ToLocalChecked(),
         Nan::New(signame(WSTOPSIG(wstatus))).ToLocalChecked());
   } else if (WIFCONTINUED(wstatus)) {
     Nan::Set(obj, Nan::New("state").ToLocalChecked(),
