@@ -220,8 +220,8 @@ describe('Instance', function() {
     it('should throw an error for invalid addresses', async function() {
       const instance = await createInstance();
       try {
-        (() => instance.readMemory('', 1)).should.throw(Error, 'addr is invalid');
-        (() => instance.readMemory('1z', 1)).should.throw(Error, 'addr is invalid');
+        (() => instance.readMemory('', 1)).should.throw(Error, 'address is invalid');
+        (() => instance.readMemory('1z', 1)).should.throw(Error, 'address is invalid');
       } finally {
         instance.destroy();
       }

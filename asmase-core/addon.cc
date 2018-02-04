@@ -369,30 +369,45 @@ private:
       return;
     }
     if (!info[0]->IsNumber() && !info[0]->IsString()) {
-      Nan::ThrowTypeError("addr must be a number or a string");
+      Nan::ThrowTypeError("address must be a number or a string");
       return;
     }
-    if (!info[1]->IsNumber()) {
-      Nan::ThrowTypeError("len must be a number");
+    if (!info[1]->IsNumber() && !info[1]->IsString()) {
+      Nan::ThrowTypeError("length must be a number");
       return;
     }
-    intptr_t addr;
+    uintptr_t addr;
     if (info[0]->IsString()) {
       Nan::Utf8String addrStr(info[0]);
       char* end;
       errno = 0;
       addr = strtoul(*addrStr, &end, 0);
-      if (errno == ERANGE) {
-        Nan::ThrowRangeError("addr is too big");
+      if (errno == ERANGE || (errno == 0 && addr > UINTPTR_MAX)) {
+        Nan::ThrowRangeError("address is too big");
         return;
       } else if (!**addrStr || *end) {
-        Nan::ThrowError("addr is invalid");
+        Nan::ThrowError("address is invalid");
         return;
       }
     } else {
       addr = Nan::To<int64_t>(info[0]).FromJust();
     }
-    size_t len = Nan::To<int64_t>(info[1]).FromJust();
+    size_t len;
+    if (info[1]->IsString()) {
+      Nan::Utf8String lenStr(info[1]);
+      char* end;
+      errno = 0;
+      len = strtoul(*lenStr, &end, 0);
+      if (errno == ERANGE || (errno == 0 && len > SIZE_MAX)) {
+        Nan::ThrowRangeError("length is too big");
+        return;
+      } else if (!**lenStr || *end) {
+        Nan::ThrowError("length is invalid");
+        return;
+      }
+    } else {
+      len = Nan::To<int64_t>(info[1]).FromJust();
+    }
     v8::Local<v8::Object> buffer;
     if (!Nan::NewBuffer(len).ToLocal(&buffer)) {
       return;
