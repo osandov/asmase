@@ -210,6 +210,17 @@ void asmase_destroy_instance(struct asmase_instance *a);
 pid_t asmase_getpid(const struct asmase_instance *a);
 
 /**
+ * asmase_get_memory_range() - Get the contiguous memory range used by an asmase
+ * instance.
+ *
+ * @a: asmase instance.
+ * @start: Starting address of the memory range.
+ * @length: Length of the memory range.
+ */
+void asmase_get_memory_range(const struct asmase_instance *a,
+			     uintptr_t *start, size_t *length);
+
+/**
  * asmase_execute_code() - Asynchronously execute machine code on an asmase
  * instance.
  *

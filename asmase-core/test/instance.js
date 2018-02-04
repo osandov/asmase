@@ -230,6 +230,15 @@ describe('Instance', function() {
 
   if (process.arch === 'x64') {
     describe('x86_64', function() {
+      it('should have the correct memory range', async function() {
+        const instance = await createInstance();
+        try {
+          instance.getMemoryRange().should.eql({start: '0x7fff00000000', length: '0x10000'});
+        } finally {
+          instance.destroy();
+        }
+      });
+
       it('should support general purpose registers', async function() {
         const instance = await createInstance();
         try {

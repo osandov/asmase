@@ -110,6 +110,14 @@ pid_t asmase_getpid(const struct asmase_instance *a)
 	return a->pid;
 }
 
+__attribute__((visibility("default")))
+void asmase_get_memory_range(const struct asmase_instance *a,
+			     uintptr_t *start, size_t *length)
+{
+	*start = MEMFD_ADDR;
+	*length = MEMFD_SIZE;
+}
+
 static int reset_tracee_program_counter(struct asmase_instance *a)
 {
 	union asmase_register_value value;

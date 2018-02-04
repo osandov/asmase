@@ -267,6 +267,23 @@ private:
     info.GetReturnValue().Set(Nan::New<v8::Uint32>(asmase_getpid(obj->instance_)));
   }
 
+  static NAN_METHOD(GetMemoryRange) {
+    Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
+    if (!obj->checkInstance()) {
+      return;
+    }
+    uintptr_t start;
+    size_t length;
+    asmase_get_memory_range(obj->instance_, &start, &length);
+    char buf[40];
+    v8::Local<v8::Object> result = Nan::New<v8::Object>();
+    sprintf(buf, "0x%" PRIxPTR, start);
+    Nan::Set(result, Nan::New("start").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
+    sprintf(buf, "0x%zx", length);
+    Nan::Set(result, Nan::New("length").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
+    info.GetReturnValue().Set(result);
+  }
+
   static Nan::MaybeLocal<v8::Array> GetRegisterBits(const struct asmase_register_descriptor* reg,
       const union asmase_register_value* value) {
     v8::Local<v8::Array> bits = Nan::New<v8::Array>();
@@ -491,6 +508,7 @@ public:
     Nan::SetPrototypeMethod(tpl, "destroy", Destroy);
     Nan::SetPrototypeMethod(tpl, "executeCode", ExecuteCode);
     Nan::SetPrototypeMethod(tpl, "executeCodeSync", ExecuteCodeSync);
+    Nan::SetPrototypeMethod(tpl, "getMemoryRange", GetMemoryRange);
     Nan::SetPrototypeMethod(tpl, "getPid", GetPid);
     Nan::SetPrototypeMethod(tpl, "getRegister", GetRegister);
     Nan::SetPrototypeMethod(tpl, "readMemory", ReadMemory);
