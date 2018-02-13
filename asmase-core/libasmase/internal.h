@@ -22,12 +22,9 @@
 #ifndef LIBASMASE_INTERNAL_H
 #define LIBASMASE_INTERNAL_H
 
-#include "arch.h"
 /* 64k per tracee by default; 4k for code, the rest for the stack. */
-#define MEMFD_SIZE 65536
 #define CODE_MAX_SIZE 4096
 
-#ifndef __ASSEMBLER__
 #include <elf.h>
 #include <stddef.h>
 #include <sys/types.h>
@@ -49,11 +46,8 @@ struct asmase_instance {
 	/** @pid: PID of the tracee. */
 	pid_t pid;
 
-	/** @memfd: memfd mapped into the tracee. */
-	int memfd;
-
-	/** @regs: buffer of register values. */
-	struct arch_regs regs;
+	/** @shmem: memfd mapped into the tracee. */
+	void *shmem;
 
 	/** @flags: flags instance was created with. */
 	int flags;
@@ -100,8 +94,6 @@ extern const size_t arch_bootstrap_code_len;
  */
 typedef void (*arch_bootstrap_func)(int memfd, bool seccomp) __attribute__((noreturn));
 
-int arch_get_regs(pid_t pid, struct arch_regs *regs);
-int arch_set_regs(pid_t pid, const struct arch_regs *regs);
-#endif /* __ASSEMBLER__ */
+int arch_reset_program_counter(struct asmase_instance *a);
 
 #endif /* LIBASMASE_INTERNAL_H */

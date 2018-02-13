@@ -23,10 +23,10 @@
 
 const bigInt = require('big-integer');
 const {AssemblerError} = require('asmase-assembler');
+const {escapeChar, formatters} = require('asmase-common');
 const {AsmaseError, RegisterSet} = require('asmase-core');
 const AsmaseRegisters = require('asmase-core').registers;
 const {AsmaseTypeError, AsmaseValue} = require('./value.js');
-const {escapeChar, memoryFormats} = require('./memory.js');
 
 const helpTopics = {
   expressions: {
@@ -154,7 +154,8 @@ function helpList(topics) {
 }
 
 class AsmaseCLI {
-  constructor({lexer, parser, visitor, assembler, instance, stdout, stderr}) {
+  constructor({architecture, lexer, parser, visitor, assembler, instance, stdout, stderr}) {
+    this.architecture = architecture;
     this.lexer = lexer;
     this.parser = parser;
     this.visitor = visitor;
@@ -163,10 +164,16 @@ class AsmaseCLI {
     this.stdout = stdout;
     this.stderr = stderr;
 
-    this.lastMemoryAddr = 0;
+    this.registerBuffer = Buffer.alloc(this.architecture.REGISTERS_SIZE);
+    this.instance.getRegisters(this.registerBuffer);
+
+    this.memoryView = new DataView(this.instance.memory.buffer);
+    this.registerView = new DataView(this.registerBuffer.buffer);
+
+    this.lastMemoryAddr = bigInt(this.architecture.SHMEM_ADDR);
     this.lastMemoryRepeat = 1;
     this.lastMemoryFormat = 'x';
-    this.lastMemorySize = 8; // XXX
+    this.lastMemorySize = this.architecture.WORD_SIZE;
   }
 
   handleCode(code) {
@@ -195,6 +202,7 @@ class AsmaseCLI {
     let wstatus;
     try {
       wstatus = this.instance.executeCodeSync(machineCode);
+      this.instance.getRegisters(this.registerBuffer);
     } catch (e) {
       if (e instanceof AsmaseError) {
         this.stderr.write(`error: ${e.message}\n`);
@@ -327,38 +335,6 @@ more information about the help system.
     }
   }
 
-  memoryString(addr, repeat) {
-    let stringAddr = bigInt(addr);
-    for (let i = 0; i < repeat; i++) {
-      this.stdout.write(`0x${bigInt(stringAddr).toString(16)}: "`);
-      for (;;) {
-        let memory;
-        try {
-          memory = this.instance.readMemory(stringAddr.toString(), 1);
-        } catch (e) {
-          if (e instanceof AsmaseError) {
-            this.stdout.write('"\n');
-            this.stderr.write(`error: ${e.message}\n`);
-            return;
-          } else {
-            throw e;
-          }
-        }
-        if (memory.length == 0) {
-          this.stdout.write('"\n');
-          return;
-        }
-        if (memory[0] == 0) {
-          break;
-        }
-        this.stdout.write(escapeChar(memory[0], {doubleQuote: true, backslash: true}));
-        stringAddr = stringAddr.next();
-      }
-      this.stdout.write('"\n');
-      stringAddr = stringAddr.next();
-    }
-  }
-
   memory(origAddr, origRepeat, origFormat, origSize, ...args) {
     if (args.length > 0) {
       this.stderr.write(`usage: ${commands.memory.usage}\n`);
@@ -369,7 +345,7 @@ more information about the help system.
     if (typeof origAddr === 'undefined') {
       addr = this.lastMemoryAddr;
     } else if (typeof origAddr === 'object' && origAddr.isInt()) {
-      addr = origAddr.toString();
+      addr = origAddr.value;
     } else {
       this.stderr.write('memory: addr must be an integer\n');
       return;
@@ -381,8 +357,11 @@ more information about the help system.
     } else if (typeof origRepeat === 'object' && origRepeat.isInt()) {
       repeat = origRepeat.toNumber();
     } else {
-      console.log(origRepeat);
       this.stderr.write('memory: repeat must be an integer\n');
+      return;
+    }
+    if (repeat <= 0) {
+      this.stderr.write('memory: repeat must be positive\n');
       return;
     }
 
@@ -413,43 +392,68 @@ more information about the help system.
       return;
     }
 
+    const shmemAddr = bigInt(this.architecture.SHMEM_ADDR);
+    const shmemSize = this.instance.memory.length;
+    if (addr.lt(shmemAddr) || addr.geq(shmemAddr.plus(shmemSize))) {
+      this.stderr.write('error: Bad address\n');
+      return;
+    }
+
     if (format === 's') {
-      this.memoryString(addr, repeat);
-    } else {
-      if (!memoryFormats.hasOwnProperty(format)) {
-        this.stderr.write(`memory: invalid format: ${format}\n`);
-        return;
-      }
-      if (!memoryFormats[format].hasOwnProperty(size)) {
-        this.stderr.write(`memory: invalid size for format: ${size}\n`);
-        return;
-      }
-
-      const {columns, formatter} = memoryFormats[format][size];
-      let memory;
-      try {
-        memory = this.instance.readMemory(addr, repeat * size);
-      } catch (e) {
-        if (e instanceof AsmaseError) {
-          this.stderr.write(`error: ${e.message}\n`);
-          return;
-        } else {
-          throw e;
-        }
-      }
-
-      for (let i = 0, offset = 0; offset + size <= memory.length; i++, offset += size) {
-        if (i % columns == 0) {
-          if (i != 0) {
-            this.stdout.write('\n');
+      for (let i = 0, byteOffset = addr.minus(shmemAddr).toJSNumber();
+           i < repeat && byteOffset < shmemSize; i++, byteOffset++) {
+        this.stdout.write(`0x${shmemAddr.plus(byteOffset).toString(16)}: "`);
+        for (; byteOffset < shmemSize; byteOffset++) {
+          const byte = this.instance.memory[byteOffset];
+          if (byte === 0) {
+            break;
           }
-          this.stdout.write(`0x${bigInt(addr).add(offset).toString(16)}: `);
-        } else {
-          this.stdout.write(' ');
+          this.stdout.write(escapeChar(byte, {doubleQuote: true, backslash: true}));
         }
-        this.stdout.write(formatter(memory, offset));
+        this.stdout.write('"\n');
       }
-      this.stdout.write('\n');
+    } else {
+      const formatter = [];
+      if (format === 'c') {
+        if (size !== 1) {
+          this.stderr.write(`memory: invalid size for format: ${size}\n`);
+          return;
+        }
+        formatter.push('character');
+      } else {
+        if (size !== 1 && size !== 4 && size !== 8 && size !== 16) {
+          this.stderr.write(`memory: invalid size for format: ${size}\n`);
+          return;
+        }
+        formatter.push(this.architecture.ENDIANNESS + '-endian', 'integer');
+        switch (format) {
+          case 'd':
+            formatter.push('signed', 8 * size, 'decimal');
+            break;
+          case 'o':
+            formatter.push('unsigned', 8 * size, 'octal');
+            break;
+          case 't':
+            formatter.push('unsigned', 8 * size, 'binary');
+            break;
+          case 'u':
+            formatter.push('unsigned', 8 * size, 'decimal');
+            break;
+          case 'x':
+            formatter.push('unsigned', 8 * size, 'hexadecimal');
+            break;
+          default:
+            this.stderr.write(`memory: invalid format: ${format}\n`);
+            return;
+        }
+      }
+      const formatCallback = formatters.get(formatter);
+      for (let i = 0, byteOffset = addr.minus(shmemAddr).toJSNumber();
+           i < repeat && byteOffset + size <= shmemSize; i++, byteOffset += size) {
+        this.stdout.write(`0x${shmemAddr.plus(byteOffset).toString(16)}: `);
+        this.stdout.write(formatCallback(this.memoryView, byteOffset));
+        this.stdout.write('\n');
+      }
     }
 
     this.lastMemoryAddr = addr;
@@ -482,11 +486,7 @@ more information about the help system.
     let regsets;
     let all = false;
     if (args.length == 0) {
-      regsets = new Set([
-        RegisterSet.PROGRAM_COUNTER,
-        RegisterSet.GENERAL_PURPOSE,
-        RegisterSet.STATUS,
-      ]);
+      regsets = new Set(['pc', 'gp', 'cc']);
     } else {
       regsets = new Set();
       for (let i = 0; i < args.length; i++) {
@@ -496,24 +496,20 @@ more information about the help system.
         }
         switch (args[i]) {
           case 'pc':
-            regsets.add(RegisterSet.PROGRAM_COUNTER);
-            break;
           case 'gp':
-            regsets.add(RegisterSet.GENERAL_PURPOSE);
-            break;
           case 'cc':
-            regsets.add(RegisterSet.STATUS);
+            regsets.add(args[i]);
             break;
           case 'fp':
-            regsets.add(RegisterSet.FLOATING_POINT);
-            regsets.add(RegisterSet.FLOATING_POINT_STATUS);
+            regsets.add('fp');
+            regsets.add('fpcc');
             break;
           case 'vec':
-            regsets.add(RegisterSet.VECTOR);
-            regsets.add(RegisterSet.VECTOR_STATUS);
+            regsets.add('vec');
+            regsets.add('veccc');
             break;
           case 'seg':
-            regsets.add(RegisterSet.SEGMENT);
+            regsets.add('seg');
             break;
           case 'all':
             all = true;
@@ -524,18 +520,19 @@ more information about the help system.
         }
       }
     }
-    AsmaseRegisters.forEach(({set}, name) => {
-      if (all || regsets.has(set)) {
-        const {value, bits} = this.instance.getRegister(name);
+    this.architecture.registers.forEach((register, name) => {
+      if (all || regsets.has(register.set)) {
+        const value = register.format(this.registerView);
         this.stdout.write(`${name} = ${value}`);
-        if (typeof bits === 'undefined') {
-          this.stdout.write('\n');
-        } else {
-          if (bits.length == 0) {
+        if (register.hasOwnProperty('bits')) {
+          const bits = register.formatBits(this.registerView);
+          if (bits.length === 0) {
             this.stdout.write(' = [ ]\n');
           } else {
             this.stdout.write(` = [ ${bits.join(' ')} ]\n`);
           }
+        } else {
+          this.stdout.write('\n');
         }
       }
     });

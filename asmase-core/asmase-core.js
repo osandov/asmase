@@ -22,35 +22,12 @@ const {
   Instance,
   createInstance,
   createInstanceSync,
-  registers,
 } = require('bindings')('addon.node');
 
 exports.AsmaseError = AsmaseError;
 exports.Instance = Instance;
 exports.createInstance = createInstance;
 exports.createInstanceSync = createInstanceSync;
-exports.registers = registers;
-
-exports.RegisterSet = Object.freeze({
-  PROGRAM_COUNTER: 0,
-  SEGMENT: 1,
-  GENERAL_PURPOSE: 2,
-  STATUS: 3,
-  FLOATING_POINT: 4,
-  FLOATING_POINT_STATUS: 5,
-  VECTOR: 6,
-  VECTOR_STATUS: 7,
-  ALL: 8,
-});
-
-exports.RegisterType = Object.freeze({
-  U8: 0,
-  U16: 1,
-  U32: 2,
-  U64: 3,
-  U128: 4,
-  FLOAT80: 5,
-});
 
 exports.InstanceFlag = Object.freeze({
   SANDBOX_FDS: (1 << 0),

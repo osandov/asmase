@@ -1,7 +1,7 @@
 /*
  * Useful macros and helper functions (mostly copied from the Linux kernel).
  *
- * Copyright (C) 2016-2017 Omar Sandoval
+ * Copyright (C) 2016-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -26,9 +26,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
-
-#define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
-#define FIELD_TYPEOF(t, f) typeof(((t*)0)->f)
+#include <string.h>
 
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 #define BUILD_BUG_ON_ZERO(e) (sizeof(struct { int:-!!(e); }))

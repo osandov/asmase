@@ -6,15 +6,14 @@
       'sources': [
         'libasmase.c',
         'tracee.c',
-        'x86_64/arch.S',
-        'x86_64/regs.c',
+        'x86_64.c',
+        'x86_64_code.S',
       ],
       'defines': [
         '_GNU_SOURCE'
       ],
       'include_dirs': [
         'include',
-        'x86_64'
       ],
       'direct_dependent_settings': {
         'include_dirs': [

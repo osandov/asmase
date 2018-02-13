@@ -109,20 +109,20 @@ void tracee(int memfd, int flags)
 	if (flags & ASMASE_SANDBOX_FDS)
 		close_fds(memfd);
 
-	BUILD_BUG_ON(MEMFD_ADDR & (MEMFD_SIZE - 1));
+	BUILD_BUG_ON(X86_64_SHMEM_ADDR & (SHMEM_SIZE - 1));
 
 	/*
-	 * The temporary mapping must be aligned to MEMFD_SIZE so that it either
+	 * The temporary mapping must be aligned to SHMEM_SIZE so that it either
 	 * doesn't overlap the final mapping at all or is exactly the same
 	 * mapping.
 	 */
-	temp = mmap(NULL, 2 * MEMFD_SIZE, PROT_NONE,
+	temp = mmap(NULL, 2 * SHMEM_SIZE, PROT_NONE,
 		    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (temp == MAP_FAILED)
 		_exit(EXIT_FAILURE);
-	temp = (void *)(round_up((uintptr_t)temp, MEMFD_SIZE));
+	temp = (void *)(round_up((uintptr_t)temp, SHMEM_SIZE));
 
-	temp = mmap(temp, MEMFD_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC,
+	temp = mmap(temp, SHMEM_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC,
 		    MAP_SHARED | MAP_FIXED, memfd, 0);
 	if (temp == MAP_FAILED)
 		_exit(EXIT_FAILURE);

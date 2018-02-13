@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <spawn.h>
@@ -35,32 +34,42 @@
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <sys/wait.h>
 
 #include "internal.h"
 
-static int create_memfd(struct asmase_instance *a)
+static int create_shmem(struct asmase_instance *a)
 {
-	a->memfd = syscall(SYS_memfd_create, "asmase", 0);
-	if (a->memfd == -1)
+	void *addr;
+	int fd;
+
+	fd = syscall(SYS_memfd_create, "asmase", 0);
+	if (fd == -1)
 		return -1;
 
-	if (ftruncate(a->memfd, MEMFD_SIZE) == -1) {
-		close(a->memfd);
+	if (ftruncate(fd, SHMEM_SIZE) == -1) {
+		close(fd);
 		return -1;
 	}
 
-	return 0;
+	addr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (addr == MAP_FAILED) {
+		close(fd);
+		return -1;
+	}
+
+	a->shmem = addr;
+
+	return fd;
 }
 
-static pid_t fork_tracee(struct asmase_instance *a, int flags)
+static pid_t fork_tracee(int memfd, int flags)
 {
-	pid_t pid = -1;
+	pid_t pid;
 
 	pid = fork();
 	if (pid == 0)
-		tracee(a->memfd, flags); /* Doesn't return. */
+		tracee(memfd, flags); /* Doesn't return. */
 	else
 		return pid;
 }
@@ -69,6 +78,7 @@ __attribute__((visibility("default")))
 struct asmase_instance *asmase_create_instance(int flags)
 {
 	struct asmase_instance *a;
+	int memfd;
 
 	if (flags & ~(ASMASE_SANDBOX_ALL)) {
 		errno = EINVAL;
@@ -78,18 +88,21 @@ struct asmase_instance *asmase_create_instance(int flags)
 	a = malloc(sizeof(*a));
 	if (!a)
 		return NULL;
+	a->shmem = NULL;
 
-	if (create_memfd(a) == -1) {
-		free(a);
+	memfd = create_shmem(a);
+	if (memfd == -1) {
+		asmase_destroy_instance(a);
 		return NULL;
 	}
 
-	a->pid = fork_tracee(a, flags);
+	a->pid = fork_tracee(memfd, flags);
 	if (a->pid == -1) {
-		close(a->memfd);
-		free(a);
+		close(memfd);
+		asmase_destroy_instance(a);
 		return NULL;
 	}
+	close(memfd);
 
 	a->flags = flags;
 	a->state = ASMASE_INSTANCE_STATE_NEW;
@@ -100,7 +113,8 @@ struct asmase_instance *asmase_create_instance(int flags)
 __attribute__((visibility("default")))
 void asmase_destroy_instance(struct asmase_instance *a)
 {
-	close(a->memfd);
+	if (a->shmem)
+		munmap(a->shmem, SHMEM_SIZE);
 	free(a);
 }
 
@@ -111,42 +125,14 @@ pid_t asmase_getpid(const struct asmase_instance *a)
 }
 
 __attribute__((visibility("default")))
-void asmase_get_memory_range(const struct asmase_instance *a,
-			     uintptr_t *start, size_t *length)
+void *asmase_get_shmem(const struct asmase_instance *a)
 {
-	*start = MEMFD_ADDR;
-	*length = MEMFD_SIZE;
-}
-
-static int reset_tracee_program_counter(struct asmase_instance *a)
-{
-	union asmase_register_value value;
-
-	assert(asmase_registers[0].set == ASMASE_REGISTERS_PROGRAM_COUNTER);
-	switch (asmase_registers[0].type) {
-	case ASMASE_REGISTER_U32:
-		value.u32 = (uint32_t)MEMFD_ADDR;
-		break;
-	case ASMASE_REGISTER_U64:
-		value.u64 = (uint64_t)MEMFD_ADDR;
-		break;
-	default:
-		assert(false && "Invalid program counter type");
-		errno = EINVAL;
-		return -1;
-	}
-
-	return asmase_set_register(a, &asmase_registers[0], &value);
+	return a->shmem;
 }
 
 __attribute__((visibility("default")))
 int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len)
 {
-	struct iovec iov[] = {
-		{(void *)code, len},
-		{(void *)arch_trap_instruction, arch_trap_instruction_len},
-	};
-	ssize_t sret;
 	size_t total_len;
 	bool overflow;
 
@@ -162,11 +148,11 @@ int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len)
 		return -1;
 	}
 
-	sret = pwritev(a->memfd, iov, ARRAY_SIZE(iov), 0);
-	if (sret == -1)
-		return -1;
+	memcpy(a->shmem, code, len);
+	memcpy((char *)a->shmem + len, arch_trap_instruction,
+	       arch_trap_instruction_len);
 
-	if (reset_tracee_program_counter(a) == -1) {
+	if (arch_reset_program_counter(a) == -1) {
 		if (errno == ESRCH)
 			return 0;
 		return -1;
@@ -178,18 +164,6 @@ int asmase_execute_code(struct asmase_instance *a, const char *code, size_t len)
 	}
 
 	a->state = ASMASE_INSTANCE_STATE_RUNNING;
-
-	return 0;
-}
-
-static int zero_out_memfd(struct asmase_instance *a)
-{
-	static const char zeros[MEMFD_SIZE];
-	ssize_t sret;
-
-	sret = pwrite(a->memfd, zeros, sizeof(zeros), 0);
-	if (sret == -1)
-		return -1;
 
 	return 0;
 }
@@ -224,8 +198,8 @@ static int check_maps(struct asmase_instance *a)
 		}
 
 		if (strstartswith(path, "/memfd:asmase")) {
-			if (start != MEMFD_ADDR ||
-			    (end - start) != MEMFD_SIZE) {
+			if (start != X86_64_SHMEM_ADDR ||
+			    (end - start) != SHMEM_SIZE) {
 				errno = EADDRNOTAVAIL;
 				goto err;
 			}
@@ -343,8 +317,7 @@ static int asmase_finish_create(struct asmase_instance *a)
 	if (ptrace(PTRACE_SETOPTIONS, a->pid, NULL, PTRACE_O_EXITKILL) == -1)
 		return -1;
 
-	if (zero_out_memfd(a) == -1)
-		return -1;
+	memset(a->shmem, 0, SHMEM_SIZE);
 
 	if (check_maps(a) == -1)
 		return -1;
@@ -378,8 +351,14 @@ again:
 			return -1;
 		} else if (!WIFSTOPPED(*wstatus) || WSTOPSIG(*wstatus) != SIGTRAP ||
 			   asmase_finish_create(a) == -1) {
-			/* The tracee didn't bootrap properly. */
-			goto kill;
+			/*
+			 * The tracee didn't bootstrap properly. Kill it and let
+			 * the next call to waitpid() reap it.
+			 */
+			if (flags & WNOHANG)
+				return 0;
+			else
+				goto again;
 		}
 	}
 
@@ -390,23 +369,7 @@ again:
 
 	a->state = ASMASE_INSTANCE_STATE_READY;
 
-	if (arch_get_regs(a->pid, &a->regs) == -1) {
-		/*
-		 * This is just ptrace() which should never fail if the tracee
-		 * hasn't been reaped, but at least clean up if we can.
-		 */
-		if (errno != ESRCH)
-			goto kill;
-	}
-
 	return 1;
-
-kill:
-	kill(a->pid, SIGKILL);
-	if (flags & WNOHANG)
-		return 0;
-	else
-		goto again;
 }
 
 __attribute__((visibility("default")))
@@ -419,131 +382,4 @@ __attribute__((visibility("default")))
 int asmase_wait(struct asmase_instance *a, int *wstatus)
 {
 	return asmase_waitpid(a, wstatus, 0);
-}
-
-static inline size_t asmase_register_type_size(enum asmase_register_type type)
-{
-	switch (type) {
-	case ASMASE_REGISTER_U8:
-		return sizeof(uint8_t);
-	case ASMASE_REGISTER_U16:
-		return sizeof(uint16_t);
-	case ASMASE_REGISTER_U32:
-		return sizeof(uint32_t);
-	case ASMASE_REGISTER_U64:
-		return sizeof(uint64_t);
-	case ASMASE_REGISTER_U128:
-		return 2 * sizeof(uint64_t);
-	case ASMASE_REGISTER_FLOAT80:
-		return sizeof(long double);
-	default:
-		assert(false && "unknown register type");
-		return 0;
-	}
-}
-
-void default_copy_register(const struct asmase_register_descriptor *desc,
-			   void *dst, const struct arch_regs *src)
-{
-	memcpy(dst, (char *)src + desc->offset,
-	       asmase_register_type_size(desc->type));
-}
-
-__attribute__((visibility("default")))
-void asmase_get_register(const struct asmase_instance *a,
-			 const struct asmase_register_descriptor *reg,
-			 union asmase_register_value *value)
-{
-	reg->copy_register_fn(reg, value, &a->regs);
-}
-
-__attribute__((visibility("default")))
-int asmase_set_register(struct asmase_instance *a,
-			const struct asmase_register_descriptor *reg,
-			const union asmase_register_value *value)
-{
-	if (reg->copy_register_fn != default_copy_register) {
-		errno = EOPNOTSUPP;
-		return -1;
-	}
-
-	memcpy((char *)&a->regs + reg->offset, value,
-	       asmase_register_type_size(reg->type));
-	return arch_set_regs(a->pid, &a->regs);
-}
-
-
-__attribute__((visibility("default")))
-char *asmase_status_register_format(const struct asmase_register_descriptor *reg,
-				    const struct asmase_status_register_bits *bits,
-				    const union asmase_register_value *value)
-{
-	uint8_t bits_value;
-	char *str;
-	int ret;
-
-#define BITS_VALUE(value, bits) ((value >> bits->shift) & bits->mask)
-	switch (reg->type) {
-	case ASMASE_REGISTER_U8:
-		bits_value = BITS_VALUE(value->u8, bits);
-		break;
-	case ASMASE_REGISTER_U16:
-		bits_value = BITS_VALUE(value->u16, bits);
-		break;
-	case ASMASE_REGISTER_U32:
-		bits_value = BITS_VALUE(value->u32, bits);
-		break;
-	case ASMASE_REGISTER_U64:
-		bits_value = BITS_VALUE(value->u64, bits);
-		break;
-	case ASMASE_REGISTER_U128:
-		bits_value = BITS_VALUE(value->u128, bits);
-		break;
-	default:
-		assert(false && "Invalid status register type");
-		errno = EINVAL;
-		return NULL;
-	}
-#undef BITS_VALUE
-
-	if (bits->mask == 0x1) {
-		if (bits_value)
-			return strdup(bits->name);
-		else
-			return strdup("");
-	}
-
-	if (bits->values)
-		ret = asprintf(&str, "%s=%s", bits->name, bits->values[bits_value]);
-	else
-		ret = asprintf(&str, "%s=0x%x", bits->name, bits_value);
-	if (ret == -1)
-		return NULL;
-
-	return str;
-}
-
-__attribute__((visibility("default")))
-ssize_t asmase_readv_memory(const struct asmase_instance *a,
-			    const struct iovec *local_iov, size_t liovcnt,
-			    const struct iovec *remote_iov, size_t riovcnt)
-{
-	return process_vm_readv(a->pid, local_iov, liovcnt, remote_iov, riovcnt,
-				0);
-}
-
-__attribute__((visibility("default")))
-ssize_t asmase_read_memory(const struct asmase_instance *a, void *buf,
-			   void *addr, size_t len)
-{
-	struct iovec local_iov = {
-		.iov_base = buf,
-		.iov_len = len,
-	};
-	struct iovec remote_iov = {
-		.iov_base = addr,
-		.iov_len = len,
-	};
-
-	return process_vm_readv(a->pid, &local_iov, 1, &remote_iov, 1, 0);
 }

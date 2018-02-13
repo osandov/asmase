@@ -1,0 +1,296 @@
+/*
+ * Copyright (C) 2018 Omar Sandoval
+ *
+ * This file is part of asmase.
+ *
+ * asmase is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * asmase is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+"use strict";
+
+const padChars = {
+  8: {
+    2: 8,
+    8: 3,
+    10: 3,
+    16: 2,
+  },
+  16: {
+    2: 16,
+    8: 6,
+    10: 5,
+    16: 4,
+  },
+  32: {
+    2: 32,
+    8: 11,
+    10: 10,
+    16: 8,
+  },
+  64: {
+    2: 64,
+    8: 22,
+    10: 20,
+    16: 16,
+  },
+  128: {
+    2: 128,
+    8: 43,
+    10: 39,
+    16: 32,
+  },
+};
+
+exports.integerPrefixes = {
+  2: '',
+  8: '0',
+  10: '',
+  16: '0x',
+};
+
+function formatUint(result, bits, radix, pad, prefix) {
+  if (pad) {
+    result = result.padStart(padChars[bits][radix], '0');
+  }
+  if (prefix) {
+    result = prefixes[radix] + result;
+  }
+  return result;
+}
+
+exports.formatUint8 = function formatUint8(view, byteOffset = 0, radix = 10) {
+  return view.getUint8(byteOffset).toString(radix);
+}
+
+exports.formatUint16LE = function formatUint16LE(view, byteOffset = 0, radix = 10) {
+  return view.getUint16(byteOffset, true).toString(radix);
+}
+
+exports.formatUint32LE = function formatUint32LE(view, byteOffset = 0, radix = 10) {
+  return view.getUint32(byteOffset, true).toString(radix);
+}
+
+function formatBigDecimal(view, byteOffset = 0, bits) {
+  const digits = [];
+  for (let i = byteOffset + bits / 8 - 2; i >= byteOffset; i -= 2) {
+    let hi = view.getUint16(i, true);
+    for (let j = 0; j < digits.length; j++) {
+      const z = digits[j] * 0x10000 + hi;
+      hi = Math.floor(z / 10000);
+      digits[j] = (z - hi * 10000);
+    }
+    while (hi) {
+      digits.push(hi % 10000);
+      hi = Math.floor(hi / 10000);
+    }
+  }
+  if (digits.length === 0) {
+    return '0';
+  }
+  return digits.reverse().map((digit, index) => {
+    if (index === 0) {
+      return digit.toString(10);
+    } else {
+      return digit.toString(10).padStart(4, '0');
+    }
+  }).join('');
+}
+
+exports.formatUint64LE = function formatUint64LE(view, byteOffset = 0, radix = 10, pad = false, prefix = false) {
+  let result;
+  if (radix === 2) {
+    const lo = view.getUint32(byteOffset, true);
+    const hi = view.getUint32(byteOffset + 4, true);
+    if (hi) {
+      result = hi.toString(2) + lo.toString(2).padStart(32, '0');
+    } else {
+      result = lo.toString(2);
+    }
+  } else if (radix === 8) {
+    // Format the low 48 bits and high 16 bits separately, then concatenate.
+    // This works because 48 is divisible by log2(8) = 3. This uses
+    // * 0x100000000 instead of << 32 because JavaScript always treats the
+    // operands of bitwise operators as signed 32-bit integers.
+    const lo = (view.getUint16(byteOffset + 4, true) * 0x100000000 +
+                view.getUint32(byteOffset, true));
+    const hi = view.getUint16(byteOffset + 6, true);
+    if (hi) {
+      result = hi.toString(8) + lo.toString(8).padStart(16, '0');
+    } else {
+      result = lo.toString(8);
+    }
+  } else if (radix === 10) {
+    result = formatBigDecimal(view, byteOffset, 64);
+  } else if (radix === 16) {
+    const lo = view.getUint32(byteOffset, true);
+    const hi = view.getUint32(byteOffset + 4, true);
+    if (hi) {
+      result = hi.toString(16) + lo.toString(16).padStart(8, '0');
+    } else {
+      result = lo.toString(16);
+    }
+  }
+  return formatUint(result, 64, radix, pad, prefix);
+}
+
+exports.formatUint128LE = function formatUint128LE(view, byteOffset = 0, radix = 10, pad = false, prefix = false) {
+  let result;
+  if (radix === 2) {
+    const lo = exports.formatUint64LE(view, byteOffset, 2);
+    const hi = exports.formatUint64LE(view, byteOffset + 8, 2);
+    if (hi === '0') {
+      result = lo;
+    } else {
+      result = hi + lo.padStart(64, '0');
+    }
+  } else if (radix === 8) {
+    // Similar to formatUint64LE(), format the low 48 bits, middle 48 bits, and
+    // high 16 bits separately, then concatenate.
+    const lo = (view.getUint16(byteOffset + 4, true) * 0x100000000 +
+                view.getUint32(byteOffset, true));
+    const mid = (view.getUint32(byteOffset + 8, true) * 0x10000 +
+                 view.getUint16(byteOffset + 6, true));
+    const hi = view.getUint32(byteOffset + 12, true);
+    if (hi) {
+      result = hi.toString(8) + mid.toString(8).padStart(16, '0') + lo.toString(8).padStart(16, '0');
+    } else if (mid) {
+      result = mid.toString(8) + lo.toString(8).padStart(16, '0');
+    } else {
+      result = lo.toString(8);
+    }
+  } else if (radix === 10) {
+    result = formatBigDecimal(view, byteOffset, 128);
+  } else if (radix === 16) {
+    const lo = exports.formatUint64LE(view, byteOffset, 16);
+    const hi = exports.formatUint64LE(view, byteOffset + 8, 16);
+    if (hi === '0') {
+      result = lo;
+    } else {
+      result = hi + lo.padStart(16, '0');
+    }
+  }
+  return formatUint(result, 128, radix, pad, prefix);
+}
+
+exports.formatFloat32LE = function formatFloat32LE(view, byteOffset = 0) {
+  const num = view.getFloat32(byteOffset, true);
+  if (Object.is(num, -0)) {
+    return '-0';
+  } else {
+    return num.toString();
+  }
+}
+
+exports.formatFloat64LE = function formatFloat64LE(view, byteOffset = 0) {
+  const num = view.getFloat64(byteOffset, true);
+  if (Object.is(num, -0)) {
+    return '-0';
+  } else {
+    return num.toString();
+  }
+}
+
+exports.formatFloat80LE = function formatFloat80LE(view, byteOffset = 0) {
+  // XXX: formatting a float80 is really hard, so we just convert to a
+  // float64 and format that.
+  let significandLo = view.getUint32(byteOffset, true);
+  let significandHi = view.getUint32(byteOffset + 4, true);
+  const exponent = view.getUint16(byteOffset + 8, true) & 0x7fff;
+  const sign = view.getUint8(byteOffset + 9) >> 7;
+  if (exponent === 0x7fff) {
+    if (significandLo === 0 && (significandHi & 0x7fffffff) === 0) {
+      return sign ? '-Infinity' : 'Infinity';
+    } else {
+      return 'NaN';
+    }
+  } else if (significandLo === 0 && significandHi === 0) {
+      return sign ? '-0' : '0';
+  } else {
+    let unbiasedExponent = exponent - 0x3fff;
+    if (!(significandHi & 0x80000000)) {
+      // Normalize
+      if (significandHi) {
+        const shift = 31 - Math.floor(Math.log2(significandHi));
+        significandHi = (significandHi << shift) >>> 0;
+        significandHi += (significandLo >>> (32 - shift));
+        significandLo = (significandLo << shift) >>> 0;
+        unbiasedExponent -= shift;
+      } else {
+        const shift = 31 - Math.floor(Math.log2(significandLo));
+        significandHi = (significandLo << shift) >>> 0;
+        significandLo = 0;
+        unbiasedExponent -= 32 + shift;
+      }
+    }
+    if (unbiasedExponent < -0x3ff) {
+      return sign ? '-0' : '0';
+    } else if (unbiasedExponent > 0x3ff) {
+      return sign ? '-Infinity' : 'Infinity';
+    } else {
+      const doublePrecisionLo = (significandHi & 0x7ff) * 0x200000 + ((significandLo >> 11) & 0x1fffff);
+      const doublePrecisionHi = ((significandHi & 0x7ffff800) >> 11) + ((unbiasedExponent + 0x3ff) << 20) + (sign ? 0x80000000 : 0);
+      const tmpView = new DataView(new ArrayBuffer(8));
+      tmpView.setUint32(0, doublePrecisionLo, true);
+      tmpView.setUint32(4, doublePrecisionHi, true);
+      return tmpView.getFloat64(0, true).toString();
+    }
+  }
+}
+
+function intFormatters(callback) {
+  return {
+    binary: (buf, byteOffset = 0) => callback(buf, byteOffset, 2, true, false),
+    octal: (buf, byteOffset = 0) => callback(buf, byteOffset, 8, true, true),
+    decimal: (buf, byteOffset = 0) => callback(buf, byteOffset, 10, false, false),
+    hexadecimal: (buf, byteOffset = 0) => callback(buf, byteOffset, 16, true, true),
+  };
+}
+
+exports.formatters = {
+  'little-endian': {
+    integer: {
+      unsigned: {
+        8: intFormatters(exports.formatUint8),
+        16: intFormatters(exports.formatUint16LE),
+        32: intFormatters(exports.formatUint32LE),
+        64: intFormatters(exports.formatUint64LE),
+        128: intFormatters(exports.formatUint128LE),
+      },
+    },
+    'floating-point': {
+      32: (buf, byteOffset = 0) => exports.formatFloat32LE(buf, byteOffset),
+      64: (buf, byteOffset = 0) => exports.formatFloat64LE(buf, byteOffset),
+      80: (buf, byteOffset = 0) => exports.formatFloat80LE(buf, byteOffset),
+    },
+  },
+  format(formatter, buf, byteOffset = 0) {
+    let callback = this;
+    for (let i = 0; i < formatter.length; i++) {
+      callback = callback[formatter[i]];
+    }
+    return callback(buf, byteOffset);
+  }
+};
+
+exports.defaultFormatters = {
+  littleEndian: {
+    uint16: ['little-endian', 'integer', 'unsigned', '16', 'hexadecimal'],
+    uint32: ['little-endian', 'integer', 'unsigned', '32', 'hexadecimal'],
+    uint64: ['little-endian', 'integer', 'unsigned', '64', 'hexadecimal'],
+    uint128: ['little-endian', 'integer', 'unsigned', '128', 'hexadecimal'],
+    float32: ['little-endian', 'floating-point', '32'],
+    float64: ['little-endian', 'floating-point', '64'],
+    float80: ['little-endian', 'floating-point', '80'],
+  },
+};

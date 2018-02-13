@@ -1,7 +1,5 @@
 /*
- * x86_64 architecture definitions.
- *
- * Copyright (C) 2017 Omar Sandoval
+ * Copyright (C) 2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -19,18 +17,10 @@
  * along with asmase.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LIBASMASE_X86_64_ARCH_H
-#define LIBASMASE_X86_64_ARCH_H
+"use strict";
 
-#define MEMFD_ADDR 0x7fff00000000UL
-
-#ifndef __ASSEMBLER__
-#include <sys/user.h>
-
-struct arch_regs {
-	struct user_regs_struct regs;
-	struct user_fpregs_struct fpregs;
+exports.architectures = {
+  x86_64: require('./x86_64.js'),
 };
-#endif
 
-#endif /* LIBASMASE_X86_64_ARCH_H */
+exports.formatters = require('./format.js').formatters;

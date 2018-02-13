@@ -32,8 +32,6 @@ static Nan::Global<v8::Object> AsmaseError;
 static Nan::Global<v8::Object> Promise;
 static Nan::Global<v8::Map> Registers;
 
-static std::unordered_map<std::string, const struct asmase_register_descriptor*> registers_table;
-
 static std::string signame(int sig) {
   static const std::unordered_map<int, const std::string> names{
     {SIGHUP, "SIGHUP"},
@@ -117,13 +115,6 @@ static void ThrowAsmaseError(int errnum)
   Nan::ThrowError(NewAsmaseError(errnum));
 }
 
-static void ThrowAsmaseError(const std::string& error)
-{
-  const int argc = 1;
-  v8::Local<v8::Value> argv[argc] = {Nan::New(error).ToLocalChecked()};
-  Nan::ThrowError(Nan::CallAsConstructor(Nan::New(AsmaseError), argc, argv).ToLocalChecked());
-}
-
 class Instance : public Nan::ObjectWrap {
 private:
   // Instance, isCreate, resolve, reject
@@ -189,7 +180,7 @@ private:
     v8::Local<v8::Function> reject = Nan::To<v8::Function>(info[1]).ToLocalChecked();
 
     v8::Local<v8::Object> data = Nan::To<v8::Object>(info.Data()).ToLocalChecked();
-    v8::Local<v8::Value> buffer = Nan::Get(data, Nan::New(1)).ToLocalChecked();
+    v8::Local<v8::Value> buffer = Nan::Get(data, 1).ToLocalChecked();
     if (!node::Buffer::HasInstance(buffer)) {
       const int argc = 1;
       v8::Local<v8::Value> argv[argc] = {Nan::TypeError("code must be a buffer")};
@@ -197,7 +188,7 @@ private:
       return;
     }
 
-    v8::Local<v8::Object> obj = Nan::To<v8::Object>(Nan::Get(data, Nan::New(0)).ToLocalChecked()).ToLocalChecked();
+    v8::Local<v8::Object> obj = Nan::To<v8::Object>(Nan::Get(data, 0).ToLocalChecked()).ToLocalChecked();
     struct asmase_instance* instance = Nan::ObjectWrap::Unwrap<Instance>(obj)->instance_;
     char* code = node::Buffer::Data(buffer);
     size_t len = node::Buffer::Length(buffer);
@@ -218,8 +209,8 @@ private:
       return;
     }
     v8::Local<v8::Array> data = Nan::New<v8::Array>(2);
-    Nan::Set(data, Nan::New(0), info.Holder());
-    Nan::Set(data, Nan::New(1), info[0]);
+    Nan::Set(data, 0, info.Holder());
+    Nan::Set(data, 1, info[0]);
     v8::Local<v8::FunctionTemplate> tpl =
       Nan::New<v8::FunctionTemplate>(Instance::ExecuteCodeExecutor, data);
     v8::Local<v8::Function> fn = tpl->GetFunction();
@@ -267,158 +258,21 @@ private:
     info.GetReturnValue().Set(Nan::New<v8::Uint32>(asmase_getpid(obj->instance_)));
   }
 
-  static NAN_METHOD(GetMemoryRange) {
+  static NAN_METHOD(GetRegisters) {
     Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
     if (!obj->checkInstance()) {
       return;
     }
-    uintptr_t start;
-    size_t length;
-    asmase_get_memory_range(obj->instance_, &start, &length);
-    char buf[40];
-    v8::Local<v8::Object> result = Nan::New<v8::Object>();
-    sprintf(buf, "0x%" PRIxPTR, start);
-    Nan::Set(result, Nan::New("start").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
-    sprintf(buf, "0x%zx", length);
-    Nan::Set(result, Nan::New("length").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
-    info.GetReturnValue().Set(result);
-  }
-
-  static Nan::MaybeLocal<v8::Array> GetRegisterBits(const struct asmase_register_descriptor* reg,
-      const union asmase_register_value* value) {
-    v8::Local<v8::Array> bits = Nan::New<v8::Array>();
-    for (size_t i = 0; i < reg->num_status_bits; i++) {
-      char* flag = asmase_status_register_format(reg, &reg->status_bits[i], value);
-      if (!flag) {
-        ThrowAsmaseError(errno);
-        return Nan::MaybeLocal<v8::Array>();
-      }
-      if (!*flag) {
-        free(flag);
-        continue;
-      }
-      Nan::Set(bits, bits->Length(), Nan::New(flag).ToLocalChecked());
-      free(flag);
-    }
-    return bits;
-  }
-
-  static NAN_METHOD(GetRegister) {
-    Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
-    if (!obj->checkInstance()) {
+    v8::Local<v8::Value> buffer = info[0];
+    if (!node::Buffer::HasInstance(buffer)) {
+      Nan::ThrowTypeError("registers must be a buffer");
       return;
     }
-    if (!info[0]->IsString()) {
-      Nan::ThrowTypeError("register must be a string");
-      return;
-    }
-
-    Nan::Utf8String code(info[0]);
-    const auto iter = registers_table.find(*code);
-    if (iter == registers_table.end()) {
-      ThrowAsmaseError(std::string{"unknown register: "} + *code);
-      return;
-    }
-
-    const struct asmase_register_descriptor* reg = iter->second;
-    union asmase_register_value value;
-    asmase_get_register(obj->instance_, reg, &value);
-    char buf[40];
-    switch (reg->type) {
-    case ASMASE_REGISTER_U8:
-      sprintf(buf, "0x%02" PRIx8, value.u8);
-      break;
-    case ASMASE_REGISTER_U16:
-      sprintf(buf, "0x%04" PRIx16, value.u16);
-      break;
-    case ASMASE_REGISTER_U32:
-      sprintf(buf, "0x%08" PRIx32, value.u32);
-      break;
-    case ASMASE_REGISTER_U64:
-      sprintf(buf, "0x%016" PRIx64, value.u64);
-      break;
-    case ASMASE_REGISTER_U128:
-      sprintf(buf, "0x%016" PRIx64 "%016" PRIx64, value.u128_hi, value.u128_lo);
-      break;
-    case ASMASE_REGISTER_FLOAT80:
-      sprintf(buf, "%.*Lf", DECIMAL_DIG, value.float80);
-      break;
-    default:
-      assert(false && "unknown register type");
-      return;
-    }
-
-    v8::Local<v8::Object> result = Nan::New<v8::Object>();
-    Nan::Set(result, Nan::New("type").ToLocalChecked(), Nan::New(reg->type));
-    Nan::Set(result, Nan::New("set").ToLocalChecked(), Nan::New(reg->set));
-    Nan::Set(result, Nan::New("value").ToLocalChecked(), Nan::New(buf).ToLocalChecked());
-    if (reg->num_status_bits) {
-      v8::Local<v8::Array> bits;
-      if (!Instance::GetRegisterBits(reg, &value).ToLocal(&bits)) {
-        return;
-      }
-      Nan::Set(result, Nan::New("bits").ToLocalChecked(), bits);
-    }
-
-    info.GetReturnValue().Set(result);
-  }
-
-  static NAN_METHOD(ReadMemory) {
-    Instance* obj = Nan::ObjectWrap::Unwrap<Instance>(info.Holder());
-    if (!obj->checkInstance()) {
-      return;
-    }
-    if (!info[0]->IsNumber() && !info[0]->IsString()) {
-      Nan::ThrowTypeError("address must be a number or a string");
-      return;
-    }
-    if (!info[1]->IsNumber() && !info[1]->IsString()) {
-      Nan::ThrowTypeError("length must be a number");
-      return;
-    }
-    uintptr_t addr;
-    if (info[0]->IsString()) {
-      Nan::Utf8String addrStr(info[0]);
-      char* end;
-      errno = 0;
-      addr = strtoul(*addrStr, &end, 0);
-      if (errno == ERANGE || (errno == 0 && addr > UINTPTR_MAX)) {
-        Nan::ThrowRangeError("address is too big");
-        return;
-      } else if (!**addrStr || *end) {
-        Nan::ThrowError("address is invalid");
-        return;
-      }
-    } else {
-      addr = Nan::To<int64_t>(info[0]).FromJust();
-    }
-    size_t len;
-    if (info[1]->IsString()) {
-      Nan::Utf8String lenStr(info[1]);
-      char* end;
-      errno = 0;
-      len = strtoul(*lenStr, &end, 0);
-      if (errno == ERANGE || (errno == 0 && len > SIZE_MAX)) {
-        Nan::ThrowRangeError("length is too big");
-        return;
-      } else if (!**lenStr || *end) {
-        Nan::ThrowError("length is invalid");
-        return;
-      }
-    } else {
-      len = Nan::To<int64_t>(info[1]).FromJust();
-    }
-    v8::Local<v8::Object> buffer;
-    if (!Nan::NewBuffer(len).ToLocal(&buffer)) {
-      return;
-    }
-    int ret = asmase_read_memory(obj->instance_, node::Buffer::Data(buffer),
-        reinterpret_cast<void*>(addr), len);
-    if (ret == -1) {
+    int ret = asmase_get_registers(obj->instance_, node::Buffer::Data(buffer),
+        node::Buffer::Length(buffer));
+    if (ret) {
       ThrowAsmaseError(errno);
-      return;
     }
-    info.GetReturnValue().Set(buffer);
   }
 
   static inline Nan::Persistent<v8::Function>& constructor() {
@@ -497,6 +351,10 @@ private:
     v8::Local<v8::Function> cons = Nan::New(constructor());
     v8::Local<v8::Object> obj = Nan::NewInstance(cons).ToLocalChecked();
     Nan::ObjectWrap::Unwrap<Instance>(obj)->instance_ = instance;
+    v8::Local<v8::Object> memory = Nan::NewBuffer(
+        static_cast<char*>(asmase_get_shmem(instance)),
+        SHMEM_SIZE, [](char*, void*){}, nullptr).ToLocalChecked();
+    Nan::Set(obj, Nan::New("memory").ToLocalChecked(), memory);
     return obj;
   }
 
@@ -523,10 +381,8 @@ public:
     Nan::SetPrototypeMethod(tpl, "destroy", Destroy);
     Nan::SetPrototypeMethod(tpl, "executeCode", ExecuteCode);
     Nan::SetPrototypeMethod(tpl, "executeCodeSync", ExecuteCodeSync);
-    Nan::SetPrototypeMethod(tpl, "getMemoryRange", GetMemoryRange);
     Nan::SetPrototypeMethod(tpl, "getPid", GetPid);
-    Nan::SetPrototypeMethod(tpl, "getRegister", GetRegister);
-    Nan::SetPrototypeMethod(tpl, "readMemory", ReadMemory);
+    Nan::SetPrototypeMethod(tpl, "getRegisters", GetRegisters);
 
     constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("Instance").ToLocalChecked(),
@@ -579,19 +435,6 @@ NAN_MODULE_INIT(InitAll) {
   v8::Local<Nan::BoundScript> script = Nan::CompileScript(scriptString).ToLocalChecked();
   AsmaseError.Reset(Nan::To<v8::Object>(Nan::RunScript(script).ToLocalChecked()).ToLocalChecked());
   Nan::Set(target, Nan::New("AsmaseError").ToLocalChecked(), Nan::New(AsmaseError));
-
-  v8::Local<v8::Map> registers = v8::Map::New(v8::Isolate::GetCurrent());
-  for (size_t i = 0; i < asmase_num_registers; i++) {
-    const struct asmase_register_descriptor* reg = &asmase_registers[i];
-
-    v8::Local<v8::Object> regObj = Nan::New<v8::Object>();
-    Nan::Set(regObj, Nan::New("type").ToLocalChecked(), Nan::New(reg->type));
-    Nan::Set(regObj, Nan::New("set").ToLocalChecked(), Nan::New(reg->set));
-    registers = registers->Set(Nan::GetCurrentContext(), Nan::New(reg->name).ToLocalChecked(), regObj).ToLocalChecked();
-    registers_table[reg->name] = reg;
-  }
-  Registers.Reset(registers);
-  Nan::Set(target, Nan::New("registers").ToLocalChecked(), Nan::New(Registers));
 
   Instance::Init(target);
   Nan::SetMethod(target, "createInstance", Instance::CreateInstance);

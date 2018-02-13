@@ -1,5 +1,6 @@
 const {Assembler} = require('asmase-assembler');
-const {AsmaseError, Instance, InstanceFlag, RegisterSet, createInstance, createInstanceSync, registers} = require('..');
+const {architectures} = require('asmase-common');
+const {AsmaseError, Instance, InstanceFlag, createInstance, createInstanceSync} = require('..');
 const chai = require('chai');
 const fs = require('fs');
 const should = chai.should();
@@ -14,8 +15,6 @@ chai.Assertion.addMethod('bit', function(bit) {
   );
 });
 
-const UINT64_MAX_PLUS_ONE = '0x10000000000000000';
-
 function randHexInt(bits) {
   let s = '0x';
   while (bits > 0) {
@@ -25,11 +24,9 @@ function randHexInt(bits) {
   return s;
 }
 
-const exitCode = {
-  x64: (`movq $231, %rax
-         movq $99, %rdi
-         syscall`),
-}[process.arch];
+const exitCode = `movq $231, %rax
+                  movq $99, %rdi
+                  syscall`;
 
 const assembler = new Assembler();
 
@@ -38,21 +35,6 @@ Instance.prototype.executeAssembly = function executeAssembly(code) {
 }
 Instance.prototype.executeAssemblySync = function executeAssemblySync(code) {
   return this.executeCodeSync(assembler.assembleCode(code));
-}
-Instance.prototype.getEflags = function getEflags() {
-  return this.getRegister('eflags');
-}
-Instance.prototype.getFcw = function getFcw() {
-  return this.getRegister('fcw');
-}
-Instance.prototype.getFsw = function getFsw() {
-  return this.getRegister('fsw');
-}
-Instance.prototype.getMxcsr = function getMxcsr() {
-  return parseInt(this.getRegister('mxcsr').value, 16);
-}
-Instance.prototype.getFtw = function getFtw() {
-  return parseInt(this.getRegister('ftw').value, 16);
 }
 
 describe('#createInstance()', function() {
@@ -101,9 +83,7 @@ describe('Instance', function() {
   it('should zero out the memory buffer', async function() {
     const instance = await createInstance();
     try {
-      // XXX: shouldn't hardcode this address.
-      const mem = instance.readMemory(0x7fff00000000, 65536);
-      mem.should.eql(Buffer.alloc(65536));
+      instance.memory.should.eql(Buffer.alloc(65536));
     } finally {
       instance.destroy();
     }
@@ -192,529 +172,506 @@ describe('Instance', function() {
     });
   });
 
-  describe('#getRegister()',  function() {
-    it('should support all registers', async function() {
+  describe('x86_64', function() {
+    Instance.prototype.getRegister = function getRegister(regName) {
+      const buf = Buffer.alloc(architectures.x86_64.REGISTERS_SIZE);
+      const view = new DataView(buf.buffer);
+      this.getRegisters(buf);
+      return architectures.x86_64.registers.get(regName).format(view);
+    }
+
+    Instance.prototype.getStatusRegister = function getStatusRegister(regName) {
+      const buf = Buffer.alloc(architectures.x86_64.REGISTERS_SIZE);
+      const view = new DataView(buf.buffer);
+      this.getRegisters(buf);
+      const register = architectures.x86_64.registers.get(regName);
+      const value = register.format(view);
+      const bits = register.formatBits(view);
+      return {value, bits};
+    }
+
+    Instance.prototype.getEflags = function getEflags() {
+      return this.getStatusRegister('eflags');
+    }
+    Instance.prototype.getFcw = function getFcw() {
+      return this.getStatusRegister('fcw');
+    }
+    Instance.prototype.getFsw = function getFsw() {
+      return this.getStatusRegister('fsw');
+    }
+    Instance.prototype.getFtw = function getFtw() {
+      return this.getStatusRegister('ftw');
+    }
+
+    it('should support general purpose registers', async function() {
       const instance = await createInstance();
       try {
-        registers.forEach(({type, set}, name) => {
-          const reg = instance.getRegister(name);
-          reg.type.should.equal(type);
-          reg.set.should.equal(set);
+        const regNames = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi',
+                          'rdi', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13',
+                          'r14', 'r15'];
+        const expected = {};
+
+        for (let i = 0; i < regNames.length; i++) {
+          const value = randHexInt(64);
+          expected[regNames[i]] = value;
+          await instance.executeAssembly(`movq $${value}, %${regNames[i]}`);
+        }
+
+        Object.entries(expected).forEach(([reg, value]) => {
+          instance.getRegister(reg).should.equal(value);
         });
       } finally {
         instance.destroy();
       }
     });
-  });
 
-  describe('#readMemory()', function() {
-    it('should throw a range error for big addresses', async function() {
+    it('should support eflags', async function() {
       const instance = await createInstance();
       try {
-        (() => instance.readMemory('0x10000000000000000', 1)).should.throw(RangeError);
+        let eflags;
+
+        // Carry flag
+        await instance.executeAssembly(`movq $0xffffffffffffffff, %rax
+                                        movq $1, %rbx
+                                        addq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(0);
+        eflags.bits.should.include('CF');
+
+        await instance.executeAssembly(`movq $0xffffffff, %rax
+                                        movq $1, %rbx
+                                        addq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.not.have.bit(0);
+        eflags.bits.should.not.include('CF');
+
+        // Parity flag
+        await instance.executeAssembly(`movq $0x1, %rax
+                                        movq $0x10, %rbx
+                                        andq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(2);
+        eflags.bits.should.include('PF');
+
+        await instance.executeAssembly(`movq $0x1, %rax
+                                        movq $0x1, %rbx
+                                        addq %rbx, %rax`)
+        eflags = instance.getEflags();
+        eflags.value.should.not.have.bit(2);
+        eflags.bits.should.not.include('PF');
+
+        // Adjust flag
+        await instance.executeAssembly(`movq $0xf, %rax
+                                        movq $1, %rbx
+                                        addq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(4);
+        eflags.bits.should.include('AF');
+
+        await instance.executeAssembly(`movq $0xe, %rax
+                                        movq $1, %rbx
+                                        addq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.not.have.bit(4);
+        eflags.bits.should.not.include('AF');
+
+        // Zero flag
+        await instance.executeAssembly(`movq $1, %rax
+                                        movq $1, %rbx
+                                        subq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(6);
+        eflags.bits.should.include('ZF');
+
+        await instance.executeAssembly(`movq $1, %rax
+                                        movq $2, %rbx
+                                        subq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.not.have.bit(6);
+        eflags.bits.should.not.include('ZF');
+
+        // Sign flag
+        await instance.executeAssembly(`movq $1, %rax
+                                        movq $2, %rbx
+                                        subq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(7);
+        eflags.bits.should.include('SF');
+
+        await instance.executeAssembly(`movq $2, %rax
+                                        movq $1, %rbx
+                                        subq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.not.have.bit(7);
+        eflags.bits.should.not.include('SF');
+
+        // Direction flag
+        await instance.executeAssembly('std');
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(10);
+        eflags.bits.should.include('DF');
+
+        await instance.executeAssembly('cld');
+        eflags = instance.getEflags();
+        (eflags.value & (1 << 10)).should.equal(0);
+        eflags.value.should.not.have.bit(10);
+        eflags.bits.should.not.include('DF');
+
+        // Overflow flag
+        await instance.executeAssembly(`movq $0x7fffffffffffffff, %rax
+                                        movq $1, %rbx
+                                        addq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.have.bit(11);
+        eflags.bits.should.include('OF');
+
+        await instance.executeAssembly(`movq $0x7fffffffffffffff, %rax
+                                        movq $1, %rbx
+                                        subq %rbx, %rax`);
+        eflags = instance.getEflags();
+        eflags.value.should.not.have.bit(11);
+        eflags.bits.should.not.include('OF');
       } finally {
         instance.destroy();
       }
     });
 
-    it('should throw an error for invalid addresses', async function() {
+    it('should support the x87 data registers', async function() {
       const instance = await createInstance();
       try {
-        (() => instance.readMemory('', 1)).should.throw(Error, 'address is invalid');
-        (() => instance.readMemory('1z', 1)).should.throw(Error, 'address is invalid');
+        await instance.executeAssembly('subq $8, %rsp');
+        for (let i = 7; i >= 0; i--) {
+          await instance.executeAssembly(`movq $${i}, (%rsp)
+                                          fildq (%rsp)`);
+          for (let j = 7; j >= i; j--) {
+            Number(instance.getRegister(`R${j}`)).should.equal(j);
+          }
+        }
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support the x87 control word', async function() {
+      const instance = await createInstance();
+      try {
+        let fcw;
+
+        await instance.executeAssembly('finit');
+        fcw = instance.getFcw();
+        parseInt(fcw.value, 16).should.equal(0x37f);
+        fcw.bits.should.include('PC=EXT');
+        fcw.bits.should.include('RC=RN');
+
+        await instance.executeAssembly(`movq $0, %rax
+                                        pushq %rax
+                                        fldcw (%rsp)`);
+        fcw = instance.getFcw();
+        parseInt(fcw.value, 16).should.equal(0x40);
+
+        await instance.executeAssembly(`movq $0x7f, %rax
+                                        movq %rax, (%rsp)
+                                        fldcw (%rsp)`);
+        fcw = instance.getFcw();
+        fcw.bits.should.contain('PC=SGL');
+
+        await instance.executeAssembly(`movq $0x27f, %rax
+                                        movq %rax, (%rsp)
+                                        fldcw (%rsp)`);
+        fcw = instance.getFcw();
+        fcw.bits.should.contain('PC=DBL');
+
+        await instance.executeAssembly(`movq $0x77f, %rax
+                                        movq %rax, (%rsp)
+                                        fldcw (%rsp)`);
+        fcw = instance.getFcw();
+        fcw.bits.should.include('RC=R-');
+
+        await instance.executeAssembly(`movq $0xf7f, %rax
+                                        movq %rax, (%rsp)
+                                        fldcw (%rsp)`);
+        fcw = instance.getFcw();
+        fcw.bits.should.include('RC=RZ');
+
+        await instance.executeAssembly(`movq $0xb7f, %rax
+                                        movq %rax, (%rsp)
+                                        fldcw (%rsp)`);
+        fcw = instance.getFcw();
+        fcw.bits.should.include('RC=R+');
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support the x87 status word top', async function() {
+      const instance = await createInstance();
+      try {
+        let fsw;
+
+        await instance.executeAssembly('finit');
+        for (let i = 7; i >= 0; i--) {
+          await instance.executeAssembly('fldz');
+          fsw = instance.getFsw();
+          ((fsw.value & 0x3800) >> 11).should.equal(i);
+          fsw.bits.should.include(`TOP=0x${i.toString(16)}`);
+        }
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support x87 status word exceptions', async function() {
+      const instance = await createInstance();
+      try {
+        let fsw;
+
+        await instance.executeAssembly('subq $8, %rsp');
+
+        instance.checkFswException = async function checkFswException(code, bits) {
+          await this.executeAssembly('finit');
+
+          fsw = this.getFsw();
+          for (let i = 0; i < bits.length; i++) {
+            const [shift, name] = bits[i];
+            (fsw.value & (1 << shift)).should.equal(0);
+            fsw.bits.should.not.include(name);
+          }
+
+          await this.executeAssembly(code);
+
+          fsw = this.getFsw();
+          for (let i = 0; i < bits.length; i++) {
+            const [shift, name] = bits[i];
+            (fsw.value & (1 << shift)).should.not.equal(0);
+            fsw.bits.should.include(name);
+          }
+        }
+
+        await instance.checkFswException('fldz\n'.repeat(9), [[6, 'SF'], [0, 'EF=IE']]);
+
+        await instance.checkFswException(`movq $1, %rax
+                                          movq %rax, (%rsp)
+                                          fldl (%rsp)`,
+                                         [[1, 'EF=DE']]);
+
+        await instance.checkFswException(`fldz
+                                          fld1
+                                          fdiv %st(1), %st(0)`,
+                                         [[2, 'EF=ZE']]);
+
+        await instance.checkFswException(`movq $65535, %rax
+                                          pushq %rax
+                                          fildq (%rsp)
+                                          fld1
+                                          fscale`,
+                                         [[3, 'EF=OE'], [5, 'EF=PE']]);
+
+        await instance.checkFswException(`movq $-65535, %rax
+                                          pushq %rax
+                                          fildq (%rsp)
+                                          fld1
+                                          fscale`,
+                                         [[4, 'EF=UE']]);
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support x87 status word condition codes', async function() {
+      const instance = await createInstance();
+      try {
+        let fsw;
+
+        await instance.executeAssembly('finit');
+        fsw = instance.getFsw();
+        (fsw.value & (1 << 8)).should.equal(0);
+        fsw.bits.should.not.include('C0');
+        (fsw.value & (1 << 9)).should.equal(0);
+        fsw.bits.should.not.include('C1');
+        (fsw.value & (1 << 10)).should.equal(0);
+        fsw.bits.should.not.include('C2');
+        (fsw.value & (1 << 14)).should.equal(0);
+        fsw.bits.should.not.include('C3');
+
+        // C3
+        await instance.executeAssembly(`fldz
+                                        fxam`);
+        fsw = instance.getFsw();
+        (fsw.value & (1 << 14)).should.not.equal(0);
+        fsw.bits.should.include('C3');
+
+        // C2
+        await instance.executeAssembly(`fld1
+                                        fxam`);
+        fsw = instance.getFsw();
+        (fsw.value & (1 << 10)).should.not.equal(0);
+        fsw.bits.should.include('C2');
+
+        // C1
+        await instance.executeAssembly(`fchs
+                                        fxam`);
+        fsw = instance.getFsw();
+        (fsw.value & (1 << 9)).should.not.equal(0);
+        fsw.bits.should.include('C1');
+
+        // C0
+        await instance.executeAssembly(`movq $-1, %rax
+                                        pushq %rax
+                                        pushq %rax
+                                        fldt (%rsp)
+                                        fxam`);
+        fsw = instance.getFsw();
+        (fsw.value & (1 << 8)).should.not.equal(0);
+        fsw.bits.should.include('C0');
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support mxcsr', async function() {
+      const instance = await createInstance();
+      try {
+        await instance.executeAssembly(`subq $4, %rsp
+                                        movl $0xffff, %eax
+                                        movl %eax, (%rsp)
+                                        ldmxcsr (%rsp)`);
+        instance.getRegister('mxcsr').should.equal('0x0000ffff');
+
+        await instance.executeAssembly(`xorl %eax, %eax
+                                        movl %eax, (%rsp)
+                                        ldmxcsr (%rsp)`)
+        instance.getRegister('mxcsr').should.equal('0x00000000');
+
+        await instance.executeAssembly(`movl $0x1f80, %eax
+                                        movl %eax, (%rsp)
+                                        ldmxcsr (%rsp)`);
+        instance.getRegister('mxcsr').should.equal('0x00001f80');
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support the x87 tag word', async function() {
+      const instance = await createInstance();
+      try {
+        const emptyBits = ['TAG(0)=Empty', 'TAG(1)=Empty', 'TAG(2)=Empty',
+                           'TAG(3)=Empty', 'TAG(4)=Empty', 'TAG(5)=Empty',
+                           'TAG(6)=Empty', 'TAG(7)=Empty'];
+        let expected;
+        let expectedBits;
+        let ftw;
+
+        // Empty
+        await instance.executeAssembly('finit');
+        ftw = instance.getFtw();
+        parseInt(ftw.value).should.equal(0xffff);
+        ftw.bits.should.eql(emptyBits);
+
+        // Valid
+        expected = 0xffff;
+        expectedBits = emptyBits.slice();
+        for (let i = 0; i < 8; i++) {
+          await instance.executeAssembly('fldpi');
+          expected >>= 2;
+          expectedBits[7 - i] = `TAG(${7 - i})=Valid`;
+          ftw = instance.getFtw();
+          parseInt(ftw.value).should.equal(expected);
+          ftw.bits.should.eql(expectedBits);
+        }
+
+        // Zero
+        await instance.executeAssembly('finit')
+        expected = 0xffff;
+        expectedBits = emptyBits.slice();
+        for (let i = 7; i >= 0; i--) {
+          await instance.executeAssembly('fldz');
+          expected &= ~(0x3 << 2 * i);
+          expected |= (0x1 << 2 * i);
+          expectedBits[i] = `TAG(${i})=Zero`;
+          ftw = instance.getFtw();
+          parseInt(ftw.value).should.equal(expected);
+          ftw.bits.should.eql(expectedBits);
+        }
+
+        // Special
+        await instance.executeAssembly(`finit
+                                        movq $-1, %rax
+                                        pushq %rax
+                                        pushq %rax`);
+        expected = 0xffff;
+        expectedBits = emptyBits.slice();
+        for (let i = 7; i >= 0; i--) {
+          await instance.executeAssembly('fldt (%rsp)');
+          expected &= ~(0x3 << 2 * i);
+          expected |= (0x2 << 2 * i);
+          expectedBits[i] = `TAG(${i})=Special`;
+          ftw = instance.getFtw();
+          parseInt(ftw.value).should.equal(expected);
+          ftw.bits.should.eql(expectedBits);
+        }
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support MMX registers', async function() {
+      const instance = await createInstance();
+      try {
+        const expected = {};
+        for (let i = 0; i < 8; i++) {
+          const value = randHexInt(64);
+          expected['mm' + i.toString()] = value;
+          await instance.executeAssembly(`movq $${value}, %rax
+                                          movq %rax, %mm${i}`);
+        }
+
+        Object.entries(expected).forEach(([reg, value]) => {
+          instance.getRegister(reg).should.equal(value);
+        });
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should support SSE registers', async function() {
+      const instance = await createInstance();
+      try {
+        const expected = {};
+        for (let i = 0; i < 16; i++) {
+          const value = randHexInt(128);
+          const hi = value.slice(0, 18);
+          const lo = '0x' + value.slice(18);
+          expected['xmm' + i.toString()] = value;
+          await instance.executeAssembly(`movq $${hi}, %rax
+                                          pushq %rax
+                                          movq $${lo}, %rax
+                                          pushq %rax
+                                          movdqu (%rsp), %xmm${i}`);
+        }
+
+        Object.entries(expected).forEach(([reg, value]) => {
+          instance.getRegister(reg).should.equal(value);
+        });
+      } finally {
+        instance.destroy();
+      }
+    });
+
+    it('should be able to read memory', async function() {
+      const instance = await createInstance();
+      try {
+        await instance.executeAssembly(`subq $16, %rsp
+                                        movq $0x77202c6f6c6c6568, %rax
+                                        movq %rax, (%rsp)
+                                        movq $0x21646c726f, %rax
+                                        movq %rax, 8(%rsp)`);
+        const mem = instance.memory.slice(instance.memory.length - 16, instance.memory.length - 3);
+        mem.should.eql(Buffer.from('hello, world!'));
       } finally {
         instance.destroy();
       }
     });
   });
-
-  if (process.arch === 'x64') {
-    describe('x86_64', function() {
-      it('should have the correct memory range', async function() {
-        const instance = await createInstance();
-        try {
-          instance.getMemoryRange().should.eql({start: '0x7fff00000000', length: '0x10000'});
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support general purpose registers', async function() {
-        const instance = await createInstance();
-        try {
-          const regNames = ['rax', 'rcx', 'rdx', 'rbx', 'rsp', 'rbp', 'rsi',
-                            'rdi', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13',
-                            'r14', 'r15'];
-          const expected = {};
-
-          for (let i = 0; i < regNames.length; i++) {
-            const value = randHexInt(64);
-            expected[regNames[i]] = value;
-            await instance.executeAssembly(`movq $${value}, %${regNames[i]}`);
-          }
-
-          Object.entries(expected).forEach(([reg, value]) => {
-            instance.getRegister(reg).value.should.equal(value);
-          });
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support eflags', async function() {
-        const instance = await createInstance();
-        try {
-          let eflags;
-
-          // Carry flag
-          await instance.executeAssembly(`movq $0xffffffffffffffff, %rax
-                                          movq $1, %rbx
-                                          addq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(0);
-          eflags.bits.should.include('CF');
-
-          await instance.executeAssembly(`movq $0xffffffff, %rax
-                                          movq $1, %rbx
-                                          addq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.not.have.bit(0);
-          eflags.bits.should.not.include('CF');
-
-          // Parity flag
-          await instance.executeAssembly(`movq $0x1, %rax
-                                          movq $0x10, %rbx
-                                          andq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(2);
-          eflags.bits.should.include('PF');
-
-          await instance.executeAssembly(`movq $0x1, %rax
-                                          movq $0x1, %rbx
-                                          addq %rbx, %rax`)
-          eflags = instance.getEflags();
-          eflags.value.should.not.have.bit(2);
-          eflags.bits.should.not.include('PF');
-
-          // Adjust flag
-          await instance.executeAssembly(`movq $0xf, %rax
-                                          movq $1, %rbx
-                                          addq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(4);
-          eflags.bits.should.include('AF');
-
-          await instance.executeAssembly(`movq $0xe, %rax
-                                          movq $1, %rbx
-                                          addq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.not.have.bit(4);
-          eflags.bits.should.not.include('AF');
-
-          // Zero flag
-          await instance.executeAssembly(`movq $1, %rax
-                                          movq $1, %rbx
-                                          subq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(6);
-          eflags.bits.should.include('ZF');
-
-          await instance.executeAssembly(`movq $1, %rax
-                                          movq $2, %rbx
-                                          subq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.not.have.bit(6);
-          eflags.bits.should.not.include('ZF');
-
-          // Sign flag
-          await instance.executeAssembly(`movq $1, %rax
-                                          movq $2, %rbx
-                                          subq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(7);
-          eflags.bits.should.include('SF');
-
-          await instance.executeAssembly(`movq $2, %rax
-                                          movq $1, %rbx
-                                          subq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.not.have.bit(7);
-          eflags.bits.should.not.include('SF');
-
-          // Direction flag
-          await instance.executeAssembly('std');
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(10);
-          eflags.bits.should.include('DF');
-
-          await instance.executeAssembly('cld');
-          eflags = instance.getEflags();
-          (eflags.value & (1 << 10)).should.equal(0);
-          eflags.value.should.not.have.bit(10);
-          eflags.bits.should.not.include('DF');
-
-          // Overflow flag
-          await instance.executeAssembly(`movq $0x7fffffffffffffff, %rax
-                                          movq $1, %rbx
-                                          addq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.have.bit(11);
-          eflags.bits.should.include('OF');
-
-          await instance.executeAssembly(`movq $0x7fffffffffffffff, %rax
-                                          movq $1, %rbx
-                                          subq %rbx, %rax`);
-          eflags = instance.getEflags();
-          eflags.value.should.not.have.bit(11);
-          eflags.bits.should.not.include('OF');
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support the x87 data registers', async function() {
-        const instance = await createInstance();
-        try {
-          await instance.executeAssembly('subq $8, %rsp');
-          for (let i = 7; i >= 0; i--) {
-            await instance.executeAssembly(`movq $${i}, (%rsp)
-                                            fildq (%rsp)`);
-            for (let j = 7; j >= i; j--) {
-              Number(instance.getRegister(`R${j}`).value).should.equal(j);
-            }
-          }
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support the x87 control word', async function() {
-        const instance = await createInstance();
-        try {
-          let fcw;
-
-          await instance.executeAssembly('finit');
-          fcw = instance.getFcw();
-          parseInt(fcw.value, 16).should.equal(0x37f);
-          fcw.bits.should.include('PC=EXT');
-          fcw.bits.should.include('RC=RN');
-
-          await instance.executeAssembly(`movq $0, %rax
-                                          pushq %rax
-                                          fldcw (%rsp)`);
-          fcw = instance.getFcw();
-          parseInt(fcw.value, 16).should.equal(0x40);
-
-          await instance.executeAssembly(`movq $0x7f, %rax
-                                          movq %rax, (%rsp)
-                                          fldcw (%rsp)`);
-          fcw = instance.getFcw();
-          fcw.bits.should.contain('PC=SGL');
-
-          await instance.executeAssembly(`movq $0x27f, %rax
-                                          movq %rax, (%rsp)
-                                          fldcw (%rsp)`);
-          fcw = instance.getFcw();
-          fcw.bits.should.contain('PC=DBL');
-
-          await instance.executeAssembly(`movq $0x77f, %rax
-                                          movq %rax, (%rsp)
-                                          fldcw (%rsp)`);
-          fcw = instance.getFcw();
-          fcw.bits.should.include('RC=R-');
-
-          await instance.executeAssembly(`movq $0xf7f, %rax
-                                          movq %rax, (%rsp)
-                                          fldcw (%rsp)`);
-          fcw = instance.getFcw();
-          fcw.bits.should.include('RC=RZ');
-
-          await instance.executeAssembly(`movq $0xb7f, %rax
-                                          movq %rax, (%rsp)
-                                          fldcw (%rsp)`);
-          fcw = instance.getFcw();
-          fcw.bits.should.include('RC=R+');
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support the x87 status word top', async function() {
-        const instance = await createInstance();
-        try {
-          let fsw;
-
-          await instance.executeAssembly('finit');
-          for (let i = 7; i >= 0; i--) {
-            await instance.executeAssembly('fldz');
-            fsw = instance.getFsw();
-            ((fsw.value & 0x3800) >> 11).should.equal(i);
-            fsw.bits.should.include(`TOP=0x${i.toString(16)}`);
-          }
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support x87 status word exceptions', async function() {
-        const instance = await createInstance();
-        try {
-          let fsw;
-
-          await instance.executeAssembly('subq $8, %rsp');
-
-          instance.checkFswException = async function checkFswException(code, bits) {
-            await this.executeAssembly('finit');
-
-            fsw = this.getFsw();
-            for (let i = 0; i < bits.length; i++) {
-              const [shift, name] = bits[i];
-              (fsw.value & (1 << shift)).should.equal(0);
-              fsw.bits.should.not.include(name);
-            }
-
-            await this.executeAssembly(code);
-
-            fsw = this.getFsw();
-            for (let i = 0; i < bits.length; i++) {
-              const [shift, name] = bits[i];
-              (fsw.value & (1 << shift)).should.not.equal(0);
-              fsw.bits.should.include(name);
-            }
-          }
-
-          await instance.checkFswException('fldz\n'.repeat(9), [[6, 'SF'], [0, 'EF=IE']]);
-
-          await instance.checkFswException(`movq $1, %rax
-                                            movq %rax, (%rsp)
-                                            fldl (%rsp)`,
-                                           [[1, 'EF=DE']]);
-
-          await instance.checkFswException(`fldz
-                                            fld1
-                                            fdiv %st(1), %st(0)`,
-                                           [[2, 'EF=ZE']]);
-
-          await instance.checkFswException(`movq $65535, %rax
-                                            pushq %rax
-                                            fildq (%rsp)
-                                            fld1
-                                            fscale`,
-                                           [[3, 'EF=OE'], [5, 'EF=PE']]);
-
-          await instance.checkFswException(`movq $-65535, %rax
-                                            pushq %rax
-                                            fildq (%rsp)
-                                            fld1
-                                            fscale`,
-                                           [[4, 'EF=UE']]);
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support x87 status word condition codes', async function() {
-        const instance = await createInstance();
-        try {
-          let fsw;
-
-          await instance.executeAssembly('finit');
-          fsw = instance.getFsw();
-          (fsw.value & (1 << 8)).should.equal(0);
-          fsw.bits.should.not.include('C0');
-          (fsw.value & (1 << 9)).should.equal(0);
-          fsw.bits.should.not.include('C1');
-          (fsw.value & (1 << 10)).should.equal(0);
-          fsw.bits.should.not.include('C2');
-          (fsw.value & (1 << 14)).should.equal(0);
-          fsw.bits.should.not.include('C3');
-
-          // C3
-          await instance.executeAssembly(`fldz
-                                          fxam`);
-          fsw = instance.getFsw();
-          (fsw.value & (1 << 14)).should.not.equal(0);
-          fsw.bits.should.include('C3');
-
-          // C2
-          await instance.executeAssembly(`fld1
-                                          fxam`);
-          fsw = instance.getFsw();
-          (fsw.value & (1 << 10)).should.not.equal(0);
-          fsw.bits.should.include('C2');
-
-          // C1
-          await instance.executeAssembly(`fchs
-                                          fxam`);
-          fsw = instance.getFsw();
-          (fsw.value & (1 << 9)).should.not.equal(0);
-          fsw.bits.should.include('C1');
-
-          // C0
-          await instance.executeAssembly(`movq $-1, %rax
-                                          pushq %rax
-                                          pushq %rax
-                                          fldt (%rsp)
-                                          fxam`);
-          fsw = instance.getFsw();
-          (fsw.value & (1 << 8)).should.not.equal(0);
-          fsw.bits.should.include('C0');
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support mxcsr', async function() {
-        const instance = await createInstance();
-        try {
-          await instance.executeAssembly(`subq $4, %rsp
-                                          movl $0xffff, %eax
-                                          movl %eax, (%rsp)
-                                          ldmxcsr (%rsp)`);
-          instance.getMxcsr().should.equal(0xffff);
-
-          await instance.executeAssembly(`xorl %eax, %eax
-                                          movl %eax, (%rsp)
-                                          ldmxcsr (%rsp)`)
-          instance.getMxcsr().should.equal(0);
-
-          await instance.executeAssembly(`movl $0x1f80, %eax
-                                          movl %eax, (%rsp)
-                                          ldmxcsr (%rsp)`);
-          instance.getMxcsr().should.equal(0x1f80);
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support the x87 tag word', async function() {
-        const instance = await createInstance();
-        try {
-          let expected;
-
-          // Empty
-          await instance.executeAssembly('finit');
-          instance.getFtw().should.equal(0xffff);
-
-          // Valid
-          expected = 0xffff;
-          for (let i = 0; i < 8; i++) {
-            await instance.executeAssembly('fldpi');
-            expected >>= 2;
-            instance.getFtw().should.equal(expected);
-          }
-
-          // Zero
-          await instance.executeAssembly('finit')
-          expected = 0xffff;
-          for (let i = 7; i >= 0; i--) {
-            await instance.executeAssembly('fldz');
-            expected &= ~(0x3 << 2 * i);
-            expected |= (0x1 << 2 * i);
-            instance.getFtw().should.equal(expected);
-          }
-
-          // Special
-          await instance.executeAssembly(`finit
-                                          movq $-1, %rax
-                                          pushq %rax
-                                          pushq %rax`);
-          expected = 0xffff;
-          for (let i = 7; i >= 0; i--) {
-            await instance.executeAssembly('fldt (%rsp)');
-            expected &= ~(0x3 << 2 * i);
-            expected |= (0x2 << 2 * i);
-            instance.getFtw().should.equal(expected);
-          }
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support MMX registers', async function() {
-        const instance = await createInstance();
-        try {
-          const expected = {};
-          for (let i = 0; i < 8; i++) {
-            const value = randHexInt(64);
-            expected['mm' + i.toString()] = value;
-            await instance.executeAssembly(`movq $${value}, %rax
-                                            movq %rax, %mm${i}`);
-          }
-
-          Object.entries(expected).forEach(([reg, value]) => {
-            instance.getRegister(reg).value.should.equal(value);
-          });
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should support SSE registers', async function() {
-        const instance = await createInstance();
-        try {
-          const expected = {};
-          for (let i = 0; i < 16; i++) {
-            const value = randHexInt(128);
-            const hi = value.slice(0, 18);
-            const lo = '0x' + value.slice(18);
-            expected['xmm' + i.toString()] = value;
-            await instance.executeAssembly(`movq $${hi}, %rax
-                                            pushq %rax
-                                            movq $${lo}, %rax
-                                            pushq %rax
-                                            movdqu (%rsp), %xmm${i}`);
-          }
-
-          Object.entries(expected).forEach(([reg, value]) => {
-            instance.getRegister(reg).value.should.equal(value);
-          });
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should be able to read memory', async function() {
-        const instance = await createInstance();
-        try {
-          await instance.executeAssembly(`subq $16, %rsp
-                                          movq $0x77202c6f6c6c6568, %rax
-                                          movq %rax, (%rsp)
-                                          movq $0x21646c726f, %rax
-                                          movq %rax, 8(%rsp)`);
-          const rsp = instance.getRegister('rsp').value;
-          const mem = instance.readMemory(rsp, 13);
-          mem.should.eql(Buffer.from('hello, world!'));
-        } finally {
-          instance.destroy();
-        }
-      });
-
-      it('should initialize all registers', async function() {
-        const instance = await createInstance();
-        try {
-          const zeroRegs = ['rax', 'rcx', 'rdx', 'rbx', 'rbp', 'rsi', 'rdi',
-                            'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
-                            'ds', 'es', 'fs', 'gs', 'fsw', 'fip', 'fdp', 'fop'];
-          for (let i = 0; i < 8; i++) {
-            zeroRegs.push(`mm${i}`);
-          }
-          for (let i = 0; i < 16; i++) {
-            zeroRegs.push(`xmm${i}`);
-          }
-          for (let i = 0; i < zeroRegs.length; i++) {
-            parseInt(instance.getRegister(zeroRegs[i]).value, 16).should.equal(0);
-          }
-          (parseInt(instance.getRegister('eflags').value, 16) & 0xcd5).should.equal(0);
-          parseInt(instance.getRegister('fcw').value, 16).should.equal(0x37f);
-          parseInt(instance.getRegister('ftw').value, 16).should.equal(0xffff);
-          parseInt(instance.getRegister('mxcsr').value, 16).should.equal(0x1f80);
-        } finally {
-          instance.destroy();
-        }
-      });
-    });
-  }
 
   describe('sandboxing', function() {
     const mapsRe = '^[a-f0-9]+-[a-f0-9]+ .... [a-f0-9]+ [a-f0-9]+:[a-f0-9]+ [0-9]+ +';

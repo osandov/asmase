@@ -1,8 +1,8 @@
 {
-  "name": "asmase-cli",
+  "name": "asmase-common",
   "version": "1.0.0",
-  "description": "Asmase interactive assembly REPL",
-  "main": "main.js",
+  "description": "The shared code for asmase",
+  "main": "index.js",
   "scripts": {
     "test": "mocha"
   },
@@ -16,16 +16,9 @@
     "url": "https://github.com/osandov/asmase/issues"
   },
   "homepage": "https://github.com/osandov/asmase#readme",
-  "dependencies": {
-    "asmase-assembler": "file:../asmase-assembler",
-    "asmase-common": "file:../asmase-common",
-    "asmase-core": "file:../asmase-core",
-    "big-integer": "^1.6.25",
-    "chevrotain": "^0.32.1",
-    "unescape-js": "^1.0.8"
-  },
   "devDependencies": {
+    "big-integer": "^1.6.26",
     "chai": "^4.1.2",
-    "mocha": "^4.0.1"
+    "mocha": "^3.5.3"
   }
 }

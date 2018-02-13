@@ -1,7 +1,7 @@
 /*
  * x86_64 architecture support.
  *
- * Copyright (C) 2017 Omar Sandoval
+ * Copyright (C) 2017-2018 Omar Sandoval
  *
  * This file is part of asmase.
  *
@@ -22,7 +22,7 @@
 #include <asm-generic/mman-common.h>
 #include <sys/syscall.h>
 
-#include "../internal.h"
+#include "libasmase.h"
 
 /* XXX: should probably get this programatically. */
 #define TASK_SIZE ((1 << 47) - 4096)
@@ -45,8 +45,8 @@ arch_bootstrap_code:
 	movq %rdi, %r14
 	movq %rsi, %r15
 	/* Map the memfd to its final location. */
-	movabsq $MEMFD_ADDR, %rdi
-	movq $MEMFD_SIZE, %rsi
+	movabsq $X86_64_SHMEM_ADDR, %rdi
+	movq $SHMEM_SIZE, %rsi
 	movq $(PROT_READ | PROT_WRITE | PROT_EXEC), %rdx
 	movq $(MAP_SHARED | MAP_FIXED), %r10
 	movq %r14, %r8
@@ -62,24 +62,24 @@ arch_bootstrap_code:
 	cmpq $0, %rax
 	jl exit
 	/* Jump to the same instruction stream at its new location. */
-	movabsq $(MEMFD_ADDR + bootstrap_munmap - arch_bootstrap_code), %rax
+	movabsq $(X86_64_SHMEM_ADDR + bootstrap_munmap - arch_bootstrap_code), %rax
 	jmp *%rax
 	/* Unmap everything before and after the memfd. */
 bootstrap_munmap:
 	xorq %rdi, %rdi
-	movabsq $MEMFD_ADDR, %rsi
+	movabsq $X86_64_SHMEM_ADDR, %rsi
 	movq $SYS_munmap, %rax
 	syscall
 	cmpq $0, %rax
 	jl exit
-	movq $(MEMFD_ADDR + MEMFD_SIZE), %rdi
-	movabsq $(TASK_SIZE - MEMFD_ADDR - MEMFD_SIZE), %rsi
+	movq $(X86_64_SHMEM_ADDR + SHMEM_SIZE), %rdi
+	movabsq $(TASK_SIZE - X86_64_SHMEM_ADDR - SHMEM_SIZE), %rsi
 	movq $SYS_munmap, %rax
 	syscall
 	cmpq $0, %rax
 	jl exit
 	/* Move the stack pointer to the end of the memfd. */
-	movq $(MEMFD_ADDR + MEMFD_SIZE), %rsp
+	movq $(X86_64_SHMEM_ADDR + SHMEM_SIZE), %rsp
 	/* Set up seccomp if that was requested. */
 	testl %r15d, %r15d
 	jz bootstrap_registers
